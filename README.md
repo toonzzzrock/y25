@@ -1,1 +1,1 @@
-# y25 frontend branch
+# y25 stack branch
