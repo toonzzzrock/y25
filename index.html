@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Y25 - Online Game Platform</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="signup-styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <span class="logo-y25">Y25</span>
+            <span class="logo-divider">/</span>
+            <span class="logo-text">ONLINE GAME PLATFORM</span>
+        </div>
+        <nav class="nav">
+            <button class="btn-signup" id="openSignupModal">Sign Up</button>
+        </nav>
+    </header>
+
+    <!-- Signup Modal -->
+    <div class="modal-overlay" id="signupModal">
+        <div class="signup-wrapper">
+            <!-- Left Panel - Decorative -->
+            <div class="signup-left-panel">
+                <button class="back-button" id="closeSignupModal">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                
+                <div class="decorative-content">
+                    <div class="red-circle"></div>
+                    <div class="star-burst"></div>
+                    <div class="line-pattern"></div>
+                    
+                    <h2 class="panel-title">
+                        <span class="title-create">CREATE</span>
+                        <span class="title-your">YOUR</span>
+                        <span class="title-account">ACCOUNT</span>
+                    </h2>
+                    
+                    <div class="game-icon">
+                        <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M30 5L35 20L50 25L35 30L30 45L25 30L10 25L25 20L30 5Z" fill="currentColor"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Form -->
+            <div class="signup-right-panel">
+                <div class="signup-container">
+                    <h1 class="signup-title">Sign Up</h1>
+                    
+                    <div class="user-type-toggle">
+                        <button type="button" class="toggle-btn active" data-type="user">User</button>
+                        <button type="button" class="toggle-btn" data-type="publisher">Publisher</button>
+                    </div>
+
+                    <form class="signup-form" id="signupForm">
+                        <div class="form-group">
+                            <input 
+                                type="text" 
+                                id="firstName" 
+                                class="form-input signup-input" 
+                                placeholder="First name"
+                                required
+                                autocomplete="given-name"
+                            >
+                        </div>
+                        
+                        <div class="form-group">
+                            <input 
+                                type="text" 
+                                id="lastName" 
+                                class="form-input signup-input" 
+                                placeholder="Last name"
+                                required
+                                autocomplete="family-name"
+                            >
+                        </div>
+                        
+                        <div class="form-group">
+                            <input 
+                                type="email" 
+                                id="signupEmail" 
+                                class="form-input signup-input" 
+                                placeholder="Email address"
+                                required
+                                autocomplete="email"
+                            >
+                        </div>
+                        
+                        <div class="form-group">
+                            <input 
+                                type="password" 
+                                id="signupPassword" 
+                                class="form-input signup-input" 
+                                placeholder="Password"
+                                required
+                                autocomplete="new-password"
+                                minlength="8"
+                            >
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-label">
+                                <input 
+                                    type="checkbox" 
+                                    id="terms" 
+                                    required
+                                    class="checkbox-input"
+                                >
+                                <span class="checkbox-custom"></span>
+                                <span class="checkbox-text">Accept Terms & Conditions</span>
+                            </label>
+                        </div>
+                        
+                        <button type="submit" class="btn-join">
+                            <span>Join us</span>
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M7 3L14 10L7 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+
+                        <div class="form-footer">
+                            <p>Already have an account? <a href="#" class="login-link" id="switchToLogin">Login</a></p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <div class="login-container">
+            <h1 class="login-title">
+                LOGIN TO <span class="highlight">Y25</span>
+            </h1>
+            
+            <form class="login-form" id="loginForm">
+                <div class="form-group">
+                    <input 
+                        type="text" 
+                        id="username" 
+                        class="form-input" 
+                        placeholder="Username"
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <input 
+                        type="password" 
+                        id="password" 
+                        class="form-input" 
+                        placeholder="Password"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+                
+                <div class="form-footer">
+                    <a href="#" class="forgot-link">Forgot Password or Username?</a>
+                </div>
+                
+                <button type="submit" class="btn-login">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                        <path d="M8 12L12 16L16 12M12 8V16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Login</span>
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+    <script src="signup-script.js"></script>
+</body>
+</html>
