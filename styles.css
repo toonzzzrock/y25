@@ -92,7 +92,7 @@ body::after {
 }
 
 .logo-y25 {
-    color: var(--color-text);
+    color: #D53900;
     font-weight: 900;
     font-style: italic;
     transform: skewX(-5deg);
