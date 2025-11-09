@@ -77,8 +77,14 @@ CREATE TABLE IF NOT EXISTS forum (
 CREATE TABLE IF NOT EXISTS comment (
     comment_id INT NOT NULL AUTO_INCREMENT,
     comment_text VARBINARY(255) NOT NULL,
+    thread_name VARCHAR(70) NOT NULL,
+    username VARCHAR(20) NOT NULL,
+    reply_to_id INT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    constraint PK_Comment PRIMARY KEY (comment_id)
+    constraint PK_Comment PRIMARY KEY (comment_id),
+    constraint FK_Comment_Forum FOREIGN KEY (thread_name) REFERENCES forum(thread_name) ON DELETE CASCADE,
+    constraint FK_Comment_User FOREIGN KEY (username) REFERENCES User(username),
+    constraint FK_Comment_Reply FOREIGN KEY (reply_to_id) REFERENCES comment(comment_id)
 );
 
 CREATE TABLE IF NOT EXISTS reply (

@@ -109,6 +109,18 @@ BEGIN
     END IF;
 END//
 
+-- Comment to Reply Relation Trigger
+CREATE TRIGGER after_comment_insert
+AFTER INSERT ON comment
+FOR EACH ROW
+BEGIN
+    -- Insert into reply table
+    -- NEW.reply_to_id will be NULL for initial comments
+    -- NEW.reply_to_id will have the parent comment_id for replies
+    INSERT INTO reply (thread_name, username, comment_id, reply_to_comment_id)
+    VALUES (NEW.thread_name, NEW.username, NEW.comment_id, NEW.reply_to_id);
+END//
+
 -- Stored Procedures
 
 CREATE PROCEDURE register_user(
