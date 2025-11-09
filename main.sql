@@ -122,8 +122,8 @@ CREATE TABLE IF NOT EXISTS tag (
 CREATE TABLE IF NOT EXISTS create_relation (
     thread_name VARCHAR(70) NOT NULL,
     username VARCHAR(20) NOT NULL,
-    game_id INT NOT NULL,
-    constraint PK_Create_Relation PRIMARY KEY (thread_name, username, game_id),
+    game_id INT,
+    constraint PK_Create_Relation PRIMARY KEY (thread_name, username),
     constraint FK_Create_Relation_Forum FOREIGN KEY (thread_name) REFERENCES forum(thread_name) ON DELETE CASCADE,
     constraint FK_Create_Relation_User FOREIGN KEY (username) REFERENCES User(username), -- ON DELETE CASCADE???
     constraint FK_Create_Relation_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
