@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import Link from "next/link";
 
 type Game = { id: string; img: string; alt: string; section: "trending" | "new" };

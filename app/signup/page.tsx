@@ -70,7 +70,7 @@ export default function SignupPage() {
               </div>
             </div>
           </div>
-          <div className="signup-right-panel">
+          <div className="signup-right-panel" style={{ overflowY: "auto" }}>
             <div className="signup-container">
               <h1 className="signup-title">Sign Up</h1>
               <div className="user-type-toggle">
@@ -85,7 +85,7 @@ export default function SignupPage() {
                   </button>
                 ))}
               </div>
-              <form className="signup-form" onSubmit={submit}>
+              <form className="signup-form" onSubmit={submit} style={{ overflow: "visible" }}>
                 <div className="form-group">
                   <input
                     type="text"
