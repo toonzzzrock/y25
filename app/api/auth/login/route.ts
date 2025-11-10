@@ -15,22 +15,22 @@ export async function POST(request: NextRequest) {
 
     if (!username || !password) {
       return NextResponse.json(
-        { error: 'Username and password required' },
+        { error: 'Username or email and password required' },
         { status: 400 }
       );
     }
 
     const connection = await pool.getConnection();
     try {
-      // Get user from database
+      // Get user from database - check by username OR email
       const [users] = await connection.query(
-        `SELECT username, password_encrypted, salt_random_value, email FROM User WHERE username = ?`,
-        [username]
+        `SELECT username, password_encrypted, salt_random_value, email FROM User WHERE username = ? OR email = ?`,
+        [username, username]
       );
 
       if ((users as any[]).length === 0) {
         return NextResponse.json(
-          { error: 'Invalid username or password' },
+          { error: 'Invalid username, email or password' },
           { status: 401 }
         );
       }
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
       if (!isValid) {
         return NextResponse.json(
-          { error: 'Invalid username or password' },
+          { error: 'Invalid username, email or password' },
           { status: 401 }
         );
       }

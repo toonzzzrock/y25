@@ -78,7 +78,7 @@ export default function HomeLoginPage() {
               <input
                 type="text"
                 className="form-input"
-                placeholder="Username"
+                placeholder="Username or Email"
                 autoComplete="username"
                 value={loginValues.username}
                 onChange={(e) => setLoginValues((v) => ({ ...v, username: e.target.value }))}
