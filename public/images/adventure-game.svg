@@ -1,0 +1,39 @@
+<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
+  <!-- Adventure/Quest game -->
+  <defs>
+    <linearGradient id="adventureGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#87CEEB;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E0F6FF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="150" fill="url(#adventureGradient)"/>
+  
+  <!-- Mountains -->
+  <polygon points="10,80 50,30 90,80" fill="#8B7355"/>
+  <polygon points="60,80 120,20 180,80" fill="#A0826D"/>
+  
+  <!-- Snow peaks -->
+  <polygon points="50,30 60,45 40,45" fill="#FFFFFF"/>
+  <polygon points="120,20 135,40 105,40" fill="#FFFFFF"/>
+  
+  <!-- Adventurer with sword -->
+  <circle cx="100" cy="100" r="8" fill="#FFD7A8"/>
+  <rect x="97" y="108" width="6" height="12" fill="#4169E1"/>
+  <rect x="95" y="120" width="3" height="8" fill="#FFD7A8"/>
+  <rect x="108" y="120" width="3" height="8" fill="#FFD7A8"/>
+  
+  <!-- Sword -->
+  <rect x="110" y="105" width="3" height="20" fill="#696969"/>
+  <polygon points="112,105 115,100 109,100" fill="#FFD700"/>
+  
+  <!-- Treasure chest -->
+  <rect x="35" y="95" width="20" height="15" fill="#8B4513"/>
+  <rect x="35" y="95" width="20" height="3" fill="#DAA520"/>
+  <circle cx="42" cy="102" r="1.5" fill="#FFD700"/>
+  <circle cx="48" cy="102" r="1.5" fill="#FFD700"/>
+  
+  <!-- Torch -->
+  <rect x="155" y="85" width="2" height="20" fill="#8B4513"/>
+  <ellipse cx="156" cy="83" rx="5" ry="3" fill="#FF4500"/>
+  <polygon points="156,78 154,82 158,82" fill="#FFD700"/>
+</svg>

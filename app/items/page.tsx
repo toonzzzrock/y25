@@ -1,20 +1,43 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useProtectedRoute } from "@/lib/use-protected-route";
 import { listItems, createItem } from "@/lib/data/items";
-import { revalidatePath } from "next/cache";
-
-export const dynamic = "force-dynamic";
-
-async function createItemAction(formData: FormData) {
-  "use server";
-  const title = String(formData.get("title") || "").trim();
-  const description = String(formData.get("description") || "").trim();
-  if (!title) return;
-  createItem({ title, description });
-  revalidatePath("/items");
-}
 
 export default function ItemsIndexPage() {
-  const items = listItems();
+  const { isLoading } = useProtectedRoute();
+  const [items, setItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setItems(listItems());
+    }
+  }, [isLoading]);
+
+  if (isLoading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        backgroundColor: '#f5f5f5',
+        color: '#333',
+        fontSize: '1.2rem'
+      }}>
+        Loading...
+      </div>
+    );
+  }
+
+  async function createItemAction(formData: FormData) {
+    const title = String(formData.get("title") || "").trim();
+    const description = String(formData.get("description") || "").trim();
+    if (!title) return;
+    createItem({ title, description });
+    setItems(listItems());
+  }
   return (
     <div className="mx-auto max-w-3xl p-8 space-y-10">
       <div className="flex items-center justify-between">

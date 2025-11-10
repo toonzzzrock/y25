@@ -1,0 +1,47 @@
+<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
+  <!-- Underwater background -->
+  <defs>
+    <linearGradient id="underWaterGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a6b7c;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d3a42;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="150" fill="url(#underWaterGradient)"/>
+  
+  <!-- Bubbles -->
+  <circle cx="30" cy="30" r="3" fill="#87CEEB" opacity="0.6"/>
+  <circle cx="80" cy="20" r="2" fill="#87CEEB" opacity="0.5"/>
+  <circle cx="150" cy="40" r="2.5" fill="#87CEEB" opacity="0.6"/>
+  <circle cx="60" cy="60" r="1.5" fill="#87CEEB" opacity="0.4"/>
+  <circle cx="170" cy="80" r="2" fill="#87CEEB" opacity="0.5"/>
+  
+  <!-- Sea plants -->
+  <path d="M 20 120 Q 18 100 22 80 Q 24 60 20 40" stroke="#228B22" stroke-width="3" fill="none"/>
+  <path d="M 180 130 Q 178 110 182 90 Q 184 70 180 50" stroke="#32CD32" stroke-width="3" fill="none"/>
+  
+  <!-- Sand bottom -->
+  <rect x="0" y="130" width="200" height="20" fill="#C2B280"/>
+  <circle cx="50" cy="135" r="2" fill="#A0826D" opacity="0.6"/>
+  <circle cx="120" cy="138" r="1.5" fill="#A0826D" opacity="0.6"/>
+  <circle cx="170" cy="136" r="2.5" fill="#A0826D" opacity="0.5"/>
+  
+  <!-- Fish 1 (Orange) -->
+  <ellipse cx="70" cy="70" rx="12" ry="8" fill="#FF6B35"/>
+  <!-- Tail -->
+  <polygon points="58,70 45,65 45,75" fill="#FF8C00"/>
+  <!-- Eye -->
+  <circle cx="78" cy="68" r="2" fill="#000"/>
+  <!-- Fin -->
+  <ellipse cx="70" cy="62" rx="3" ry="5" fill="#FFD700" opacity="0.7"/>
+  
+  <!-- Fish 2 (Blue) -->
+  <ellipse cx="130" cy="85" rx="10" ry="6" fill="#4A9EFF"/>
+  <!-- Tail -->
+  <polygon points="120,85 105,80 105,90" fill="#0066FF"/>
+  <!-- Eye -->
+  <circle cx="138" cy="84" r="1.5" fill="#000"/>
+  
+  <!-- Starfish -->
+  <circle cx="40" cy="140" r="5" fill="#FF69B4"/>
+  <polygon points="40,135 45,130 50,135 45,140 40,145 35,140" fill="#FF1493"/>
+</svg>

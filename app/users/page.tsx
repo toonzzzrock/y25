@@ -1,9 +1,46 @@
-import React from 'react';
-import { getAllUsers } from '../../lib/db';
+'use client';
 
-export default async function Page() {
-  // Server component: query DB on the server at request time
-  const users = await getAllUsers();
+import React, { useEffect, useState } from 'react';
+import { useProtectedRoute } from '@/lib/use-protected-route';
+
+export default function Page() {
+  const { isLoading } = useProtectedRoute();
+  const [users, setUsers] = useState<any[]>([]);
+  const [dbLoading, setDbLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isLoading) {
+      (async () => {
+        try {
+          // For now, fetch users from API endpoint
+          const response = await fetch('/api/users');
+          if (response.ok) {
+            const result = await response.json();
+            setUsers(result.users || []);
+          }
+        } catch (error) {
+          console.error('Failed to load users:', error);
+        }
+        setDbLoading(false);
+      })();
+    }
+  }, [isLoading]);
+
+  if (isLoading || dbLoading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        backgroundColor: '#f5f5f5',
+        color: '#333',
+        fontSize: '1.2rem'
+      }}>
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <main className="p-6">

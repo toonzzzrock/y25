@@ -1,37 +1,85 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
 
 export default function SignupPage() {
+  const router = useRouter();
+  const { signup } = useAuth();
   const [userType, setUserType] = useState<"user" | "publisher">("user");
-  const [values, setValues] = useState({ firstName: "", lastName: "", email: "", password: "", terms: false });
+  const [values, setValues] = useState({
+    username: "",
+    email: "",
+    dateOfBirth: "",
+    sex: "Other",
+    password: "",
+    confirmPassword: "",
+    terms: false
+  });
   const [loading, setLoading] = useState(false);
-  const [notification, setNotification] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  function show(message: string) {
-    setNotification(message);
+  // Real-time password strength validation
+  const passwordStrength = useMemo(() => {
+    const pwd = values.password;
+    const checks = {
+      length: pwd.length >= 8,
+      uppercase: /[A-Z]/.test(pwd),
+      lowercase: /[a-z]/.test(pwd),
+      digit: /[0-9]/.test(pwd),
+      special: /[^A-Za-z0-9]/.test(pwd),
+    };
+
+    const passed = Object.values(checks).filter(Boolean).length;
+    const isValid = Object.values(checks).every(Boolean);
+
+    return { checks, passed, isValid, total: 5 };
+  }, [values.password]);
+
+  function show(message: string, type: 'success' | 'error' = 'success') {
+    setNotification({ message, type });
     setTimeout(() => setNotification(null), 3000);
   }
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!values.firstName || !values.lastName || !values.email || !values.password) {
-      show("Please fill in all fields");
+
+    // Validation
+    if (!values.username || !values.email || !values.dateOfBirth || !values.sex || !values.password || !values.confirmPassword) {
+      show("Please fill in all fields", 'error');
       return;
     }
-    if (values.password.length < 8) {
-      show("Password must be at least 8 characters");
+
+    if (!passwordStrength.isValid) {
+      show("Password does not meet all requirements", 'error');
       return;
     }
+
+    if (values.password !== values.confirmPassword) {
+      show("Passwords do not match", 'error');
+      return;
+    }
+
     if (!values.terms) {
-      show("Accept Terms & Conditions");
+      show("Accept Terms & Conditions", 'error');
       return;
     }
+
     setLoading(true);
-    setTimeout(() => {
+    try {
+      await signup(values.username, values.email, values.dateOfBirth, values.sex, values.password, userType);
+      show("Account created successfully! Redirecting to login...", 'success');
+      setTimeout(() => {
+        router.push('/');
+      }, 2000);
+    } catch (error: any) {
+      show(error.message || "Failed to create account", 'error');
+    } finally {
       setLoading(false);
-      show("Account created successfully!");
-    }, 1500);
+    }
   }
 
   return (
@@ -86,28 +134,20 @@ export default function SignupPage() {
                 ))}
               </div>
               <form className="signup-form" onSubmit={submit} style={{ overflow: "visible" }}>
+                {/* Username */}
                 <div className="form-group">
                   <input
                     type="text"
                     className="form-input signup-input"
-                    placeholder="First name"
-                    autoComplete="given-name"
-                    value={values.firstName}
-                    onChange={(e) => setValues((v) => ({ ...v, firstName: e.target.value }))}
+                    placeholder="Username"
+                    autoComplete="username"
+                    value={values.username}
+                    onChange={(e) => setValues((v) => ({ ...v, username: e.target.value }))}
                     required
                   />
                 </div>
-                <div className="form-group">
-                  <input
-                    type="text"
-                    className="form-input signup-input"
-                    placeholder="Last name"
-                    autoComplete="family-name"
-                    value={values.lastName}
-                    onChange={(e) => setValues((v) => ({ ...v, lastName: e.target.value }))}
-                    required
-                  />
-                </div>
+
+                {/* Email */}
                 <div className="form-group">
                   <input
                     type="email"
@@ -119,19 +159,128 @@ export default function SignupPage() {
                     required
                   />
                 </div>
+
+                {/* Date of Birth */}
                 <div className="form-group">
                   <input
-                    type="password"
+                    type="date"
+                    className="form-input signup-input"
+                    value={values.dateOfBirth}
+                    onChange={(e) => setValues((v) => ({ ...v, dateOfBirth: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                {/* Sex */}
+                <div className="form-group">
+                  <select
+                    className="form-input signup-input"
+                    value={values.sex}
+                    onChange={(e) => setValues((v) => ({ ...v, sex: e.target.value }))}
+                    required
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                {/* Password */}
+                <div className="form-group" style={{ position: "relative" }}>
+                  <input
+                    type={showPassword ? "text" : "password"}
                     className="form-input signup-input"
                     placeholder="Password"
                     autoComplete="new-password"
-                    minLength={8}
                     value={values.password}
                     onChange={(e) => setValues((v) => ({ ...v, password: e.target.value }))}
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#999",
+                    }}
+                  >
+                    {showPassword ? "👁️" : "👁️‍🗨️"}
+                  </button>
                 </div>
-                <div className="form-group checkbox-group">
+
+                {/* Password Strength Indicator */}
+                {values.password && (
+                  <div style={{ margin: "0.5rem 0", fontSize: "0.875rem" }}>
+                    <div style={{ marginBottom: "0.5rem", fontWeight: 600 }}>
+                      Password Strength: {passwordStrength.passed}/{passwordStrength.total}
+                    </div>
+                    <div style={{ display: "grid", gap: "0.25rem" }}>
+                      <div style={{ color: passwordStrength.checks.length ? "#4caf50" : "#ccc" }}>
+                        ✓ At least 8 characters
+                      </div>
+                      <div style={{ color: passwordStrength.checks.uppercase ? "#4caf50" : "#ccc" }}>
+                        ✓ At least one UPPERCASE letter
+                      </div>
+                      <div style={{ color: passwordStrength.checks.lowercase ? "#4caf50" : "#ccc" }}>
+                        ✓ At least one lowercase letter
+                      </div>
+                      <div style={{ color: passwordStrength.checks.digit ? "#4caf50" : "#ccc" }}>
+                        ✓ At least one digit (0-9)
+                      </div>
+                      <div style={{ color: passwordStrength.checks.special ? "#4caf50" : "#ccc" }}>
+                        ✓ At least one special character (!@#$%^&*)
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Confirm Password */}
+                <div className="form-group" style={{ position: "relative", marginTop: "1rem" }}>
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    className="form-input signup-input"
+                    placeholder="Confirm Password"
+                    autoComplete="new-password"
+                    value={values.confirmPassword}
+                    onChange={(e) => setValues((v) => ({ ...v, confirmPassword: e.target.value }))}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#999",
+                    }}
+                  >
+                    {showConfirmPassword ? "👁️" : "👁️‍🗨️"}
+                  </button>
+                </div>
+
+                {/* Password Match Indicator */}
+                {values.confirmPassword && (
+                  <div style={{
+                    fontSize: "0.875rem",
+                    color: values.password === values.confirmPassword ? "#4caf50" : "#f44336",
+                    margin: "0.5rem 0",
+                  }}>
+                    {values.password === values.confirmPassword ? "✓ Passwords match" : "✗ Passwords do not match"}
+                  </div>
+                )}
+
+                <div className="form-group checkbox-group" style={{ marginTop: "1rem" }}>
                   <label className="checkbox-label">
                     <input
                       type="checkbox"
@@ -144,7 +293,11 @@ export default function SignupPage() {
                     <span className="checkbox-text">Accept Terms & Conditions</span>
                   </label>
                 </div>
-                <button type="submit" className="btn-join" disabled={loading}>
+                <button
+                  type="submit"
+                  className="btn-join"
+                  disabled={loading || !passwordStrength.isValid || values.password !== values.confirmPassword}
+                >
                   <span>{loading ? "Creating account..." : "Join us"}</span>
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M7 3L14 10L7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -174,7 +327,7 @@ export default function SignupPage() {
             right: 20,
             padding: "1rem 1.5rem",
             borderRadius: 8,
-            backgroundColor: "#4caf50",
+            backgroundColor: notification.type === 'error' ? "#f44336" : "#4caf50",
             color: "white",
             fontWeight: 600,
             boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
@@ -182,7 +335,7 @@ export default function SignupPage() {
             animation: "slideIn 0.3s ease-out",
           }}
         >
-          {notification}
+          {notification.message}
         </div>
       )}
     </>

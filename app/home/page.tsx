@@ -1,24 +1,38 @@
 "use client";
 import React, { useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useProtectedRoute } from "@/lib/use-protected-route";
+import "../home.css";
 
 type Game = { id: string; img: string; alt: string; section: "trending" | "new" };
 const trendingGames: Game[] = [
-  { id: "boxing", img: "https://via.placeholder.com/200x150/ff6b4a/ffffff?text=Boxing+Ring", alt: "Boxing Game", section: "trending" },
-  { id: "platform", img: "https://via.placeholder.com/200x150/4a9eff/ffffff?text=Platform+Game", alt: "Platform Game", section: "trending" },
-  { id: "racing", img: "https://via.placeholder.com/200x150/4aff6b/ffffff?text=Racing", alt: "Racing Game", section: "trending" },
-  { id: "city", img: "https://via.placeholder.com/200x150/ffb44a/ffffff?text=City+Builder", alt: "City Builder", section: "trending" },
+  { id: "boxing", img: "/images/boxing-game.svg", alt: "Boxing Game", section: "trending" },
+  { id: "platform", img: "/images/mario-game.svg", alt: "Platform Game", section: "trending" },
+  { id: "racing", img: "/images/racing-game.svg", alt: "Racing Game", section: "trending" },
+  { id: "city", img: "/images/city-game.svg", alt: "City Builder", section: "trending" },
+  { id: "survival", img: "/images/survival-game.svg", alt: "Survival Game", section: "trending" },
+  { id: "space", img: "/images/space-shooter.svg", alt: "Space Shooter", section: "trending" },
+  { id: "underwater", img: "/images/underwater-game.svg", alt: "Underwater Game", section: "trending" },
+  { id: "dungeon", img: "/images/dungeon-game.svg", alt: "Dungeon Game", section: "trending" },
 ];
 const newGames: Game[] = [
-  { id: "kawai", img: "https://via.placeholder.com/200x150/8b7355/ffffff?text=Kawai+Run", alt: "Kawai Run", section: "new" },
-  { id: "squirrel", img: "https://via.placeholder.com/200x150/ff8844/ffffff?text=Squirrel+Adventure", alt: "Squirrel Game", section: "new" },
-  { id: "flaaaa", img: "https://via.placeholder.com/200x150/ffcc44/ffffff?text=Flaaaa+vs+Mutt", alt: "Flaaaa vs Mutt", section: "new" },
-  { id: "petfriends", img: "https://via.placeholder.com/200x150/aa88ff/ffffff?text=Pet+Friends", alt: "Pet Friends", section: "new" },
+  { id: "kawai", img: "/images/farm-game.svg", alt: "Kawai Run", section: "new" },
+  { id: "squirrel", img: "/images/jungle-game.svg", alt: "Squirrel Game", section: "new" },
+  { id: "flaaaa", img: "/images/adventure-game.svg", alt: "Flaaaa vs Mutt", section: "new" },
+  { id: "petfriends", img: "/images/forest-game.svg", alt: "Pet Friends", section: "new" },
+  { id: "jungle", img: "/images/castle-game.svg", alt: "Jungle Game", section: "new" },
+  { id: "winter", img: "/images/winter-game.svg", alt: "Winter Game", section: "new" },
+  { id: "pirate", img: "/images/pirate-game.svg", alt: "Pirate Game", section: "new" },
+  { id: "candy", img: "/images/candy-game.svg", alt: "Candy Game", section: "new" },
 ];
 
 const categories = ["all", "shooting", "kids", "sport", "fighting"] as const;
 
 export default function HomePage() {
+  // All hooks must be called unconditionally at the top
+  const { isLoading } = useProtectedRoute();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [notification, setNotification] = useState<{ message: string; type: string } | null>(null);
@@ -35,6 +49,24 @@ export default function HomePage() {
 
   function handlePlay(game: Game) {
     showNotification(`Starting ${game.alt}...`, "success");
+  }
+
+  // Show loading screen while checking authentication
+  // This early return happens AFTER all hooks are called
+  if (isLoading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        backgroundColor: '#1a1a1a',
+        color: '#fff',
+        fontSize: '1.2rem'
+      }}>
+        Loading...
+      </div>
+    );
   }
 
   return (
@@ -59,7 +91,7 @@ export default function HomePage() {
             </svg>
           </button>
         </div>
-        <button className="user-icon-btn" onClick={() => showNotification("User menu", "info")}> 
+        <button className="user-icon-btn" onClick={() => router.push('/profile')}> 
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="16" cy="16" r="15" stroke="currentColor" strokeWidth="2" />
             <circle cx="16" cy="12" r="5" fill="currentColor" />
