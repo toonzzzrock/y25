@@ -28,7 +28,7 @@ body {
     flex-direction: column;
     line-height: 1.6;
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;
 }
 
 body::before {

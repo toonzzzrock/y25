@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Detail - Y25</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="game-detail-styles.css">
+</head>
+<body>
+    <header class="home-header">
+        <div class="logo">
+            <span class="logo-y25">Y25</span>
+        </div>
+        
+        <div class="search-container">
+            <input 
+                type="text" 
+                class="search-input" 
+                placeholder="Search the game"
+                id="searchInput"
+            >
+            <button class="search-button" id="searchBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                    <path d="M21 21L16.5 16.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+
+        <button class="user-icon-btn" id="userMenuBtn">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="16" cy="16" r="15" stroke="currentColor" stroke-width="2"/>
+                <circle cx="16" cy="12" r="5" fill="currentColor"/>
+                <path d="M6 26C6 21 10 18 16 18C22 18 26 21 26 26" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+    </header>
+
+    <main class="game-detail-main">
+        <div class="game-detail-wrapper">
+            <!-- Left Content -->
+            <div class="game-detail-content">
+                <!-- Game Hero Section -->
+                <section class="game-hero">
+                    <div class="hero-container">
+                        <div class="game-banner-container">
+                            <img src="images/altos-odyssey-main.svg" alt="Alto's Odyssey" class="game-banner-image">
+                        </div>
+                        
+                        <div class="game-hero-info">
+                            <div class="game-header-row">
+                                <div>
+                                    <h1 class="game-title">ALTO'S ODYSSEY</h1>
+                                    <p class="game-developer">by JOHN SMITH</p>
+                                </div>
+                                <button class="report-btn">
+                                    Report
+                                </button>
+                                <button class="fullscreen-btn" id="fullscreenBtn" title="Full Screen">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Sidebar - Advertising -->
+            <aside class="ad-sidebar">
+                <div class="ad-space">
+                    <p>SPACE<br>FOR<br>ADVERTISING</p>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <script src="game-detail-script.js"></script>
+</body>
+</html>

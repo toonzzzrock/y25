@@ -135,7 +135,7 @@
     cursor: pointer;
     transition: all 0.3s ease;
     flex-shrink: 0;
-    margin-left: auto;
+    margin-left: 0.5rem;
 }
 
 .nav-arrow-btn:hover {
@@ -154,23 +154,28 @@
     gap: 2rem;
     max-width: 1600px;
     margin: 0 auto;
+    align-items: flex-start;
+    width: 100%;
 }
 
 .main-content {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
 }
 
 /* Game Section */
 .game-section {
-    margin-bottom: 3rem;
+    margin-bottom: 4rem;
+    width: 100%;
+    overflow: hidden;
+    flex-shrink: 0;
 }
 
-.section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
+.game-section:last-child {
+    margin-bottom: 2rem;
 }
 
 .section-title {
@@ -181,6 +186,7 @@
     color: var(--color-text);
     position: relative;
     padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
 }
 
 .section-title::after {
@@ -191,6 +197,13 @@
     width: 60px;
     height: 4px;
     background-color: var(--color-primary);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
 }
 
 .section-arrow {
@@ -204,6 +217,9 @@
     justify-content: center;
     transition: all 0.3s ease;
     border-radius: 50%;
+    min-width: 48px;
+    height: 48px;
+    flex-shrink: 0;
 }
 
 .section-arrow:hover {
@@ -213,10 +229,34 @@
 
 /* Game Grid */
 .game-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    display: flex;
     gap: 1.5rem;
     position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    padding-bottom: 0.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-primary) rgba(255, 255, 255, 0.1);
+    width: 100%;
+}
+
+.game-grid::-webkit-scrollbar {
+    height: 6px;
+}
+
+.game-grid::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.game-grid::-webkit-scrollbar-thumb {
+    background: var(--color-primary);
+    border-radius: 10px;
+}
+
+.game-grid::-webkit-scrollbar-thumb:hover {
+    background: var(--color-primary-hover);
 }
 
 .game-card {
@@ -227,6 +267,8 @@
     transition: all 0.3s ease;
     background-color: var(--color-surface);
     aspect-ratio: 4/3;
+    min-width: 200px;
+    flex-shrink: 0;
 }
 
 .game-card:hover {
@@ -400,7 +442,11 @@
     }
 
     .game-grid {
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        overflow-x: auto;
+    }
+
+    .game-card {
+        min-width: 180px;
     }
 }
 
@@ -426,8 +472,11 @@
     }
 
     .game-grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 1rem;
+        overflow-x: auto;
+    }
+
+    .game-card {
+        min-width: 150px;
     }
 
     .section-title {
