@@ -98,6 +98,10 @@ body::after {
     transform: skewX(-5deg);
 }
 
+.logo-y {
+    color: #ffffff;
+}
+
 .logo-divider {
     color: var(--color-text-secondary);
     font-weight: 300;

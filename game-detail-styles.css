@@ -183,8 +183,8 @@
 
 .report-btn {
     padding: 0.75rem 1.5rem;
-    background-color: rgba(200, 90, 44, 0.9);
-    border: 2px solid rgba(212, 165, 116, 0.3);
+    background-color: rgba(100, 100, 100, 0.8);
+    border: 2px solid rgba(150, 150, 150, 0.4);
     color: #ffffff;
     border-radius: 6px;
     cursor: pointer;
@@ -197,16 +197,16 @@
 }
 
 .report-btn:hover {
-    background-color: rgba(220, 110, 60, 1);
-    border-color: rgba(220, 160, 120, 0.5);
+    background-color: rgba(120, 120, 120, 1);
+    border-color: rgba(170, 170, 170, 0.6);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(200, 90, 44, 0.4);
+    box-shadow: 0 4px 12px rgba(100, 100, 100, 0.4);
 }
 
 .fullscreen-btn {
     padding: 0.75rem;
-    background-color: rgba(200, 90, 44, 0.9);
-    border: 2px solid rgba(212, 165, 116, 0.3);
+    background-color: rgba(100, 100, 100, 0.8);
+    border: 2px solid rgba(150, 150, 150, 0.4);
     color: #ffffff;
     border-radius: 6px;
     cursor: pointer;
@@ -219,10 +219,10 @@
 }
 
 .fullscreen-btn:hover {
-    background-color: rgba(220, 110, 60, 1);
-    border-color: rgba(220, 160, 120, 0.5);
+    background-color: rgba(120, 120, 120, 1);
+    border-color: rgba(170, 170, 170, 0.6);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(200, 90, 44, 0.4);
+    box-shadow: 0 4px 12px rgba(100, 100, 100, 0.4);
 }
 
 /* Game Info Section */
