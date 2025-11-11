@@ -1,0 +1,30 @@
+/* Styles extracted from forum.html to keep page styles separated */
+/* Minimal page-specific adjustments to approximate the screenshot */
+body { background: #2b1209; color: #e6e0db; font-family: Arial, Helvetica, sans-serif; }
+.home-header { display:flex; align-items:center; justify-content:space-between; padding:18px 36px; }
+.logo-y25 { font-weight:700; color:#ff6a00; font-size:28px; }
+.forum-container { max-width:1100px; margin:30px auto; }
+.page-title { color:#fff; font-size:34px; margin-bottom:6px; }
+.page-sub { color:#FF4500; margin-bottom:18px; }
+.community-grid { display:grid; grid-template-columns: 1fr 360px; gap:20px; }
+.left-column { background:#1f1411; padding:18px; border-radius:6px; }
+.hubs-row { display:grid; grid-template-columns: 1fr 1fr; gap:18px; margin-bottom:18px; }
+.hub-card { background:#2a1a17; padding:12px; border-radius:6px; }
+.hub-item { display:flex; gap:10px; align-items:center; }
+.hub-item img { width:40px; height:40px; border-radius:4px; }
+.feature { background:#19100e; margin-top:10px; padding:12px; border-radius:6px; }
+.feature img { width:100%; border-radius:4px; display:block; }
+.sidebar { background:#1f1411; padding:18px; border-radius:6px; }
+.search-small { display:flex; gap:8px; margin-bottom:18px; }
+.search-small input { flex:1; padding:10px; border-radius:4px; border:1px solid #3a2a27; background:#2a221f; color:#ddd; }
+.small-ghost { background:#ff7a2b; color:#fff; border:none; padding:10px 12px; border-radius:4px; }
+.record-card { background:#2b1f1d; padding:12px; border-radius:6px; display:flex; gap:12px; align-items:center; }
+.record-card img { width:64px; height:64px; border-radius:4px; }
+.muted { color:#E25200; font-size:14px; }
+hr.sep { border:0; height:2px; background:#3a221f; margin:12px 0; }
+
+/* Minor responsive tweak */
+@media (max-width: 900px){
+  .community-grid { grid-template-columns: 1fr; }
+  .forum-container { padding: 16px; }
+}
