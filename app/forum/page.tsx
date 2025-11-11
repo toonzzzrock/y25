@@ -1,37 +1,773 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
+import React, { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProtectedRoute } from "@/lib/use-protected-route";
+import { useAuth } from "@/lib/auth-context";
 import Header from "@/app/components/Header";
 import "./forum.css";
 
+type ThreadSummary = {
+  thread_name: string;
+  detail: string | null;
+  created_at: string | null;
+  creator_username: string | null;
+  game_id: number | null;
+  game_name: string | null;
+  reply_count: number;
+};
+
+const normalizeThreadSummary = (forum: any): ThreadSummary => {
+  const rawCreatedAt = forum.created_at;
+  let createdAt: string | null = null;
+
+  if (rawCreatedAt) {
+    if (typeof rawCreatedAt === 'string') {
+      createdAt = rawCreatedAt;
+    } else {
+      const parsed = new Date(rawCreatedAt);
+      if (!Number.isNaN(parsed.getTime())) {
+        createdAt = parsed.toISOString();
+      }
+    }
+  }
+
+  return {
+    thread_name: forum.thread_name,
+    detail: forum.detail ?? null,
+    created_at: createdAt,
+    creator_username: forum.creator_username ?? null,
+    game_id: typeof forum.game_id === 'number' ? forum.game_id : forum.game_id ? Number(forum.game_id) : null,
+    game_name: forum.game_name ?? null,
+    reply_count: Number(forum.reply_count ?? 0),
+  };
+};
+
 export default function ForumPage() {
   const { isLoading } = useProtectedRoute();
+  const { user } = useAuth();
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [threadQuery, setThreadQuery] = useState("");
   const [notification, setNotification] = useState<{ message: string; type: string } | null>(null);
+  const [peopleQuery, setPeopleQuery] = useState("");
+  const [isSearchingPeople, setIsSearchingPeople] = useState(false);
+  const [peopleResults, setPeopleResults] = useState<Array<{ username: string; email: string; created_at: string }>>([]);
+  const [peopleSuggestions, setPeopleSuggestions] = useState<Array<{ username: string; email: string; created_at: string }>>([]);
+  const [showPeopleSuggestions, setShowPeopleSuggestions] = useState(false);
+  const [hasSearchedPeople, setHasSearchedPeople] = useState(false);
+  const [isSearchingThreads, setIsSearchingThreads] = useState(false);
+  const [threadResults, setThreadResults] = useState<ThreadSummary[]>([]);
+  const [threadSuggestions, setThreadSuggestions] = useState<ThreadSummary[]>([]);
+  const [showThreadSuggestions, setShowThreadSuggestions] = useState(false);
+  const [hasSearchedThreads, setHasSearchedThreads] = useState(false);
+  const [allThreads, setAllThreads] = useState<ThreadSummary[]>([]);
+  const [isLoadingThreads, setIsLoadingThreads] = useState(true);
+  const [threadsError, setThreadsError] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newThreadName, setNewThreadName] = useState("");
+  const [newThreadDetail, setNewThreadDetail] = useState("");
+  const [gameSearchTerm, setGameSearchTerm] = useState("");
+  const [gameSuggestions, setGameSuggestions] = useState<Array<{ id: number; title: string; description?: string | null }>>([]);
+  const [selectedGame, setSelectedGame] = useState<{ id: number; title: string } | null>(null);
+  const [isSearchingGames, setIsSearchingGames] = useState(false);
+  const [gameSearchError, setGameSearchError] = useState<string | null>(null);
+  const [isCreatingThread, setIsCreatingThread] = useState(false);
+  const [createThreadError, setCreateThreadError] = useState<string | null>(null);
+  const [hasLoadedThreads, setHasLoadedThreads] = useState(false);
+  const [threadCursor, setThreadCursor] = useState<string | null>(null);
+  const [hasMoreThreads, setHasMoreThreads] = useState(false);
+  const [isLoadingMoreThreads, setIsLoadingMoreThreads] = useState(false);
+  const [userCreatedThreads, setUserCreatedThreads] = useState<ThreadSummary[]>([]);
+  const [userCommentedThreads, setUserCommentedThreads] = useState<ThreadSummary[]>([]);
+  const [isLoadingUserThreads, setIsLoadingUserThreads] = useState(false);
+  const [userThreadsError, setUserThreadsError] = useState<string | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const isFetchingMoreRef = useRef(false);
+  const isMountedRef = useRef(false);
 
-  const showNotification = (message: string, type: string = "info") => {
+  const showNotification = useCallback((message: string, type: string = "info") => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3000);
-  };
+  }, []);
 
-  // Sample hub data - replace with actual data from API
-  const recentlyViewedHubs = [
-    { id: 1, name: "Hungry Shark", stats: "288 new screenshots", image: "/images/placeholder.svg" },
-  ];
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
-  const popularHubs = [
-    { id: 1, name: "Bad Ice-cream", stats: "330 new artwork this week", image: "/images/placeholder.svg" },
-    { id: 2, name: "Fruit Ninja", stats: "555 new screenshots", image: "/images/placeholder.svg" },
-    { id: 3, name: "Plants vs. Zombies", stats: "144 new screenshots", image: "/images/placeholder.svg" },
-  ];
+  const resetCreateThreadForm = useCallback(() => {
+    setNewThreadName("");
+    setNewThreadDetail("");
+    setGameSearchTerm("");
+    setGameSuggestions([]);
+    setSelectedGame(null);
+    setGameSearchError(null);
+    setCreateThreadError(null);
+  }, []);
 
-  const badges = [
-    { id: 1, title: "King of fruit slicing", image: "/images/placeholder.svg" },
-  ];
+  const openCreateModal = useCallback(() => {
+    resetCreateThreadForm();
+    setIsCreateModalOpen(true);
+  }, [resetCreateThreadForm]);
+
+  const closeCreateModal = useCallback(() => {
+    setIsCreateModalOpen(false);
+    setIsCreatingThread(false);
+    resetCreateThreadForm();
+  }, [resetCreateThreadForm]);
+
+  const handleGameSelect = useCallback((game: { id: number; title: string; description?: string | null }) => {
+    setSelectedGame({ id: game.id, title: game.title });
+    setGameSearchTerm(game.title);
+    setGameSuggestions([]);
+    setGameSearchError(null);
+  }, []);
+
+  const handleCreateThreadSubmit = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (isCreatingThread) {
+      return;
+    }
+
+    const trimmedName = newThreadName.trim();
+    const trimmedDetail = newThreadDetail.trim();
+
+    if (trimmedName.length < 3) {
+      setCreateThreadError('Thread name must be at least 3 characters');
+      return;
+    }
+
+    if (trimmedName.length > 70) {
+      setCreateThreadError('Thread name must be 70 characters or fewer');
+      return;
+    }
+
+    if (!selectedGame) {
+      setCreateThreadError('Please select a game from the list');
+      return;
+    }
+
+    if (trimmedDetail.length > 255) {
+      setCreateThreadError('Detail must be 255 characters or fewer');
+      return;
+    }
+
+    setIsCreatingThread(true);
+    setCreateThreadError(null);
+
+    try {
+      const response = await fetch('/api/forum/threads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          threadName: trimmedName,
+          detail: trimmedDetail.length > 0 ? trimmedDetail : null,
+          gameId: selectedGame.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.thread) {
+        const message = data?.error || 'Failed to create thread';
+        setCreateThreadError(message);
+        showNotification(message, 'error');
+        return;
+      }
+
+      const baseThread = normalizeThreadSummary(data.thread);
+      const createdThread: ThreadSummary = {
+        ...baseThread,
+        created_at: baseThread.created_at ?? new Date().toISOString(),
+        game_id: baseThread.game_id ?? selectedGame.id,
+        game_name: baseThread.game_name ?? selectedGame.title,
+      };
+
+      setAllThreads((prev) => [createdThread, ...prev]);
+      setThreadsError(null);
+      setUserCreatedThreads((prev) => {
+        const unique = prev.filter((thread) => thread.thread_name !== createdThread.thread_name);
+        const next = [createdThread, ...unique];
+        return next.slice(0, 5);
+      });
+      setHasLoadedThreads(true);
+
+      const activeQuery = threadQuery.trim();
+      if (activeQuery.length >= 2 && createdThread.thread_name.toLowerCase().includes(activeQuery.toLowerCase())) {
+        setThreadResults((prev) => [createdThread, ...prev]);
+      }
+
+      resetCreateThreadForm();
+      setIsCreateModalOpen(false);
+      showNotification('Thread created successfully!', 'success');
+    } catch (error) {
+      console.error('Create thread error:', error);
+      const message = 'Failed to create thread';
+      setCreateThreadError(message);
+      showNotification(message, 'error');
+    } finally {
+      setIsCreatingThread(false);
+    }
+  }, [isCreatingThread, newThreadDetail, newThreadName, resetCreateThreadForm, selectedGame, showNotification, threadQuery]);
+
+  const renderThreadSummaryCard = useCallback((thread: ThreadSummary, keyPrefix: string) => {
+    const createdDate = thread.created_at ? new Date(thread.created_at).toLocaleDateString() : 'Recently created';
+
+    return (
+      <button
+        type="button"
+        key={`${keyPrefix}-${thread.thread_name}`}
+        onClick={() => router.push(`/forum/${encodeURIComponent(thread.thread_name)}`)}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '0.5rem 0.75rem',
+          background: 'rgba(255, 255, 255, 0.05)',
+          borderRadius: '8px',
+          border: '1px solid rgba(255, 122, 43, 0.3)',
+          color: '#fff',
+          gap: '0.35rem',
+          textAlign: 'left',
+          cursor: 'pointer',
+        }}
+      >
+        <strong style={{ fontSize: '0.95rem' }}>{thread.thread_name}</strong>
+        <span className="muted" style={{ fontSize: '0.8rem' }}>{thread.detail || 'No description yet'}</span>
+        <span className="muted" style={{ fontSize: '0.75rem' }}>
+          {thread.creator_username ? `Creator: ${thread.creator_username}` : 'Creator unavailable'}
+        </span>
+        {thread.game_name && (
+          <span className="muted" style={{ fontSize: '0.75rem' }}>
+            Game: {thread.game_name}
+          </span>
+        )}
+        <div style={{ fontSize: '0.75rem', color: '#ff7a2b', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <span>Created {createdDate}</span>
+          <span>{thread.reply_count} repl{thread.reply_count === 1 ? 'y' : 'ies'}</span>
+        </div>
+      </button>
+    );
+  }, [router]);
+
+  const renderUserThreadCard = useCallback((thread: ThreadSummary, keyPrefix: string) => (
+    <button
+      key={`${keyPrefix}-${thread.thread_name}`}
+      type="button"
+      className="record-card"
+      onClick={() => router.push(`/forum/${encodeURIComponent(thread.thread_name)}`)}
+      style={{
+        width: '100%',
+        border: 'none',
+        background: '#2b1f1d',
+        textAlign: 'left',
+        color: '#fff',
+        cursor: 'pointer',
+      }}
+    >
+      <img src="/images/placeholder.svg" alt={thread.thread_name} />
+      <div>
+        <strong>{thread.thread_name}</strong>
+        {thread.game_name && (
+          <div className="muted" style={{ fontSize: '0.75rem' }}>
+            Game: {thread.game_name}
+          </div>
+        )}
+        <div className="muted" style={{ fontSize: '0.75rem' }}>
+          {thread.reply_count} repl{thread.reply_count === 1 ? 'y' : 'ies'}
+        </div>
+      </div>
+    </button>
+  ), [router]);
+
+  const fetchThreads = useCallback(async ({ cursor = null, append = false }: { cursor?: string | null; append?: boolean } = {}) => {
+    const isAppending = Boolean(append);
+
+    if (isAppending) {
+      if (isFetchingMoreRef.current) {
+        return;
+      }
+
+      isFetchingMoreRef.current = true;
+      setIsLoadingMoreThreads(true);
+    } else {
+      setIsLoadingThreads(true);
+      setThreadsError(null);
+      setHasLoadedThreads(false);
+    }
+
+    try {
+      console.log('[forum] fetchThreads:start', { cursor, append: isAppending });
+      const params = new URLSearchParams({ limit: '15' });
+      if (cursor) {
+        params.set('cursor', cursor);
+      }
+
+      const response = await fetch(`/api/forum/threads?${params.toString()}`);
+      const data = await response.json();
+
+      console.log('[forum] fetchThreads:response', {
+        status: response.status,
+        ok: response.ok,
+        rawThreads: Array.isArray(data.threads) ? data.threads.length : null,
+        hasMore: data.hasMore,
+        nextCursor: data.nextCursor,
+      });
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to load threads');
+      }
+
+      const normalized: ThreadSummary[] = Array.isArray(data.threads)
+        ? (data.threads as any[]).map(normalizeThreadSummary)
+        : [];
+
+      if (isMountedRef.current) {
+        if (isAppending) {
+          setAllThreads((prev) => {
+            const seen = new Set(prev.map((thread) => thread.thread_name));
+            const next = [...prev];
+            normalized.forEach((thread) => {
+              if (!seen.has(thread.thread_name)) {
+                seen.add(thread.thread_name);
+                next.push(thread);
+              }
+            });
+            return next;
+          });
+        } else {
+          setAllThreads(normalized);
+        }
+
+        if (!isAppending) {
+          setThreadsError(normalized.length === 0 ? 'No threads available yet' : null);
+          setHasLoadedThreads(true);
+        }
+
+        setHasMoreThreads(Boolean(data.hasMore));
+
+        const nextCursorRaw = typeof data.nextCursor === 'string' ? data.nextCursor : null;
+        setThreadCursor(nextCursorRaw && nextCursorRaw.length > 0 ? nextCursorRaw : null);
+      }
+    } catch (error: any) {
+      console.error('[forum] fetchThreads:error', error);
+      const message = error?.message || 'Failed to load threads';
+
+      if (isMountedRef.current) {
+        if (!append) {
+          setThreadsError(message);
+          setHasLoadedThreads(true);
+        }
+        showNotification(message, 'error');
+      }
+    } finally {
+      if (isMountedRef.current) {
+        if (isAppending) {
+          isFetchingMoreRef.current = false;
+          setIsLoadingMoreThreads(false);
+        } else {
+          setIsLoadingThreads(false);
+        }
+      } else {
+        isFetchingMoreRef.current = false;
+      }
+
+      console.log('[forum] fetchThreads:complete', {
+        append: isAppending,
+        isMounted: isMountedRef.current,
+      });
+    }
+  }, [showNotification]);
+
+  const handleGameSearchChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setGameSearchTerm(value);
+    setGameSuggestions([]);
+    setGameSearchError(null);
+
+    if (selectedGame && value.trim().toLowerCase() !== selectedGame.title.toLowerCase()) {
+      setSelectedGame(null);
+    }
+  }, [selectedGame]);
+
+  const searchThreads = useCallback(async (value?: string) => {
+    const queryToUse = value ?? threadQuery;
+    const trimmed = queryToUse.trim();
+
+    if (trimmed.length < 2) {
+      showNotification("Enter at least 2 characters to find threads", "info");
+      setThreadResults([]);
+      setThreadSuggestions([]);
+      setShowThreadSuggestions(false);
+      setHasSearchedThreads(false);
+      return;
+    }
+
+    setIsSearchingThreads(true);
+    setShowThreadSuggestions(false);
+    setThreadSuggestions([]);
+    try {
+      const response = await fetch(`/api/forum/search?q=${encodeURIComponent(trimmed)}`);
+      const data = await response.json();
+
+      if (response.ok && Array.isArray(data.forums)) {
+        const normalized: ThreadSummary[] = (data.forums as any[]).map(normalizeThreadSummary);
+
+        setThreadResults(normalized);
+        setHasSearchedThreads(true);
+        const count = normalized.length;
+        const plural = count === 1 ? "" : "s";
+        showNotification(`Found ${count} thread${plural}`, count > 0 ? "success" : "info");
+      } else {
+        setThreadResults([]);
+        setHasSearchedThreads(true);
+        showNotification(data.error || "No threads found", "info");
+      }
+    } catch (error) {
+      console.error('Thread search error:', error);
+      showNotification("Failed to search threads", "error");
+      setThreadResults([]);
+      setHasSearchedThreads(false);
+    } finally {
+      setIsSearchingThreads(false);
+    }
+  }, [threadQuery, showNotification]);
+
+  const searchPeople = useCallback(async (value?: string) => {
+    const queryToUse = value ?? peopleQuery;
+    const trimmed = queryToUse.trim();
+
+    if (trimmed.length < 2) {
+      showNotification("Enter at least 2 characters to find people", "info");
+      setPeopleResults([]);
+      setPeopleSuggestions([]);
+      setShowPeopleSuggestions(false);
+      setHasSearchedPeople(false);
+      return;
+    }
+
+    setIsSearchingPeople(true);
+    setShowPeopleSuggestions(false);
+    setPeopleSuggestions([]);
+    try {
+      const response = await fetch(`/api/users/search?q=${encodeURIComponent(trimmed)}`);
+      const data = await response.json();
+
+      if (response.ok && Array.isArray(data.users)) {
+        setPeopleResults(data.users);
+        setHasSearchedPeople(true);
+        const count = data.users.length;
+        const plural = count === 1 ? "" : "s";
+        showNotification(`Found ${count} user${plural}`, count > 0 ? "success" : "info");
+      } else {
+        setPeopleResults([]);
+        setHasSearchedPeople(true);
+        showNotification(data.error || "No users found", "info");
+      }
+    } catch (error) {
+      console.error('People search error:', error);
+      showNotification("Failed to search users", "error");
+      setPeopleResults([]);
+      setHasSearchedPeople(false);
+    } finally {
+      setIsSearchingPeople(false);
+    }
+  }, [peopleQuery, showNotification]);
+
+  useEffect(() => {
+    const trimmed = threadQuery.trim();
+
+    if (isSearchingThreads || hasSearchedThreads) {
+      setShowThreadSuggestions(false);
+      return;
+    }
+
+    if (trimmed.length < 2) {
+      setThreadSuggestions([]);
+      setShowThreadSuggestions(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/forum/search?q=${encodeURIComponent(trimmed)}&limit=5`, {
+          signal: controller.signal,
+        });
+        const data = await response.json();
+
+        if (response.ok && Array.isArray(data.forums) && trimmed === threadQuery.trim()) {
+          const normalized: ThreadSummary[] = (data.forums as any[])
+            .slice(0, 5)
+            .map(normalizeThreadSummary);
+
+          setThreadSuggestions(normalized);
+          setShowThreadSuggestions(true);
+        } else {
+          setThreadSuggestions([]);
+          setShowThreadSuggestions(false);
+        }
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          return;
+        }
+        console.error('Thread suggestion error:', error);
+        setThreadSuggestions([]);
+        setShowThreadSuggestions(false);
+      }
+    }, 250);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [threadQuery, hasSearchedThreads, isSearchingThreads]);
+
+  useEffect(() => {
+    const trimmed = peopleQuery.trim();
+
+    if (isSearchingPeople || hasSearchedPeople) {
+      setShowPeopleSuggestions(false);
+      return;
+    }
+
+    if (trimmed.length < 2) {
+      setPeopleSuggestions([]);
+      setShowPeopleSuggestions(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/users/search?q=${encodeURIComponent(trimmed)}&limit=5`, {
+          signal: controller.signal,
+        });
+        const data = await response.json();
+
+        if (response.ok && Array.isArray(data.users) && trimmed === peopleQuery.trim()) {
+          setPeopleSuggestions(data.users.slice(0, 5));
+          setShowPeopleSuggestions(true);
+        } else {
+          setPeopleSuggestions([]);
+          setShowPeopleSuggestions(false);
+        }
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          return;
+        }
+        console.error('People suggestion error:', error);
+        setPeopleSuggestions([]);
+        setShowPeopleSuggestions(false);
+      }
+    }, 250);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [peopleQuery, hasSearchedPeople, isSearchingPeople]);
+
+  useEffect(() => {
+    if (!isCreateModalOpen) {
+      setGameSuggestions([]);
+      setIsSearchingGames(false);
+      return;
+    }
+
+    const term = gameSearchTerm.trim();
+
+    if (term.length < 2) {
+      setGameSuggestions([]);
+      setGameSearchError(null);
+      return;
+    }
+
+    if (selectedGame && term.toLowerCase() === selectedGame.title.toLowerCase()) {
+      setGameSuggestions([]);
+      setGameSearchError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        setIsSearchingGames(true);
+        const response = await fetch(`/api/games/search?q=${encodeURIComponent(term)}`, {
+          signal: controller.signal,
+        });
+        const data = await response.json();
+
+        if (response.ok && Array.isArray(data.games)) {
+          const normalized = (data.games as any[]).map((game) => ({
+            id: typeof game.id === 'number' ? game.id : Number(game.id),
+            title: game.title,
+            description: game.description ?? null,
+          })).filter((game) => Number.isFinite(game.id));
+
+          setGameSuggestions(normalized.slice(0, 8));
+          setGameSearchError(normalized.length === 0 ? 'No games found' : null);
+        } else {
+          setGameSuggestions([]);
+          setGameSearchError(data.error || 'No games found');
+        }
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          return;
+        }
+        console.error('Game search error:', error);
+        setGameSuggestions([]);
+        setGameSearchError('Failed to search games');
+      } finally {
+        setIsSearchingGames(false);
+      }
+    }, 250);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [gameSearchTerm, isCreateModalOpen, selectedGame]);
+
+  const trimmedThreadQuery = threadQuery.trim();
+  const showGeneralFeed = trimmedThreadQuery.length < 2 && !hasSearchedThreads;
+  const showSearchResults = hasSearchedThreads || isSearchingThreads;
+
+  useEffect(() => {
+    const node = loadMoreRef.current;
+
+    if (!node || !showGeneralFeed || !hasMoreThreads || !threadCursor) {
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          fetchThreads({ cursor: threadCursor, append: true });
+        }
+      });
+    }, { rootMargin: '200px 0px' });
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [fetchThreads, hasMoreThreads, showGeneralFeed, threadCursor]);
+
+  const handleThreadSuggestionClick = useCallback((threadName: string) => {
+    setThreadQuery(threadName);
+    setShowThreadSuggestions(false);
+    setThreadSuggestions([]);
+    searchThreads(threadName);
+  }, [searchThreads]);
+
+  const handleSuggestionClick = useCallback((username: string) => {
+    setPeopleQuery(username);
+    setShowPeopleSuggestions(false);
+    setPeopleSuggestions([]);
+    searchPeople(username);
+  }, [searchPeople]);
+
+  useEffect(() => {
+    fetchThreads();
+  }, [fetchThreads]);
+
+  useEffect(() => {
+    if (!user?.username) {
+      setUserCreatedThreads([]);
+      setUserCommentedThreads([]);
+      setUserThreadsError(null);
+      setIsLoadingUserThreads(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadUserThreads = async () => {
+      setIsLoadingUserThreads(true);
+      setUserThreadsError(null);
+
+      try {
+        const response = await fetch('/api/forum/user-threads', {
+          credentials: 'include',
+        });
+        const data = await response.json();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (response.ok) {
+          const created = Array.isArray(data.createdThreads)
+            ? (data.createdThreads as any[]).map(normalizeThreadSummary)
+            : [];
+          const commented = Array.isArray(data.commentedThreads)
+            ? (data.commentedThreads as any[]).map(normalizeThreadSummary)
+            : [];
+
+          setUserCreatedThreads(created);
+          setUserCommentedThreads(commented);
+        } else {
+          const message = data?.error || 'Failed to load your threads';
+          setUserThreadsError(message);
+          setUserCreatedThreads([]);
+          setUserCommentedThreads([]);
+        }
+      } catch (error) {
+        console.error('User threads fetch error:', error);
+        if (!cancelled) {
+          setUserThreadsError('Failed to load your threads');
+          setUserCreatedThreads([]);
+          setUserCommentedThreads([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingUserThreads(false);
+        }
+      }
+    };
+
+    loadUserThreads();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.username]);
+
+  const recentThreads = useMemo(() => allThreads.slice(0, 3), [allThreads]);
+  const mostDiscussedThreads = useMemo(() => (
+    [...allThreads]
+      .sort((a, b) => b.reply_count - a.reply_count)
+      .slice(0, 3)
+  ), [allThreads]);
+  const filteredCommentedThreads = useMemo(() => {
+    if (userCommentedThreads.length === 0) {
+      return [] as ThreadSummary[];
+    }
+
+    const createdNames = new Set(userCreatedThreads.map((thread) => thread.thread_name));
+    return userCommentedThreads.filter((thread) => !createdNames.has(thread.thread_name));
+  }, [userCommentedThreads, userCreatedThreads]);
+  const hasThreadData = allThreads.length > 0;
+  const showSidebarLoading = !hasLoadedThreads && isLoadingThreads;
+  const showFeedLoading = !hasLoadedThreads && isLoadingThreads && !hasThreadData;
+
+  useEffect(() => {
+    console.log('[forum] load state change', {
+      hasLoadedThreads,
+      isLoadingThreads,
+      threadCount: allThreads.length,
+      hasMoreThreads,
+      showSidebarLoading,
+      showFeedLoading,
+    });
+  }, [hasLoadedThreads, isLoadingThreads, allThreads.length, hasMoreThreads, showSidebarLoading, showFeedLoading]);
 
   if (isLoading) {
     return (
@@ -58,39 +794,76 @@ export default function ForumPage() {
         <div className="community-grid">
           <div className="left-column">
             <div className="hubs-row">
-              {/* Recently Viewed Hubs */}
               <div className="hub-card">
-                <h3 style={{ color: '#ff7a2b', margin: '0 0 10px 0' }}>YOUR RECENTLY VIEWED HUBS</h3>
-                {recentlyViewedHubs.map((hub) => (
-                  <div key={hub.id} className="hub-item" onClick={() => router.push(`/forum/${hub.id}`)}>
-                    <img src={hub.image} alt={hub.name} />
-                    <div>
-                      <strong>{hub.name}</strong>
-                      <div className="muted">{hub.stats}</div>
-                    </div>
-                  </div>
-                ))}
+                <h3 style={{ color: '#ff7a2b', margin: '0 0 10px 0' }}>LATEST THREADS</h3>
+                {showSidebarLoading ? (
+                  <div className="muted">Loading threads…</div>
+                ) : threadsError ? (
+                  <div className="muted">{threadsError}</div>
+                ) : recentThreads.length > 0 ? (
+                  recentThreads.map((thread) => (
+                    <button
+                      key={`latest-thread-${thread.thread_name}`}
+                      type="button"
+                      className="hub-item"
+                      onClick={() => router.push(`/forum/${encodeURIComponent(thread.thread_name)}`)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        display: 'flex',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        padding: 0,
+                      }}
+                    >
+                      <img src="/images/placeholder.svg" alt={thread.thread_name} />
+                      <div>
+                        <strong>{thread.thread_name}</strong>
+                        <div className="muted" style={{ fontSize: '0.75rem' }}>
+                          {thread.creator_username ? `By ${thread.creator_username}` : 'Creator unavailable'}
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="muted">No threads yet.</div>
+                )}
               </div>
 
-              {/* Popular Hubs */}
               <div className="hub-card">
-                <h3 style={{ color: '#ff7a2b', margin: '0 0 10px 0' }}>POPULAR HUBS</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {popularHubs.map((hub) => (
-                    <div 
-                      key={hub.id} 
-                      className="hub-item" 
-                      onClick={() => router.push(`/forum/${hub.id}`)}
-                      style={{ cursor: 'pointer' }}
+                <h3 style={{ color: '#ff7a2b', margin: '0 0 10px 0' }}>MOST DISCUSSED</h3>
+                {showSidebarLoading ? (
+                  <div className="muted">Loading threads…</div>
+                ) : threadsError ? (
+                  <div className="muted">{threadsError}</div>
+                ) : mostDiscussedThreads.length > 0 ? (
+                  mostDiscussedThreads.map((thread) => (
+                    <button
+                      key={`top-thread-${thread.thread_name}`}
+                      type="button"
+                      className="hub-item"
+                      onClick={() => router.push(`/forum/${encodeURIComponent(thread.thread_name)}`)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        display: 'flex',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        padding: 0,
+                      }}
                     >
-                      <img src={hub.image} alt={hub.name} />
+                      <img src="/images/placeholder.svg" alt={thread.thread_name} />
                       <div>
-                        <strong>{hub.name}</strong>
-                        <div className="muted">{hub.stats}</div>
+                        <strong>{thread.thread_name}</strong>
+                        <div className="muted" style={{ fontSize: '0.75rem' }}>
+                          {thread.reply_count} repl{thread.reply_count === 1 ? 'y' : 'ies'}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="muted">No activity yet.</div>
+                )}
               </div>
             </div>
 
@@ -102,70 +875,386 @@ export default function ForumPage() {
                 <h3 style={{ margin: '6px 0 0 0', color: '#fff' }}>Hungry Shark</h3>
               </div>
             </div>
+
+            <div className="create-thread-footer">
+              <button
+                type="button"
+                className="create-thread-button"
+                onClick={openCreateModal}
+              >
+                + Create New Thread
+              </button>
+              <p className="create-thread-hint">Pick a game and start a fresh conversation.</p>
+            </div>
           </div>
 
           {/* Sidebar */}
           <aside className="sidebar">
-            <div>
-              <label style={{ color: '#ff7a2b', fontWeight: '600' }}>FIND HUBS</label>
-              <div className="search-small">
-                <input 
-                  placeholder="Find hubs..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <button className="small-ghost" onClick={() => showNotification("Searching hubs...")}>
-                  🔍
-                </button>
-              </div>
-            </div>
-
-            <hr className="sep" />
-
             <div style={{ marginTop: '8px' }}>
               <label style={{ color: '#ff7a2b', fontWeight: '600' }}>FIND PEOPLE</label>
               <div className="search-small">
-                <input placeholder="Find people..." />
-                <button className="small-ghost">🔍</button>
+                <input
+                  placeholder="Find people..."
+                  value={peopleQuery}
+                  onChange={(event) => {
+                    const { value } = event.target;
+                    setPeopleQuery(value);
+                    setHasSearchedPeople(false);
+
+                    if (!value.trim()) {
+                      setPeopleResults([]);
+                      setPeopleSuggestions([]);
+                      setShowPeopleSuggestions(false);
+                      setHasSearchedPeople(false);
+                    }
+                  }}
+                  onFocus={() => {
+                    if (peopleSuggestions.length > 0) {
+                      setShowPeopleSuggestions(true);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      searchPeople();
+                    }
+                  }}
+                />
+                <button
+                  className="small-ghost"
+                  onClick={() => searchPeople()}
+                  disabled={isSearchingPeople}
+                  style={isSearchingPeople ? { opacity: 0.6, cursor: 'wait' } : undefined}
+                >
+                  {isSearchingPeople ? '…' : '🔍'}
+                </button>
               </div>
-            </div>
+              {(peopleQuery.trim() || hasSearchedPeople) && (
+                <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {showPeopleSuggestions && peopleSuggestions.length > 0 && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.35rem',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255, 122, 43, 0.25)',
+                        padding: '0.5rem 0.6rem',
+                        boxShadow: '0 6px 12px rgba(0, 0, 0, 0.25)',
+                      }}
+                    >
+                      {peopleSuggestions.map((suggestion) => (
+                        <button
+                          key={`suggestion-${suggestion.username}`}
+                          type="button"
+                          onClick={() => handleSuggestionClick(suggestion.username)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            textAlign: 'left',
+                            color: '#fff',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            padding: '0.35rem 0.25rem',
+                            borderRadius: '6px',
+                          }}
+                        >
+                          <div style={{ fontWeight: 600 }}>{suggestion.username}</div>
+                          <div className="muted" style={{ fontSize: '0.75rem' }}>{suggestion.email}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
-            <hr className="sep" />
-
-            <div style={{ marginTop: '16px' }}>
-              <h3 style={{ margin: '0 0 12px 0', color: '#fff' }}>Yeah, I have set my new record!</h3>
-              {badges.map((badge) => (
-                <div key={badge.id} className="record-card">
-                  <img src={badge.image} alt="Badge" />
-                  <div>
-                    <strong>{badge.title}</strong>
-                  </div>
+                  {hasSearchedPeople && (
+                    isSearchingPeople ? (
+                      <div className="muted">Searching users...</div>
+                    ) : peopleResults.length > 0 ? (
+                      peopleResults.map((user) => {
+                        const joinedDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Recently joined';
+                        return (
+                          <div
+                            key={user.username}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              padding: '0.5rem 0.75rem',
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              borderRadius: '8px',
+                              border: '1px solid rgba(255, 122, 43, 0.3)',
+                              color: '#fff',
+                              gap: '0.25rem',
+                            }}
+                          >
+                            <strong style={{ fontSize: '0.95rem' }}>{user.username}</strong>
+                            <span className="muted" style={{ fontSize: '0.8rem' }}>{user.email}</span>
+                            <span style={{ fontSize: '0.75rem', color: '#ff7a2b' }}>
+                              Joined {joinedDate}
+                            </span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="muted">No users match this search.</div>
+                    )
+                  )}
                 </div>
-              ))}
-              <div style={{ marginTop: '8px' }}>Badge indicating a new record</div>
+              )}
             </div>
 
             <hr className="sep" />
 
             <div style={{ marginTop: '16px' }}>
-              <h3 style={{ margin: '0', color: '#fff' }}>Fruit Ninja</h3>
+              <h3 style={{ margin: '0 0 12px 0', color: '#fff' }}>Your Forum Activity</h3>
+              {isLoadingUserThreads ? (
+                <div className="muted">Loading your threads…</div>
+              ) : userThreadsError ? (
+                <div className="muted">{userThreadsError}</div>
+              ) : (
+                <>
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: '6px', color: '#ff7a2b' }}>Threads you created</div>
+                    {userCreatedThreads.length > 0 ? (
+                      userCreatedThreads.map((thread) => renderUserThreadCard(thread, 'created'))
+                    ) : (
+                      <div className="muted">No threads created yet.</div>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: '12px' }}>
+                    <div style={{ fontWeight: 600, marginBottom: '6px', color: '#ff7a2b' }}>Threads you commented on</div>
+                    {filteredCommentedThreads.length > 0 ? (
+                      filteredCommentedThreads.map((thread) => renderUserThreadCard(thread, 'commented'))
+                    ) : (
+                      <div className="muted">No comments yet.</div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
-            <button style={{ 
-              background: 'none', 
-              border: 'none', 
-              cursor: 'pointer', 
-              padding: '0',
-              color: '#c7b7b0',
-              marginTop: '1rem',
-            }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
           </aside>
         </div>
+
+        <section className="threads-discovery">
+          <div className="threads-search-header">
+            <div>
+              <h2>Explore Threads</h2>
+              <p>Search our community or keep scrolling to discover more conversations.</p>
+            </div>
+          </div>
+
+          <div className="threads-search-area">
+            <div className="search-small" style={{ marginBottom: 0 }}>
+              <input
+                placeholder="Find threads..."
+                value={threadQuery}
+                onChange={(event) => {
+                  const { value } = event.target;
+                  setThreadQuery(value);
+                  setHasSearchedThreads(false);
+
+                  if (!value.trim()) {
+                    setThreadResults([]);
+                    setThreadSuggestions([]);
+                    setShowThreadSuggestions(false);
+                  }
+                }}
+                onFocus={() => {
+                  if (threadSuggestions.length > 0) {
+                    setShowThreadSuggestions(true);
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    searchThreads();
+                  }
+                }}
+              />
+              <button
+                className="small-ghost"
+                onClick={() => searchThreads()}
+                disabled={isSearchingThreads}
+                style={isSearchingThreads ? { opacity: 0.6, cursor: 'wait' } : undefined}
+              >
+                {isSearchingThreads ? '…' : '🔍'}
+              </button>
+            </div>
+
+            {showThreadSuggestions && threadSuggestions.length > 0 && (
+              <div className="thread-suggestions">
+                {threadSuggestions.map((suggestion) => (
+                  <button
+                    key={`thread-suggestion-${suggestion.thread_name}`}
+                    type="button"
+                    onClick={() => handleThreadSuggestionClick(suggestion.thread_name)}
+                    className="thread-suggestion-item"
+                  >
+                    <div style={{ fontWeight: 600 }}>{suggestion.thread_name}</div>
+                    <div className="muted" style={{ fontSize: '0.75rem' }}>{suggestion.detail || 'No description yet'}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {trimmedThreadQuery.length > 0 && trimmedThreadQuery.length < 2 && (
+              <div className="muted" style={{ marginTop: '0.5rem' }}>Enter at least 2 characters to search.</div>
+            )}
+          </div>
+
+          {showSearchResults && (
+            <div className="threads-search-results">
+              {isSearchingThreads ? (
+                <div className="muted">Searching threads...</div>
+              ) : threadResults.length > 0 ? (
+                threadResults.map((thread) => renderThreadSummaryCard(thread, 'search-result'))
+              ) : (
+                <div className="muted">No threads match this search.</div>
+              )}
+            </div>
+          )}
+
+          {showGeneralFeed && (
+            <div className="threads-feed">
+              <h3>All Threads</h3>
+              {threadsError ? (
+                <div className="muted">{threadsError}</div>
+              ) : showFeedLoading ? (
+                <div className="muted">Loading threads...</div>
+              ) : allThreads.length > 0 ? (
+                <div className="threads-feed-list">
+                  {allThreads.map((thread) => renderThreadSummaryCard(thread, 'feed-thread'))}
+                </div>
+              ) : (
+                <div className="muted">No threads yet.</div>
+              )}
+
+              <div ref={loadMoreRef} className="threads-feed-sentinel" aria-hidden="true" />
+              {isLoadingMoreThreads && <div className="muted">Loading more threads...</div>}
+              {!threadsError && !isLoadingThreads && !isLoadingMoreThreads && !hasMoreThreads && allThreads.length > 0 && (
+                <div className="muted">You have reached the end.</div>
+              )}
+            </div>
+          )}
+        </section>
       </main>
+
+      {isCreateModalOpen && (
+        <div className="forum-modal-overlay" onClick={closeCreateModal}>
+          <div
+            className="forum-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-thread-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="forum-modal-close"
+              aria-label="Close"
+              onClick={closeCreateModal}
+              disabled={isCreatingThread}
+            >
+              X
+            </button>
+            <h2 id="create-thread-title">Create a New Thread</h2>
+            <p className="forum-modal-subtitle">Threads stay healthier when they begin with a clear focus and real game.</p>
+
+            <form className="forum-modal-form" onSubmit={handleCreateThreadSubmit}>
+              <label className="forum-modal-label" htmlFor="thread-name-input">Thread name</label>
+              <input
+                id="thread-name-input"
+                className="forum-modal-input"
+                value={newThreadName}
+                onChange={(event) => setNewThreadName(event.target.value)}
+                placeholder="e.g. Tips for clearing Stage 10"
+                maxLength={70}
+                autoFocus
+                disabled={isCreatingThread}
+              />
+
+              <label className="forum-modal-label" htmlFor="thread-detail-input">Details (optional)</label>
+              <textarea
+                id="thread-detail-input"
+                className="forum-modal-textarea"
+                value={newThreadDetail}
+                onChange={(event) => setNewThreadDetail(event.target.value)}
+                placeholder="Share extra context or rules for the discussion"
+                maxLength={255}
+                rows={3}
+                disabled={isCreatingThread}
+              />
+
+              <label className="forum-modal-label" htmlFor="game-search-input">Game</label>
+              <input
+                id="game-search-input"
+                className="forum-modal-input"
+                value={gameSearchTerm}
+                onChange={handleGameSearchChange}
+                placeholder="Start typing to find a game..."
+                autoComplete="off"
+                disabled={isCreatingThread}
+              />
+
+              {selectedGame && (
+                <div className="selected-game-chip">
+                  <span>Selected: {selectedGame.title}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGame(null)}
+                    disabled={isCreatingThread}
+                    aria-label="Remove selected game"
+                  >
+                    X
+                  </button>
+                </div>
+              )}
+
+              {isSearchingGames && <div className="muted">Searching games…</div>}
+              {gameSearchError && <div className="error-text">{gameSearchError}</div>}
+
+              {gameSuggestions.length > 0 && (
+                <div className="forum-modal-suggestions">
+                  {gameSuggestions.map((game) => (
+                    <button
+                      type="button"
+                      key={`game-suggestion-${game.id}`}
+                      className="forum-modal-suggestion"
+                      onClick={() => handleGameSelect(game)}
+                      disabled={isCreatingThread}
+                    >
+                      <strong>{game.title}</strong>
+                      <span>{game.description || 'No description available'}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {createThreadError && <div className="error-text">{createThreadError}</div>}
+
+              <div className="forum-modal-actions">
+                <button
+                  type="button"
+                  className="modal-secondary"
+                  onClick={closeCreateModal}
+                  disabled={isCreatingThread}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="modal-primary"
+                  disabled={isCreatingThread}
+                >
+                  {isCreatingThread ? 'Creating…' : 'Create thread'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {notification && (
         <div

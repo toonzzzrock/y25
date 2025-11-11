@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useProtectedRoute } from "@/lib/use-protected-route";
@@ -8,6 +8,14 @@ import { getAllCategories } from "@/lib/data/categoriesUtils";
 import "../home.css";
 
 type Game = { id: string; img: string; alt: string; section: "trending" | "new" };
+type HomeThreadSummary = {
+  thread_name: string;
+  detail: string | null;
+  created_at: string | null;
+  creator_username: string | null;
+  reply_count: number;
+  game_name: string | null;
+};
 const trendingGames: Game[] = [
   { id: "boxing", img: "/images/boxing-game.svg", alt: "Boxing Game", section: "trending" },
   { id: "platform", img: "/images/mario-game.svg", alt: "Platform Game", section: "trending" },
@@ -43,12 +51,102 @@ export default function HomePage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [categoryGames, setCategoryGames] = useState<any[]>([]);
   const [isLoadingCategory, setIsLoadingCategory] = useState(false);
+  const [latestThreads, setLatestThreads] = useState<HomeThreadSummary[]>([]);
+  const [isLoadingCommunity, setIsLoadingCommunity] = useState(true);
+  const [communityError, setCommunityError] = useState<string | null>(null);
+  const [allGamesLibrary, setAllGamesLibrary] = useState<any[]>([]);
+  const [isLoadingAllGames, setIsLoadingAllGames] = useState(false);
+  const [allGamesError, setAllGamesError] = useState<string | null>(null);
   const allCategories = getAllCategories();
 
   const showNotification = useCallback((message: string, type: string = "info") => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3000);
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadLatestThreads = async () => {
+      setIsLoadingCommunity(true);
+      setCommunityError(null);
+
+      try {
+        const response = await fetch(`/api/forum/threads?limit=5`, { signal: controller.signal });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'Failed to load latest threads');
+        }
+
+        const normalized: HomeThreadSummary[] = Array.isArray(data.threads)
+          ? (data.threads as any[]).slice(0, 5).map((thread) => ({
+              thread_name: thread.thread_name,
+              detail: thread.detail ?? null,
+              created_at: thread.created_at ?? null,
+              creator_username: thread.creator_username ?? null,
+              reply_count: Number(thread.reply_count ?? 0),
+              game_name: thread.game_name ?? null,
+            }))
+          : [];
+
+        setLatestThreads(normalized);
+      } catch (error: any) {
+        if (error?.name === 'AbortError') {
+          return;
+        }
+
+        console.error('Latest threads fetch error:', error);
+        setCommunityError('Failed to load latest threads');
+        showNotification('Failed to load latest threads', 'error');
+      } finally {
+        setIsLoadingCommunity(false);
+      }
+    };
+
+    loadLatestThreads();
+
+    return () => {
+      controller.abort();
+    };
+  }, [showNotification]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadAllGames = async () => {
+      setIsLoadingAllGames(true);
+      setAllGamesError(null);
+
+      try {
+        const response = await fetch(`/api/games?limit=40`, { signal: controller.signal });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'Failed to load games');
+        }
+
+        const games = Array.isArray(data.games) ? data.games : [];
+        setAllGamesLibrary(games);
+      } catch (error: any) {
+        if (error?.name === 'AbortError') {
+          return;
+        }
+
+        console.error('All games fetch error:', error);
+        setAllGamesError('Failed to load games');
+        showNotification('Failed to load games', 'error');
+      } finally {
+        setIsLoadingAllGames(false);
+      }
+    };
+
+    loadAllGames();
+
+    return () => {
+      controller.abort();
+    };
+  }, [showNotification]);
 
   // Fetch games for selected category
   const fetchCategoryGames = useCallback(async (categoryId: string) => {
@@ -251,6 +349,31 @@ export default function HomePage() {
       </div>
     );
   };
+
+  const formatThreadMeta = useCallback((thread: HomeThreadSummary) => {
+    const parts: string[] = [];
+
+    if (thread.creator_username) {
+      parts.push(`by ${thread.creator_username}`);
+    }
+
+    const repliesLabel = `${thread.reply_count} repl${thread.reply_count === 1 ? 'y' : 'ies'}`;
+    parts.push(repliesLabel);
+
+    if (thread.game_name) {
+      parts.push(thread.game_name);
+    }
+
+    if (thread.created_at) {
+      try {
+        parts.push(new Date(thread.created_at).toLocaleDateString());
+      } catch {
+        parts.push(thread.created_at);
+      }
+    }
+
+    return parts.join(' • ');
+  }, []);
 
   const activeCategoryConfig =
     activeCategory !== 'all'
@@ -481,6 +604,30 @@ export default function HomePage() {
                     ))}
                   </div>
                 </section>
+                <section className="game-section">
+                  <div className="section-header">
+                    <h2 className="section-title">ALL GAMES</h2>
+                    <button
+                      className="section-arrow"
+                      onClick={() => showNotification('Browse the full library coming soon!', 'info')}
+                    >
+                      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 8L20 16L12 24" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  </div>
+                  {isLoadingAllGames ? (
+                    <div style={{ color: '#c7b7b0', fontSize: '0.9rem' }}>Loading games…</div>
+                  ) : allGamesError ? (
+                    <div style={{ color: '#c7b7b0', fontSize: '0.9rem' }}>{allGamesError}</div>
+                  ) : allGamesLibrary.length > 0 ? (
+                    <div className="game-grid all-games-grid">
+                      {allGamesLibrary.map((game, index) => renderDynamicGameCard(game, index))}
+                    </div>
+                  ) : (
+                    <div style={{ color: '#c7b7b0', fontSize: '0.9rem' }}>No games available yet.</div>
+                  )}
+                </section>
               </>
             )}
           </div>
@@ -490,26 +637,41 @@ export default function HomePage() {
               <h3 className="community-title">COMMUNITY</h3>
             </div>
             <div className="popular-hubs">
-              <h4 className="hubs-title">Popular Hubs</h4>
+              <h4 className="hubs-title">Latest Threads</h4>
               <div className="hub-list">
-                {["Bad Ice-cream|330 new artwork this week|ff6b4a", "Fruit Ninja|555 new screenshots|4aff6b", "Hungry Shark|288 new screenshots|4a9eff", "Plants vs. Zombies 2|144 new screenshots|8bff4a"].map((hub) => {
-                  const [name, stats, color] = hub.split("|");
-                  return (
-                    <div key={name} className="hub-item" onClick={() => showNotification(`Opening ${name} community...`, "info")}> 
-                      <img
-                        src={`https://via.placeholder.com/40x40/${color}/ffffff?text=${name.split(" ")[0].substring(0,2).toUpperCase()}`}
-                        alt={name}
-                        className="hub-avatar"
-                      />
-                      <div className="hub-info">
-                        <h5 className="hub-name">{name}</h5>
-                        <p className="hub-stats">{stats}</p>
+                {isLoadingCommunity ? (
+                  <div className="hub-empty">Loading latest threads…</div>
+                ) : communityError ? (
+                  <div className="hub-empty">{communityError}</div>
+                ) : latestThreads.length > 0 ? (
+                  latestThreads.map((thread) => {
+                    const meta = formatThreadMeta(thread);
+                    return (
+                      <div
+                        key={thread.thread_name}
+                        className="hub-item"
+                        onClick={() => router.push(`/forum/${encodeURIComponent(thread.thread_name)}`)}
+                      >
+                        <img
+                          src="/images/placeholder.svg"
+                          alt={thread.thread_name}
+                          className="hub-avatar"
+                        />
+                        <div className="hub-info">
+                          <h5 className="hub-name">{thread.thread_name}</h5>
+                          <p className="hub-stats">{meta}</p>
+                          {thread.detail && (
+                            <p className="hub-detail">{thread.detail}</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  <div className="hub-empty">No threads yet. Be the first to start one!</div>
+                )}
               </div>
-              <button className="view-more-btn" onClick={() => router.push('/forum')}>View more</button>
+              <button className="view-more-btn" onClick={() => router.push('/forum')}>Go to forum</button>
             </div>
           </aside>
         </div>
