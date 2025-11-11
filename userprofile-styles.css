@@ -1,0 +1,211 @@
+/* User Profile Page Styles */
+
+body { 
+    background: #0a0300; 
+    color: #e6e0db; 
+    font-family: Arial, Helvetica, sans-serif; 
+}
+
+.home-header { 
+    display: flex; 
+    align-items: center; 
+    padding: 18px 36px; 
+}
+
+.logo-y25 { 
+    font-weight: 700; 
+    color: #ff6a00; 
+    font-size: 28px; 
+}
+
+.profile-wrapper { 
+    width: 100%; 
+    max-width: 1200px; 
+    margin: 40px auto; 
+    padding: 0 24px; 
+    box-sizing: border-box; 
+}
+
+.profile-card { 
+    background: #1a0f0d; 
+    border-radius: 8px; 
+    padding: 32px; 
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.2) inset; 
+}
+
+/* Profile Header Section */
+.profile-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: flex-start; 
+    margin-bottom: 32px; 
+    padding-bottom: 24px; 
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05); 
+}
+
+.profile-left { 
+    display: flex; 
+    gap: 20px; 
+    align-items: flex-start; 
+}
+
+.profile-avatar { 
+    width: 150px; 
+    height: 150px; 
+    border-radius: 8px; 
+    object-fit: cover; 
+}
+
+.profile-info { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 12px; 
+    margin-left: 20px;
+}
+
+.profile-username { 
+    margin: 0; 
+    color: #fff; 
+    font-size: 24px; 
+    font-weight: 600; 
+}
+
+.edit-btn { 
+    background: transparent; 
+    color: #ff7a2b; 
+    border: 2px solid #ff7a2b; 
+    margin-top: 40px;
+    padding: 12px 16px; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    font-size: 14px; 
+    font-weight: 600; 
+    width: fit-content; 
+}
+
+.edit-btn:hover { 
+    background: rgba(255, 122, 43, 0.1); 
+}
+
+.profile-menu { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 8px; 
+}
+
+.menu-dot { 
+    background: none; 
+    border: none; 
+    color: #ff7a2b; 
+    font-size: 20px; 
+    cursor: pointer; 
+    padding: 4px 8px; 
+}
+
+.menu-dot:hover { 
+    opacity: 0.8; 
+}
+
+/* Played History Section */
+.played-history { 
+    margin-bottom: 32px; 
+}
+
+.history-title { 
+    background: #6b4423; 
+    color: #fff; 
+    padding: 12px 16px; 
+    margin: 0 0 16px 0; 
+    border-radius: 4px; 
+    font-size: 16px; 
+    font-weight: 600; 
+}
+
+.history-list { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 16px; 
+}
+
+.history-item { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 12px; 
+    background: rgba(0, 0, 0, 0.2); 
+    border-radius: 4px; 
+}
+
+.game-name { 
+    color: #fff; 
+    font-weight: 600; 
+    font-size: 18px; 
+}
+
+.play-date { 
+    color: #c7b7b0; 
+    font-size: 18px; 
+}
+
+/* Stats Section */
+.stats-section { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 24px; 
+    margin-bottom: 32px; 
+    padding: 24px; 
+    background: rgba(255, 122, 43, 0.05); 
+    border-radius: 6px; 
+}
+
+.stat-item { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 8px; 
+}
+
+.stat-label { 
+    color: #c7b7b0; 
+    font-size: 30px; 
+    font-weight: 600; 
+}
+
+.stat-value { 
+    color: #fff; 
+    font-size: 24px; 
+    font-weight: 700; 
+}
+
+/* Scroll Indicator */
+.scroll-indicator { 
+    display: flex; 
+    justify-content: center; 
+    padding-top: 20px; 
+    color: #6b5450; 
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .profile-card { 
+        padding: 20px; 
+    }
+    
+    .profile-left { 
+        flex-direction: column; 
+        align-items: center; 
+        text-align: center; 
+    }
+    
+    .history-list { 
+        grid-template-columns: 1fr; 
+    }
+    
+    .stats-section { 
+        grid-template-columns: 1fr; 
+    }
+    
+    .profile-avatar { 
+        width: 100px; 
+        height: 100px; 
+    }
+}

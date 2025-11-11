@@ -7,7 +7,7 @@ body { background:#2b1209; color:#e6e0db; font-family: Arial, Helvetica, sans-se
 .thread-header { margin-bottom:10px; }
 .thread-title { color:#fff; font-size:18px; margin:0; }
 .threads-list { margin-top:12px; }
-.thread-item { display:flex; gap:12px; padding:14px; background:#161212; border-radius:6px; margin-bottom:12px; align-items:flex-start; }
+.thread-item { display:flex; gap:12px; padding:16px; background:#552006; border-radius:6px; margin-bottom:16px; align-items:flex-start; }
 .thread-item.small { background:#161212; padding:12px 14px; }
 .avatar { width:44px; height:44px; border-radius:6px; object-fit:cover; }
 .avatar.small { width:36px; height:36px; }
@@ -18,7 +18,9 @@ body { background:#2b1209; color:#e6e0db; font-family: Arial, Helvetica, sans-se
 .thread-text { margin:0; color:#ddd; line-height:1.5; }
 .thread-divider { height:2px; background:#3a221f; border-radius:2px; margin:8px 0 14px; }
 .reply-container { position:relative; margin-bottom:8px; }
+.reply-container.reply-sub { margin-left:56px; margin-top:-4px; }
 .reply-arrow { position:absolute; left:20px; top:-12px; width:30px; height:24px; border-left:2px solid #6b5450; border-bottom:2px solid #6b5450; border-bottom-left-radius:12px; }
+.reply-sub .reply-arrow { left:-8px; }
 .thread-reply { display:flex; gap:12px; align-items:center; margin-top:10px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.02); }
 .reply-input { flex:1; padding:12px 14px; border-radius:4px; background:#100a09; color:#ddd; border:1px solid #2d1b19; }
 .reply-send { background:#ff7a2b; color:#fff; border:none; padding:10px 14px; border-radius:4px; cursor:pointer; }

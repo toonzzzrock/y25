@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - Y25</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="userprofile-styles.css">
+</head>
+<body>
+    <header class="home-header">
+        <div class="logo">
+            <span class="logo-y25">Y25</span>
+        </div>
+    </header>
+
+    <main class="profile-wrapper">
+        <div class="profile-card">
+            <!-- Profile Header Section -->
+            <div class="profile-header">
+                <div class="profile-left">
+                    <img src="images/penguin.jpg" alt="User Avatar" class="profile-avatar">
+                    <div class="profile-info">
+                        <h1 class="profile-username">User_999</h1>
+                        <button class="edit-btn">Edit description</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Played History Section -->
+            <section class="played-history">
+                <h2 class="history-title">Played History</h2>
+                <div class="history-list">
+                    <div class="history-item">
+                        <span class="game-name">Hungry Shark</span>
+                        <span class="play-date">last played on 11 Sep</span>
+                    </div>
+                    <div class="history-item">
+                        <span class="game-name">Plants vs. Zombies 2</span>
+                        <span class="play-date">last played on 1 Sep</span>
+                    </div>
+                    <div class="history-item">
+                        <span class="game-name">Cat vs. Dog</span>
+                        <span class="play-date">last played on 25 Aug</span>
+                    </div>
+                    <div class="history-item">
+                        <span class="game-name">Mario 2D</span>
+                        <span class="play-date">last played on 5 Aug</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Stats Section -->
+            <section class="stats-section">
+                <div class="stat-item">
+                    <label class="stat-label">Total played time</label>
+                    <span class="stat-value">555 hrs</span>
+                </div>
+                <div class="stat-item">
+                    <label class="stat-label">Number of played game</label>
+                    <span class="stat-value">25</span>
+                </div>
+            </section>
+
+            <!-- Scroll Indicator -->
+            <div class="scroll-indicator">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Publisher Dashboard - Y25</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="publisher-styles.css">
+</head>
+<body>
+    <header class="publisher-header">
+        <div class="header-left">
+            <span class="logo-y25">Y25</span>
+        </div>
+        <div class="header-right">
+            <span class="publisher-title">PUBLISHER</span>
+        </div>
+    </header>
+
+    <main class="publisher-main">
+        <!-- My Games Section -->
+        <section class="games-section">
+            <div class="section-header">
+                <h1 class="section-title">MY GAMES</h1>
+                <button class="upload-btn">Upload New Game</button>
+            </div>
+
+            <!-- Published Games -->
+            <div class="games-container published">
+                <div class="game-card">
+                    <img src="images/game-tic-tac-toe.jpg" alt="Tic-Tac-Toe" class="game-image">
+                    <div class="game-info">
+                        <h3 class="game-title">TIC-TAC-TOE</h3>
+                        <div class="game-stat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
+                            <span>1.2k</span>
+                        </div>
+                        <div class="game-stat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2l-2.81 6.63L2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <span>5.2/10</span>
+                        </div>
+                        <div class="game-stat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l20-18V2zm-2 12h-8v2h8v-2z"/></svg>
+                            <span>51</span>
+                        </div>
+                        <div class="game-revenue">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S15.33 8 14.5 8 13 8.67 13 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S8.33 8 7.5 8 6 8.67 6 9.5 6.67 11 7.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
+                            <span>255 $</span>
+                        </div>
+                        <div class="game-actions">
+                            <a href="#" class="action-link">EDIT</a>
+                            <span class="action-sep">/</span>
+                            <a href="#" class="action-link">DELETE</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="game-card">
+                    <img src="images/game-chess.jpg" alt="Chess" class="game-image">
+                    <div class="game-info">
+                        <h3 class="game-title">CHESS</h3>
+                        <div class="game-stat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
+                            <span>3k</span>
+                        </div>
+                        <div class="game-stat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2l-2.81 6.63L2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <span>7.8/10</span>
+                        </div>
+                        <div class="game-stat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l20-18V2zm-2 12h-8v2h8v-2z"/></svg>
+                            <span>153</span>
+                        </div>
+                        <div class="game-revenue">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S15.33 8 14.5 8 13 8.67 13 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S8.33 8 7.5 8 6 8.67 6 9.5 6.67 11 7.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
+                            <span>856 $</span>
+                        </div>
+                        <div class="game-actions">
+                            <a href="#" class="action-link">EDIT</a>
+                            <span class="action-sep">/</span>
+                            <a href="#" class="action-link">DELETE</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="game-card">
+                    <img src="images/game-hotpot.jpg" alt="Hotpot Land" class="game-image">
+                    <div class="game-info">
+                        <h3 class="game-title">HOTPOT LAND</h3>
+                        <div class="game-stat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
+                            <span>5k</span>
+                        </div>
+                        <div class="game-stat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2l-2.81 6.63L2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <span>7/10</span>
+                        </div>
+                        <div class="game-stat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l20-18V2zm-2 12h-8v2h8v-2z"/></svg>
+                            <span>43</span>
+                        </div>
+                        <div class="game-revenue">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S15.33 8 14.5 8 13 8.67 13 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S8.33 8 7.5 8 6 8.67 6 9.5 6.67 11 7.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
+                            <span>1112 $</span>
+                        </div>
+                        <div class="game-actions">
+                            <a href="#" class="action-link">EDIT</a>
+                            <span class="action-sep">/</span>
+                            <a href="#" class="action-link">DELETE</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- In Process Games -->
+            <div class="in-process-label">In process</div>
+            <div class="games-container in-process">
+                <div class="game-card">
+                    <img src="images/game-spaghettine.jpg" alt="Spaghettine" class="game-image">
+                    <div class="game-info">
+                        <h3 class="game-title">SPAGHETTINE</h3>
+                        <div class="game-status">
+                            <span class="status-label">Status :</span>
+                            <span class="status-value waiting">Waiting</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="game-card">
+                    <img src="images/game-cooking.jpg" alt="Cooking Together" class="game-image">
+                    <div class="game-info">
+                        <h3 class="game-title">COOKING TOGETHER</h3>
+                        <div class="game-status">
+                            <span class="status-label">Status :</span>
+                            <span class="status-value approved">Approved</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="game-card">
+                    <img src="images/game-mafia.jpg" alt="Mafia Life" class="game-image">
+                    <div class="game-info">
+                        <h3 class="game-title">MAFIA LIFE</h3>
+                        <div class="game-status">
+                            <span class="status-label">Status :</span>
+                            <span class="status-value rejected">Rejected</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
