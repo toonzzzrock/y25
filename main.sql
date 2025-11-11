@@ -17,10 +17,13 @@ CREATE TABLE IF NOT EXISTS User (
 CREATE TABLE IF NOT EXISTS session (
     session_id INT NOT NULL AUTO_INCREMENT,
     username VARCHAR(20) NOT NULL,
+    game_id INT NOT NULL,
     start_play_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    end_play_time DATETIME,
     device VARCHAR(50) NOT NULL,
     constraint PK_Session PRIMARY KEY (session_id),
-    constraint FK_Session_User FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE
+    constraint FK_Session_User FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE,
+    constraint FK_Session_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS developer (
@@ -51,10 +54,8 @@ CREATE TABLE IF NOT EXISTS game (
     link_to_file VARCHAR(255) NOT NULL,
     release_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     publisher_username VARCHAR(20) NOT NULL,
-    session_id INT NOT NULL,
     constraint PK_Game PRIMARY KEY (game_id),
-    constraint FK_Game_Publisher FOREIGN KEY (publisher_username) REFERENCES publisher(username), -- ON DELETE CASCADE ???,
-    constraint FK_Game_Session FOREIGN KEY (session_id) REFERENCES session(session_id)
+    constraint FK_Game_Publisher FOREIGN KEY (publisher_username) REFERENCES publisher(username)
 );
 
 CREATE TABLE IF NOT EXISTS game_update_history (

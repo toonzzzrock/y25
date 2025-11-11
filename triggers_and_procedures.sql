@@ -31,15 +31,13 @@ FOR EACH ROW
 BEGIN
     -- Update play table with new session start time
     INSERT INTO play (username, game_id, last_session_start)
-    SELECT NEW.username, g.game_id, NEW.start_play_time
-    FROM game g
-    WHERE g.session_id = NEW.session_id
+    VALUES (NEW.username, NEW.game_id, NEW.start_play_time)
     ON DUPLICATE KEY UPDATE last_session_start = NEW.start_play_time;
     
     -- Increment live players counter for the game
-    UPDATE game g
+    UPDATE game
     SET live_players = live_players + 1
-    WHERE g.session_id = NEW.session_id;
+    WHERE game_id = NEW.game_id;
 END//
 
 CREATE TRIGGER after_session_update
@@ -47,22 +45,21 @@ AFTER UPDATE ON session
 FOR EACH ROW
 BEGIN
     -- Calculate playtime for the old game session
-    IF OLD.session_id != NEW.session_id THEN
-        UPDATE play p
-        JOIN game g ON g.session_id = OLD.session_id
-        SET p.total_playtime = p.total_playtime + 
-            TIMESTAMPDIFF(MINUTE, p.last_session_start, NOW())
-        WHERE p.username = OLD.username;
+    IF OLD.game_id != NEW.game_id THEN
+        UPDATE play
+        SET total_playtime = total_playtime + 
+            TIMESTAMPDIFF(MINUTE, OLD.start_play_time, NOW())
+        WHERE username = OLD.username AND game_id = OLD.game_id;
         
         -- Decrement live players counter for old game
         UPDATE game
         SET live_players = GREATEST(0, live_players - 1)
-        WHERE session_id = OLD.session_id;
+        WHERE game_id = OLD.game_id;
         
         -- Increment live players counter for new game
         UPDATE game
         SET live_players = live_players + 1
-        WHERE session_id = NEW.session_id;
+        WHERE game_id = NEW.game_id;
     END IF;
 END//
 
@@ -71,16 +68,15 @@ AFTER DELETE ON session
 FOR EACH ROW
 BEGIN
     -- Finalize playtime calculation
-    UPDATE play p
-    JOIN game g ON g.session_id = OLD.session_id
-    SET p.total_playtime = p.total_playtime + 
-        TIMESTAMPDIFF(MINUTE, p.last_session_start, NOW())
-    WHERE p.username = OLD.username;
+    UPDATE play
+    SET total_playtime = total_playtime + 
+        TIMESTAMPDIFF(MINUTE, last_session_start, NOW())
+    WHERE username = OLD.username AND game_id = OLD.game_id;
     
     -- Decrement live players counter
     UPDATE game
     SET live_players = GREATEST(0, live_players - 1)
-    WHERE session_id = OLD.session_id;
+    WHERE game_id = OLD.game_id;
 END//
 
 -- Forum Thread Counters Triggers
@@ -244,8 +240,7 @@ CREATE PROCEDURE create_game(
     IN p_publisher_username VARCHAR(20),
     IN p_game_name VARCHAR(70),
     IN p_detail VARCHAR(255),
-    IN p_link_to_file VARCHAR(255),
-    IN p_session_id INT
+    IN p_link_to_file VARCHAR(255)
 )
 BEGIN
     DECLARE v_game_id INT;
@@ -260,8 +255,8 @@ BEGIN
     START TRANSACTION;
     
     -- Create game
-    INSERT INTO game (game_name, detail, link_to_file, publisher_username, session_id)
-    VALUES (p_game_name, p_detail, p_link_to_file, p_publisher_username, p_session_id);
+    INSERT INTO game (game_name, detail, link_to_file, publisher_username)
+    VALUES (p_game_name, p_detail, p_link_to_file, p_publisher_username);
     
     SET v_game_id = LAST_INSERT_ID();
     
