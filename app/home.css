@@ -322,7 +322,7 @@
 
 /* Community Sidebar */
 .community-sidebar {
-    width: 320px;
+    width: 380px;
     flex-shrink: 0;
     background-color: var(--color-surface);
     border-radius: 12px;
@@ -375,6 +375,7 @@
     border-radius: 8px;
     transition: all 0.3s ease;
     cursor: pointer;
+    min-width: 0;
 }
 
 .hub-item:hover {
@@ -400,15 +401,19 @@
     font-weight: 600;
     color: var(--color-text);
     margin-bottom: 0.25rem;
-    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 0;
 }
 
 .hub-stats {
     font-size: 0.85rem;
     color: var(--color-primary);
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .view-more-btn {

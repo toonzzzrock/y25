@@ -67,11 +67,15 @@ export default function HomeLoginPage() {
   return (
     <>
       <header className="header">
-        <div className="logo">
+        <button
+          onClick={() => router.push('/')}
+          className="logo"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        >
           <span className="logo-y25">Y25</span>
           <span className="logo-divider">/</span>
           <span className="logo-text">ONLINE GAME PLATFORM</span>
-        </div>
+        </button>
         <nav className="nav">
           <Link href="/signup" className="btn-signup">
             Sign Up

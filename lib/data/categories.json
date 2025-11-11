@@ -1,0 +1,34 @@
+{
+  "categories": [
+    {
+      "id": "fantasy",
+      "name": "Fantasy",
+  "icon": "⚔️",
+  "tag": "Fantasy"
+    },
+    {
+      "id": "rpg",
+      "name": "RPG",
+  "icon": "🎮",
+  "tag": "RPG"
+    },
+    {
+      "id": "fps",
+      "name": "FPS",
+  "icon": "🔫",
+  "tag": "FPS"
+    },
+    {
+      "id": "moba",
+      "name": "MOBA",
+  "icon": "👥",
+  "tag": "MOBA"
+    },
+    {
+      "id": "rts",
+      "name": "RTS",
+  "icon": "🗺️",
+  "tag": "RTS"
+    }
+  ]
+}

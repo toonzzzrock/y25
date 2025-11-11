@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useProtectedRoute } from "@/lib/use-protected-route";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
+import Header from "@/app/components/Header";
 import "../home.css";
 
 interface UserProfile {
@@ -63,19 +64,7 @@ export default function ProfilePage() {
 
   return (
     <>
-      <header className="home-header">
-        <Link href="/home" className="logo" style={{ textDecoration: 'none' }}>
-          <span className="logo-y25">Y25</span>
-        </Link>
-        <div style={{ flex: 1 }} />
-        <Link href="/profile" className="profile-active-link">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="16" cy="16" r="15" stroke="currentColor" strokeWidth="2" />
-            <circle cx="16" cy="12" r="5" fill="currentColor" />
-            <path d="M6 26C6 21 10 18 16 18C22 18 26 21 26 26" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </Link>
-      </header>
+      <Header hideUserIcon={true} />
 
       <main style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
         <div style={{

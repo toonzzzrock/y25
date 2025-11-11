@@ -3,6 +3,7 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
+import Header from "@/app/components/Header";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -201,11 +202,11 @@ export default function SignupPage() {
   return (
     <>
       <header className="header">
-        <div className="logo">
+        <Link href="/" className="logo" style={{ cursor: 'pointer', textDecoration: 'none' }}>
           <span className="logo-y25">Y25</span>
           <span className="logo-divider">/</span>
           <span className="logo-text">ONLINE GAME PLATFORM</span>
-        </div>
+        </Link>
         <nav className="nav">
           <Link href="/" className="btn-signup">Login</Link>
         </nav>

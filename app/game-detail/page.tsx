@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
+import Header from "@/app/components/Header";
 import "../game-detail.css";
 
 type Game = {
@@ -14,12 +15,6 @@ type Game = {
   releaseDate: string;
   genre: string;
   screenshots: string[];
-  reviews: Array<{
-    author: string;
-    rating: number;
-    date: string;
-    text: string;
-  }>;
 };
 
 const gameDetail: Game = {
@@ -40,26 +35,6 @@ const gameDetail: Game = {
     "/images/racing-game.svg",
     "/images/city-game.svg",
     "/images/survival-game.svg",
-  ],
-  reviews: [
-    {
-      author: "Player One",
-      rating: 5,
-      date: "2 days ago",
-      text: "Amazing game! The visuals are stunning and the gameplay is so smooth. Highly recommended!",
-    },
-    {
-      author: "Gaming Enthusiast",
-      rating: 4,
-      date: "1 week ago",
-      text: "Great experience overall. Would love to see more content updates in the future.",
-    },
-    {
-      author: "Casual Gamer",
-      rating: 5,
-      date: "2 weeks ago",
-      text: "Perfect game to relax with. Beautiful art style and engaging mechanics.",
-    },
   ],
 };
 
@@ -103,32 +78,10 @@ export default function GameDetailPage() {
 
   return (
     <>
-      <header className="home-header">
-        <div className="logo">
-          <span className="logo-y25">Y25</span>
-        </div>
-        <div className="search-container">
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search the game"
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          />
-          <button className="search-button" onClick={handleSearch}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" />
-              <path d="M21 21L16.5 16.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
-        <button className="user-icon-btn" onClick={() => showNotification("User menu", "info")}>
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="16" cy="16" r="15" stroke="currentColor" strokeWidth="2" />
-            <circle cx="16" cy="12" r="5" fill="currentColor" />
-            <path d="M6 26C6 21 10 18 16 18C22 18 26 21 26 26" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
-      </header>
+      <Header
+        showSearch={true}
+        onSearch={handleSearch}
+      />
 
       <main className="game-detail-main">
         <div className="game-detail-wrapper">
@@ -219,33 +172,7 @@ export default function GameDetailPage() {
               </div>
             </section>
 
-            {/* Reviews Section */}
-            <section className="reviews-section">
-              <h3>Reviews</h3>
-              <div className="reviews-list">
-                {gameDetail.reviews.map((review, index) => (
-                  <div key={index} className="review-item">
-                    <div className="review-header">
-                      <div className="review-user">
-                        <div className="review-avatar" />
-                        <div className="review-user-info">
-                          <h4>{review.author}</h4>
-                          <div className="review-rating">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <span key={star} className="star">
-                                {star <= review.rating ? "★" : "☆"}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <span className="review-date">{review.date}</span>
-                    </div>
-                    <p className="review-text">{review.text}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
+
           </div>
 
           {/* Right Sidebar - Advertising */}
