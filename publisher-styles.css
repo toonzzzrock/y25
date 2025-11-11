@@ -27,10 +27,11 @@ body {
 
 .publisher-title {
     color: #ff9a3a;
-    font-size: 18px;
+    font-size: 22px;
     font-weight: 700;
     font-style: italic;
     letter-spacing: 2px;
+    margin-top: 50px;
 }
 
 .publisher-main {
@@ -78,10 +79,11 @@ body {
 }
 
 .games-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    display: flex;
+    flex-direction: row;
     gap: 20px;
     margin-bottom: 40px;
+    overflow-x: auto;
 }
 
 .game-card {
@@ -92,11 +94,13 @@ body {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    min-width: 280px;
+    flex-shrink: 0;
 }
 
 .game-image {
     width: 100%;
-    height: 140px;
+    height: 180px;
     object-fit: cover;
     border-radius: 4px;
 }
@@ -168,7 +172,16 @@ body {
 
 .in-process-label {
     color: #ff7a2b;
-    font-size: 14px;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    text-align: right;
+    padding-right: 12px;
+}
+
+.published-label {
+    color: #ff7a2b;
+    font-size: 18px;
     font-weight: 600;
     margin-bottom: 16px;
     text-align: right;

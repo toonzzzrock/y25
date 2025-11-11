@@ -21,6 +21,8 @@ body { background:#2b1209; color:#e6e0db; font-family: Arial, Helvetica, sans-se
 .reply-container.reply-sub { margin-left:56px; margin-top:-4px; }
 .reply-arrow { position:absolute; left:20px; top:-12px; width:30px; height:24px; border-left:2px solid #6b5450; border-bottom:2px solid #6b5450; border-bottom-left-radius:12px; }
 .reply-sub .reply-arrow { left:-8px; }
+.reply-container:not(.reply-sub):last-of-type { margin-top:40px; }
+.reply-icon { position:absolute; bottom:-20px; left:72px; font-size:20px; cursor:pointer; }
 .thread-reply { display:flex; gap:12px; align-items:center; margin-top:10px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.02); }
 .reply-input { flex:1; padding:12px 14px; border-radius:4px; background:#100a09; color:#ddd; border:1px solid #2d1b19; }
 .reply-send { background:#ff7a2b; color:#fff; border:none; padding:10px 14px; border-radius:4px; cursor:pointer; }
