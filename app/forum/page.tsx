@@ -17,6 +17,17 @@ type ThreadSummary = {
   reply_count: number;
 };
 
+type GameSuggestion = {
+  id: number;
+  title: string;
+  description?: string | null;
+};
+
+type ThreadSearchOptions = {
+  gameId?: number | null;
+  gameTitle?: string | null;
+};
+
 const normalizeThreadSummary = (forum: any): ThreadSummary => {
   const rawCreatedAt = forum.created_at;
   let createdAt: string | null = null;
@@ -81,6 +92,11 @@ export default function ForumPage() {
   const [userCommentedThreads, setUserCommentedThreads] = useState<ThreadSummary[]>([]);
   const [isLoadingUserThreads, setIsLoadingUserThreads] = useState(false);
   const [userThreadsError, setUserThreadsError] = useState<string | null>(null);
+  const [threadGameFilterTerm, setThreadGameFilterTerm] = useState("");
+  const [threadGameFilterSuggestions, setThreadGameFilterSuggestions] = useState<GameSuggestion[]>([]);
+  const [selectedThreadGame, setSelectedThreadGame] = useState<{ id: number; title: string } | null>(null);
+  const [isSearchingThreadGames, setIsSearchingThreadGames] = useState(false);
+  const [showThreadGameSuggestions, setShowThreadGameSuggestions] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const isFetchingMoreRef = useRef(false);
   const isMountedRef = useRef(false);
@@ -244,7 +260,21 @@ export default function ForumPage() {
         </span>
         {thread.game_name && (
           <span className="muted" style={{ fontSize: '0.75rem' }}>
-            Game: {thread.game_name}
+            Game:{' '}
+            {thread.game_id ? (
+              <button
+                type="button"
+                className="thread-game-link"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  router.push(`/games/${thread.game_id}`);
+                }}
+              >
+                {thread.game_name}
+              </button>
+            ) : (
+              thread.game_name
+            )}
           </span>
         )}
         <div style={{ fontSize: '0.75rem', color: '#ff7a2b', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -275,7 +305,21 @@ export default function ForumPage() {
         <strong>{thread.thread_name}</strong>
         {thread.game_name && (
           <div className="muted" style={{ fontSize: '0.75rem' }}>
-            Game: {thread.game_name}
+            Game:{' '}
+            {thread.game_id ? (
+              <button
+                type="button"
+                className="thread-game-link"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  router.push(`/games/${thread.game_id}`);
+                }}
+              >
+                {thread.game_name}
+              </button>
+            ) : (
+              thread.game_name
+            )}
           </div>
         )}
         <div className="muted" style={{ fontSize: '0.75rem' }}>
@@ -395,12 +439,16 @@ export default function ForumPage() {
     }
   }, [selectedGame]);
 
-  const searchThreads = useCallback(async (value?: string) => {
+  const searchThreads = useCallback(async (value?: string, options?: ThreadSearchOptions) => {
     const queryToUse = value ?? threadQuery;
     const trimmed = queryToUse.trim();
+    const hasOverrideGameId = options && Object.prototype.hasOwnProperty.call(options, 'gameId');
+    const hasOverrideGameTitle = options && Object.prototype.hasOwnProperty.call(options, 'gameTitle');
+    const activeGameId = hasOverrideGameId ? (options?.gameId ?? null) : selectedThreadGame?.id ?? null;
+    const activeGameTitle = hasOverrideGameTitle ? (options?.gameTitle ?? null) : selectedThreadGame?.title ?? null;
 
-    if (trimmed.length < 2) {
-      showNotification("Enter at least 2 characters to find threads", "info");
+    if (trimmed.length < 2 && !activeGameId) {
+      showNotification("Enter at least 2 characters or choose a game to filter threads", "info");
       setThreadResults([]);
       setThreadSuggestions([]);
       setShowThreadSuggestions(false);
@@ -408,11 +456,20 @@ export default function ForumPage() {
       return;
     }
 
+    const params = new URLSearchParams();
+    if (trimmed.length >= 2) {
+      params.set('q', trimmed);
+    }
+    if (activeGameId) {
+      params.set('gameId', String(activeGameId));
+    }
+
     setIsSearchingThreads(true);
     setShowThreadSuggestions(false);
     setThreadSuggestions([]);
+  setShowThreadGameSuggestions(false);
     try {
-      const response = await fetch(`/api/forum/search?q=${encodeURIComponent(trimmed)}`);
+      const response = await fetch(`/api/forum/search?${params.toString()}`);
       const data = await response.json();
 
       if (response.ok && Array.isArray(data.forums)) {
@@ -422,11 +479,13 @@ export default function ForumPage() {
         setHasSearchedThreads(true);
         const count = normalized.length;
         const plural = count === 1 ? "" : "s";
-        showNotification(`Found ${count} thread${plural}`, count > 0 ? "success" : "info");
+        const suffix = activeGameTitle ? ` for ${activeGameTitle}` : "";
+        showNotification(`Found ${count} thread${plural}${suffix}`, count > 0 ? "success" : "info");
       } else {
         setThreadResults([]);
         setHasSearchedThreads(true);
-        showNotification(data.error || "No threads found", "info");
+        const baseMessage = data.error || "No threads found";
+        showNotification(`${baseMessage}${activeGameTitle ? ` for ${activeGameTitle}` : ""}`, "info");
       }
     } catch (error) {
       console.error('Thread search error:', error);
@@ -436,7 +495,7 @@ export default function ForumPage() {
     } finally {
       setIsSearchingThreads(false);
     }
-  }, [threadQuery, showNotification]);
+  }, [selectedThreadGame, showNotification, threadQuery]);
 
   const searchPeople = useCallback(async (value?: string) => {
     const queryToUse = value ?? peopleQuery;
@@ -637,6 +696,14 @@ export default function ForumPage() {
   const trimmedThreadQuery = threadQuery.trim();
   const showGeneralFeed = trimmedThreadQuery.length < 2 && !hasSearchedThreads;
   const showSearchResults = hasSearchedThreads || isSearchingThreads;
+  const showThreadsFeed = showGeneralFeed || showSearchResults;
+  const filteredFeedTitle = selectedThreadGame && trimmedThreadQuery.length >= 2
+    ? `Results for "${trimmedThreadQuery}" in ${selectedThreadGame.title}`
+    : selectedThreadGame
+      ? `Threads for ${selectedThreadGame.title}`
+      : trimmedThreadQuery.length >= 2
+        ? `Results for "${trimmedThreadQuery}"`
+        : 'Search Results';
 
   useEffect(() => {
     const node = loadMoreRef.current;
@@ -674,9 +741,104 @@ export default function ForumPage() {
     searchPeople(username);
   }, [searchPeople]);
 
+  const handleThreadGameFilterChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setThreadGameFilterTerm(value);
+
+    if (selectedThreadGame && value.trim().toLowerCase() !== selectedThreadGame.title.toLowerCase()) {
+      setSelectedThreadGame(null);
+    }
+
+    if (value.trim().length < 2) {
+      setThreadGameFilterSuggestions([]);
+      setShowThreadGameSuggestions(false);
+    } else {
+      setShowThreadGameSuggestions(true);
+    }
+  }, [selectedThreadGame]);
+
+  const handleThreadGameSelect = useCallback((game: GameSuggestion) => {
+    setSelectedThreadGame({ id: game.id, title: game.title });
+    setThreadGameFilterTerm(game.title);
+    setThreadGameFilterSuggestions([]);
+    setShowThreadGameSuggestions(false);
+    void searchThreads(undefined, { gameId: game.id, gameTitle: game.title });
+  }, [searchThreads]);
+
+  const clearThreadGameFilter = useCallback(() => {
+    setSelectedThreadGame(null);
+    setThreadGameFilterTerm("");
+    setThreadGameFilterSuggestions([]);
+    setShowThreadGameSuggestions(false);
+    const trimmedQuery = threadQuery.trim();
+
+    if (trimmedQuery.length >= 2) {
+      void searchThreads(trimmedQuery, { gameId: null, gameTitle: null });
+    } else {
+      setThreadResults([]);
+      setHasSearchedThreads(false);
+    }
+  }, [searchThreads, threadQuery]);
+
   useEffect(() => {
     fetchThreads();
   }, [fetchThreads]);
+
+  useEffect(() => {
+    const term = threadGameFilterTerm.trim();
+
+    if (!term) {
+      setThreadGameFilterSuggestions([]);
+      setIsSearchingThreadGames(false);
+      return;
+    }
+
+    if (term.length < 2) {
+      setThreadGameFilterSuggestions([]);
+      setIsSearchingThreadGames(false);
+      return;
+    }
+
+  const controller = new AbortController();
+  setIsSearchingThreadGames(true);
+
+  const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/games/search?q=${encodeURIComponent(term)}`, {
+          signal: controller.signal,
+        });
+        const data = await response.json();
+
+        if (response.ok && Array.isArray(data.games)) {
+          const normalized: GameSuggestion[] = (data.games as any[])
+            .map((game) => ({
+              id: typeof game.id === 'number' ? game.id : Number(game.id),
+              title: game.title ?? game.game_name ?? 'Unknown game',
+              description: game.description ?? game.detail ?? null,
+            }))
+            .filter((game) => Number.isFinite(game.id));
+
+          setThreadGameFilterSuggestions(normalized.slice(0, 8));
+          setShowThreadGameSuggestions(true);
+        } else {
+          setThreadGameFilterSuggestions([]);
+        }
+      } catch (error) {
+        if ((error as any)?.name === 'AbortError') {
+          return;
+        }
+        console.error('Thread filter game search error:', error);
+        setThreadGameFilterSuggestions([]);
+      } finally {
+        setIsSearchingThreadGames(false);
+      }
+    }, 250);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [threadGameFilterTerm]);
 
   useEffect(() => {
     if (!user?.username) {
@@ -1099,42 +1261,103 @@ export default function ForumPage() {
               </div>
             )}
 
-            {trimmedThreadQuery.length > 0 && trimmedThreadQuery.length < 2 && (
-              <div className="muted" style={{ marginTop: '0.5rem' }}>Enter at least 2 characters to search.</div>
+            <div className="search-small" style={{ marginTop: '0.75rem' }}>
+              <input
+                placeholder="Filter by game..."
+                value={threadGameFilterTerm}
+                onChange={handleThreadGameFilterChange}
+                onFocus={() => {
+                  if (threadGameFilterSuggestions.length > 0) {
+                    setShowThreadGameSuggestions(true);
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    searchThreads();
+                  }
+                }}
+              />
+              <button
+                className="small-ghost"
+                onClick={clearThreadGameFilter}
+                disabled={!threadGameFilterTerm.trim() && !selectedThreadGame}
+                style={!threadGameFilterTerm.trim() && !selectedThreadGame ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+              >
+                {selectedThreadGame || threadGameFilterTerm.trim() ? '✕' : '🎮'}
+              </button>
+            </div>
+
+            {isSearchingThreadGames && (
+              <div className="muted" style={{ marginTop: '0.5rem' }}>Searching games…</div>
+            )}
+
+            {showThreadGameSuggestions && threadGameFilterSuggestions.length > 0 && (
+              <div className="thread-suggestions">
+                {threadGameFilterSuggestions.map((game) => (
+                  <button
+                    key={`thread-game-suggestion-${game.id}`}
+                    type="button"
+                    onClick={() => handleThreadGameSelect(game)}
+                    className="thread-suggestion-item"
+                  >
+                    <div style={{ fontWeight: 600 }}>{game.title}</div>
+                    {game.description && (
+                      <div className="muted" style={{ fontSize: '0.75rem' }}>{game.description}</div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {!isSearchingThreadGames && threadGameFilterTerm.trim().length > 0 && threadGameFilterTerm.trim().length < 2 && (
+              <div className="muted" style={{ marginTop: '0.5rem' }}>Enter at least 2 characters to search games.</div>
+            )}
+
+            {selectedThreadGame && (
+              <div className="muted" style={{ marginTop: '0.5rem' }}>
+                Filtering threads for <strong style={{ color: '#ffb88b' }}>{selectedThreadGame.title}</strong>
+              </div>
+            )}
+
+            {trimmedThreadQuery.length > 0 && trimmedThreadQuery.length < 2 && !selectedThreadGame && (
+              <div className="muted" style={{ marginTop: '0.5rem' }}>Enter at least 2 characters to search threads or pick a game filter.</div>
             )}
           </div>
 
-          {showSearchResults && (
-            <div className="threads-search-results">
-              {isSearchingThreads ? (
+          {showThreadsFeed && (
+            <div className="threads-feed">
+              <h3>{showGeneralFeed ? 'All Threads' : filteredFeedTitle}</h3>
+              {showGeneralFeed ? (
+                threadsError ? (
+                  <div className="muted">{threadsError}</div>
+                ) : showFeedLoading ? (
+                  <div className="muted">Loading threads...</div>
+                ) : allThreads.length > 0 ? (
+                  <div className="threads-feed-list">
+                    {allThreads.map((thread) => renderThreadSummaryCard(thread, 'feed-thread'))}
+                  </div>
+                ) : (
+                  <div className="muted">No threads yet.</div>
+                )
+              ) : isSearchingThreads ? (
                 <div className="muted">Searching threads...</div>
               ) : threadResults.length > 0 ? (
-                threadResults.map((thread) => renderThreadSummaryCard(thread, 'search-result'))
+                <div className="threads-feed-list">
+                  {threadResults.map((thread) => renderThreadSummaryCard(thread, 'search-result'))}
+                </div>
               ) : (
                 <div className="muted">No threads match this search.</div>
               )}
-            </div>
-          )}
 
-          {showGeneralFeed && (
-            <div className="threads-feed">
-              <h3>All Threads</h3>
-              {threadsError ? (
-                <div className="muted">{threadsError}</div>
-              ) : showFeedLoading ? (
-                <div className="muted">Loading threads...</div>
-              ) : allThreads.length > 0 ? (
-                <div className="threads-feed-list">
-                  {allThreads.map((thread) => renderThreadSummaryCard(thread, 'feed-thread'))}
-                </div>
-              ) : (
-                <div className="muted">No threads yet.</div>
-              )}
-
-              <div ref={loadMoreRef} className="threads-feed-sentinel" aria-hidden="true" />
-              {isLoadingMoreThreads && <div className="muted">Loading more threads...</div>}
-              {!threadsError && !isLoadingThreads && !isLoadingMoreThreads && !hasMoreThreads && allThreads.length > 0 && (
-                <div className="muted">You have reached the end.</div>
+              {showGeneralFeed && (
+                <>
+                  <div ref={loadMoreRef} className="threads-feed-sentinel" aria-hidden="true" />
+                  {isLoadingMoreThreads && <div className="muted">Loading more threads...</div>}
+                  {!threadsError && !isLoadingThreads && !isLoadingMoreThreads && !hasMoreThreads && allThreads.length > 0 && (
+                    <div className="muted">You have reached the end.</div>
+                  )}
+                </>
               )}
             </div>
           )}

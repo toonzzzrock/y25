@@ -23,6 +23,7 @@ type ThreadDetail = {
   createdAt: string | null;
   creatorUsername: string | null;
   gameName: string | null;
+  gameId: number | null;
   comments: ThreadComment[];
 };
 
@@ -98,6 +99,7 @@ export default function ThreadsPage() {
             detail: data.thread.detail ?? null,
             createdAt: data.thread.createdAt ?? null,
             creatorUsername: data.thread.creatorUsername ?? null,
+              gameId: typeof data.thread.gameId === 'number' ? data.thread.gameId : data.thread.gameId ? Number(data.thread.gameId) : null,
             gameName: data.thread.gameName ?? null,
             comments: Array.isArray(data.thread.comments)
               ? data.thread.comments.map((comment: any) => ({
@@ -403,9 +405,25 @@ export default function ThreadsPage() {
             ) : thread ? (
               <>
                 <div className="thread-header">
-                  <h2 className="thread-title">{thread.gameName || 'Community Thread'}</h2>
-                  <div className="muted" style={{ fontSize: '0.85rem', marginTop: '4px' }}>
-                    {decodedThreadName}
+                  <h2 className="thread-title">{thread.threadName}</h2>
+                  {thread.gameName && (
+                    <div className="muted" style={{ fontSize: '0.85rem', marginTop: '6px' }}>
+                      Game:{' '}
+                      {thread.gameId ? (
+                        <button
+                          type="button"
+                          className="thread-game-link"
+                          onClick={() => router.push(`/games/${thread.gameId}`)}
+                        >
+                          {thread.gameName}
+                        </button>
+                      ) : (
+                        thread.gameName
+                      )}
+                    </div>
+                  )}
+                  <div className="muted" style={{ fontSize: '0.75rem', marginTop: '4px' }}>
+                    Thread slug: {decodedThreadName}
                   </div>
                 </div>
 
@@ -418,7 +436,6 @@ export default function ThreadsPage() {
                         <span className="dot">•</span>
                         <span className="time">{threadCreatedAt}</span>
                       </div>
-                      <h3 className="thread-subject">{thread.threadName}</h3>
                       <p className="thread-text">{thread.detail || 'No additional details shared for this thread yet.'}</p>
                     </div>
                   </article>

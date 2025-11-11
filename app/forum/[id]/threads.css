@@ -31,6 +31,22 @@
   font-weight: 700;
 }
 
+.thread-game-link {
+  background: none;
+  border: none;
+  color: #ffb88b;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 122, 43, 0.35);
+}
+
+.thread-game-link:hover {
+  color: #ff7a2b;
+  text-decoration-color: #ff7a2b;
+}
+
 .threads-list {
   margin-top: 12px;
 }

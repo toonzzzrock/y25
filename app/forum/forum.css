@@ -274,6 +274,23 @@
   object-fit: cover;
 }
 
+.thread-game-link {
+  background: none;
+  border: none;
+  color: #ffb88b;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 122, 43, 0.35);
+}
+
+.thread-game-link:hover {
+  color: #ff7a2b;
+  text-decoration-color: #ff7a2b;
+}
+
 hr.sep {
   border: 0;
   height: 2px;
