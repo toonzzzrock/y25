@@ -48,7 +48,17 @@ export default function HomeLoginPage() {
         router.push('/home');
       }, 1000);
     } catch (error: any) {
-      showNotification(error.message || "Login failed", "error");
+      const errorMessage = error.message || "Login failed";
+      
+      // Check if it's a database connection error
+      if (errorMessage.includes('Database connection')) {
+        showNotification("Database error - redirecting...", "error");
+        setTimeout(() => {
+          router.push('/database-error');
+        }, 1000);
+      } else {
+        showNotification(errorMessage, "error");
+      }
     } finally {
       setLoginLoading(false);
     }

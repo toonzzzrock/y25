@@ -61,6 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: 'include'
       });
 
+      if (response.status === 503) {
+        // Database connection error
+        throw new Error('Database connection failed');
+      }
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Login failed');

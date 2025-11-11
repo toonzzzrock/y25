@@ -4,9 +4,10 @@
  */
 
 import crypto from 'crypto';
+import { env } from './env';
 
-// Pepper value - in production, load from environment variables
-const PEPPER = process.env.PASSWORD_PEPPER;
+// Pepper value - should be set in environment variables
+const PEPPER = env.PEPPER_KEY || 'default-pepper-change-in-production';
 
 /**
  * Generate a random salt
@@ -28,10 +29,41 @@ export function hashPassword(password: string, salt: Buffer): string {
 
 /**
  * Verify password against hash
+ * Tries with the current pepper first, then falls back to default pepper for compatibility
  */
 export function verifyPassword(password: string, salt: Buffer, hash: string): boolean {
+  console.log('=== PASSWORD VERIFICATION DEBUG ===');
+  console.log('Input password:', password);
+  console.log('Salt (hex):', salt.toString('hex'));
+  console.log('Stored hash:', hash);
+  console.log('Current PEPPER:', PEPPER);
+  
   const calculatedHash = hashPassword(password, salt);
-  return calculatedHash === hash;
+  console.log('Calculated hash (with current PEPPER):', calculatedHash);
+  
+  if (calculatedHash === hash) {
+    console.log('✓ Password verified with current PEPPER');
+    return true;
+  }
+  
+  // Fallback: try with default pepper for users created with old pepper
+  const fallbackPepper = 'default-pepper-change-in-production';
+  if (PEPPER !== fallbackPepper) {
+    console.log('Trying fallback PEPPER:', fallbackPepper);
+    const fallbackHash = crypto
+      .createHash('sha256')
+      .update(password + salt.toString('hex') + fallbackPepper)
+      .digest('hex');
+    console.log('Calculated hash (with fallback PEPPER):', fallbackHash);
+    
+    if (fallbackHash === hash) {
+      console.log('✓ User verified with fallback pepper - consider re-hashing password');
+      return true;
+    }
+  }
+  
+  console.log('✗ Password verification failed');
+  return false;
 }
 
 /**

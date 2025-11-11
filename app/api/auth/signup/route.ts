@@ -73,10 +73,11 @@ export async function POST(request: NextRequest) {
       const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
       // Insert user into database
+      // Store salt as hex string for consistency
       await connection.query(
         `INSERT INTO User (username, password_encrypted, salt_random_value, email, DOB, sex, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [username, hashedPassword, salt, email, dateOfBirth, sex, now]
+        [username, hashedPassword, salt.toString('hex'), email, dateOfBirth, sex, now]
       );
 
       // If user role is Publisher, add to publisher table

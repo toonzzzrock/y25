@@ -23,6 +23,7 @@ const serverEnv = {
   MYSQL_PASSWORD: process.env.MYSQL_PASSWORD,
   MYSQL_DATABASE: process.env.MYSQL_DATABASE,
   MYSQL_CONNECTION_LIMIT: process.env.MYSQL_CONNECTION_LIMIT,
+  PEPPER_KEY: process.env.PEPPER_KEY,
 } as const;
 
 /**

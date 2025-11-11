@@ -36,7 +36,37 @@ export async function POST(request: NextRequest) {
       }
 
       const user = (users as any[])[0];
-      const salt = user.salt_random_value;
+      
+      console.log('User found:', user.username);
+      console.log('User salt_random_value type:', typeof user.salt_random_value);
+      console.log('User salt_random_value:', user.salt_random_value);
+      
+      // Convert salt to Buffer if it's not already
+      let salt = user.salt_random_value;
+      if (typeof salt === 'string') {
+        // If it's a hex string, convert from hex to Buffer
+        salt = Buffer.from(salt, 'hex');
+        console.log('Converted from hex string');
+      } else if (salt instanceof Buffer) {
+        // If it's a Buffer, it might be ASCII bytes of a hex string (from MySQL VARBINARY)
+        // Try to interpret it as UTF-8 string first
+        const saltStr = salt.toString('utf-8');
+        console.log('Buffer as UTF-8 string:', saltStr);
+        
+        // Check if it looks like a hex string (64 hex characters)
+        if (/^[0-9a-f]{64}$/i.test(saltStr)) {
+          console.log('Detected as hex string stored in buffer, converting from hex');
+          salt = Buffer.from(saltStr, 'hex');
+        } else {
+          console.log('Treating as raw binary buffer');
+        }
+      } else {
+        // If it's something else, ensure it's a Buffer
+        salt = Buffer.from(salt);
+        console.log('Converted from other type');
+      }
+
+      console.log('Final salt (hex):', salt.toString('hex'));
 
       // Verify password
       const isValid = verifyPassword(password, salt, user.password_encrypted);
@@ -80,9 +110,19 @@ export async function POST(request: NextRequest) {
       connection.release();
     }
   } catch (error: any) {
-    console.error('Login error:', error);
+    console.error('Login error:', error.message || error);
+    console.error('Stack:', error.stack);
+    
+    // Check if it's a database connection error
+    if (error.code === 'ECONNREFUSED' || error.errno === -111) {
+      return NextResponse.json(
+        { error: 'Database connection failed. Please contact administrator.' },
+        { status: 503 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to login' },
+      { error: 'Failed to login: ' + (error.message || 'Unknown error') },
       { status: 500 }
     );
   }
