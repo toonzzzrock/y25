@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS game (
     link_to_file VARCHAR(255) NOT NULL,
     release_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status enum("Published", "Decline", "Pending"),
-    live_players INT DEFAULT 0,
+    total_players INT DEFAULT 0,
+    average_play_time FLOAT DEFAULT 0,
     publisher_username VARCHAR(20) NOT NULL,
     constraint PK_Game PRIMARY KEY (game_id),
     constraint FK_Game_Publisher FOREIGN KEY (publisher_username) REFERENCES publisher(username)
@@ -172,28 +173,28 @@ INSERT INTO developer (username, role, contact) VALUES
 ('pub_three', 'Designer', '+1-555-0127');
 
 -- Insert games (use the provided names, cycle publishers)
-INSERT INTO game (game_name, detail, link_to_file, release_date, status, live_players, publisher_username) VALUES
-('Adventure Game', 'Open-world exploration', 'https://games.example.com/adventure', '2024-06-01 10:00:00', 'Published', 12, 'sarah_pub'),
-('Altos Odyssey', 'Endless runner with beautiful visuals', 'https://games.example.com/altos', '2024-06-10 11:00:00', 'Published', 8, 'jane_smith'),
-('Bad Ice-Cream', 'Local co-op puzzle brawler', 'https://games.example.com/bad-ice-cream', '2024-07-01 12:00:00', 'Published', 5, 'pub_one'),
-('Boxing Game', 'Arcade boxing action', 'https://games.example.com/boxing', '2024-07-10 09:30:00', 'Published', 3, 'pub_two'),
-('Candy Game', 'Casual match-3 candy fun', 'https://games.example.com/candy', '2024-07-20 14:00:00', 'Published', 20, 'sarah_pub'),
-('Castle Game', 'Tower defense in medieval setting', 'https://games.example.com/castle', '2024-08-01 10:15:00', 'Pending', 0, 'pub_three'),
-('City Game', 'City building simulator', 'https://games.example.com/city', '2024-08-15 15:00:00', 'Published', 6, 'jane_smith'),
-('Dungeon Game', 'Roguelike dungeon crawler', 'https://games.example.com/dungeon', '2024-09-01 18:00:00', 'Published', 9, 'pub_one'),
-('Farm Game', 'Relaxing farming sim', 'https://games.example.com/farm', '2024-09-15 10:00:00', 'Published', 4, 'pub_two'),
-('Forest Game', 'Survival in a haunted forest', 'https://games.example.com/forest', '2024-10-01 12:00:00', 'Decline', 0, 'sarah_pub'),
-('Fruit Ninja', 'Slice-and-dice fruit arcade', 'https://games.example.com/fruit-ninja', '2024-06-05 09:00:00', 'Published', 30, 'jane_smith'),
-('Hungry Shark', 'Underwater predator arcade', 'https://games.example.com/hungry-shark', '2024-06-12 11:15:00', 'Published', 18, 'pub_one'),
-('Jungle Game', 'Platformer through jungle temples', 'https://games.example.com/jungle', '2024-08-22 13:40:00', 'Published', 7, 'pub_two'),
-('Mario Game', 'Classic platformer homage', 'https://games.example.com/mario', '2024-07-03 16:00:00', 'Published', 25, 'sarah_pub'),
-('Pirate Game', 'Open-sea adventure', 'https://games.example.com/pirate', '2024-07-25 17:10:00', 'Published', 11, 'pub_three'),
-('Plants VS Zombies', 'Tower defense with plants', 'https://games.example.com/pvz', '2024-06-20 08:20:00', 'Published', 40, 'jane_smith'),
-('Racing Game', 'Arcade racing championship', 'https://games.example.com/racing', '2024-09-10 15:00:00', 'Published', 22, 'pub_two'),
-('Space Shooter', '2D space shooter with upgrades', 'https://games.example.com/space-shooter', '2024-08-30 20:00:00', 'Published', 13, 'pub_one'),
-('Survival Game', 'Hardcore survival sim', 'https://games.example.com/survival', '2024-10-10 21:00:00', 'Pending', 0, 'sarah_pub'),
-('Underwater Game', 'Explore the deep sea', 'https://games.example.com/underwater', '2024-09-20 14:30:00', 'Published', 2, 'pub_three'),
-('Winter Game', 'Snowball fights and sledding', 'https://games.example.com/winter', '2024-12-01 09:00:00', 'Pending', 0, 'jane_smith');
+INSERT INTO game (game_name, detail, link_to_file, release_date, status, total_players, average_play_time, publisher_username) VALUES
+('Adventure Game', 'Open-world exploration', 'https://games.example.com/adventure', '2024-06-01 10:00:00', 'Published', 12, 120.5, 'sarah_pub'),
+('Altos Odyssey', 'Endless runner with beautiful visuals', 'https://games.example.com/altos', '2024-06-10 11:00:00', 'Published', 8, 45.0, 'jane_smith'),
+('Bad Ice-Cream', 'Local co-op puzzle brawler', 'https://games.example.com/bad-ice-cream', '2024-07-01 12:00:00', 'Published', 5, 30.0, 'pub_one'),
+('Boxing Game', 'Arcade boxing action', 'https://games.example.com/boxing', '2024-07-10 09:30:00', 'Published', 3, 25.0, 'pub_two'),
+('Candy Game', 'Casual match-3 candy fun', 'https://games.example.com/candy', '2024-07-20 14:00:00', 'Published', 20, 60.0, 'sarah_pub'),
+('Castle Game', 'Tower defense in medieval setting', 'https://games.example.com/castle', '2024-08-01 10:15:00', 'Pending', 0, 0.0, 'pub_three'),
+('City Game', 'City building simulator', 'https://games.example.com/city', '2024-08-15 15:00:00', 'Published', 6, 200.0, 'jane_smith'),
+('Dungeon Game', 'Roguelike dungeon crawler', 'https://games.example.com/dungeon', '2024-09-01 18:00:00', 'Published', 9, 85.0, 'pub_one'),
+('Farm Game', 'Relaxing farming sim', 'https://games.example.com/farm', '2024-09-15 10:00:00', 'Published', 4, 150.0, 'pub_two'),
+('Forest Game', 'Survival in a haunted forest', 'https://games.example.com/forest', '2024-10-01 12:00:00', 'Decline', 0, 0.0, 'sarah_pub'),
+('Fruit Ninja', 'Slice-and-dice fruit arcade', 'https://games.example.com/fruit-ninja', '2024-06-05 09:00:00', 'Published', 30, 10.0, 'jane_smith'),
+('Hungry Shark', 'Underwater predator arcade', 'https://games.example.com/hungry-shark', '2024-06-12 11:15:00', 'Published', 18, 55.0, 'pub_one'),
+('Jungle Game', 'Platformer through jungle temples', 'https://games.example.com/jungle', '2024-08-22 13:40:00', 'Published', 7, 70.0, 'pub_two'),
+('Mario Game', 'Classic platformer homage', 'https://games.example.com/mario', '2024-07-03 16:00:00', 'Published', 25, 95.0, 'sarah_pub'),
+('Pirate Game', 'Open-sea adventure', 'https://games.example.com/pirate', '2024-07-25 17:10:00', 'Published', 11, 140.0, 'pub_three'),
+('Plants VS Zombies', 'Tower defense with plants', 'https://games.example.com/pvz', '2024-06-20 08:20:00', 'Published', 40, 120.0, 'jane_smith'),
+('Racing Game', 'Arcade racing championship', 'https://games.example.com/racing', '2024-09-10 15:00:00', 'Published', 22, 35.0, 'pub_two'),
+('Space Shooter', '2D space shooter with upgrades', 'https://games.example.com/space-shooter', '2024-08-30 20:00:00', 'Published', 13, 50.0, 'pub_one'),
+('Survival Game', 'Hardcore survival sim', 'https://games.example.com/survival', '2024-10-10 21:00:00', 'Pending', 0, 0.0, 'sarah_pub'),
+('Underwater Game', 'Explore the deep sea', 'https://games.example.com/underwater', '2024-09-20 14:30:00', 'Published', 2, 300.0, 'pub_three'),
+('Winter Game', 'Snowball fights and sledding', 'https://games.example.com/winter', '2024-12-01 09:00:00', 'Pending', 0, 0.0, 'jane_smith');
 
 -- Game update history (linking to some game ids)
 INSERT INTO game_update_history (patch_number, title, detail, update_time, link_to_new_file, is_approve, approve_time, approve_by, game_id) VALUES
@@ -243,7 +244,7 @@ INSERT INTO play (username, game_id, accumulate_play_time) VALUES
 ('sarah_pub', 11, 300),
 ('pub_one', 17, 60);
 
--- Tags (one per enum value)
+-- Tags (Multivalued)
 INSERT INTO tag (tag_name, game_id) VALUES
 ('Fantasy', 1),
 ('RPG', 8),
@@ -273,3 +274,53 @@ INSERT INTO session (username, last_login_time, device) VALUES
 ('alex_dev', '2024-09-03 10:15:00', 'Linux Workstation'),
 ('sarah_pub', '2024-09-04 19:20:00', 'Android Tablet'),
 ('pub_one', '2024-09-05 14:10:00', 'iPhone');
+
+-- Triggers to maintain aggregate fields on `game`
+DELIMITER //
+
+CREATE TRIGGER trg_play_after_insert
+AFTER INSERT ON play
+FOR EACH ROW
+BEGIN
+    UPDATE game
+    SET total_players = (SELECT COUNT(*) FROM play WHERE game_id = NEW.game_id),
+        average_play_time = IFNULL((SELECT AVG(accumulate_play_time) FROM play WHERE game_id = NEW.game_id), 0)
+    WHERE game_id = NEW.game_id;
+END;//
+
+CREATE TRIGGER trg_play_after_update
+AFTER UPDATE ON play
+FOR EACH ROW
+BEGIN
+    IF OLD.game_id != NEW.game_id THEN
+        -- Update aggregates for old game
+        UPDATE game
+        SET total_players = (SELECT COUNT(*) FROM play WHERE game_id = OLD.game_id),
+            average_play_time = IFNULL((SELECT AVG(accumulate_play_time) FROM play WHERE game_id = OLD.game_id), 0)
+        WHERE game_id = OLD.game_id;
+
+        -- Update aggregates for new game
+        UPDATE game
+        SET total_players = (SELECT COUNT(*) FROM play WHERE game_id = NEW.game_id),
+            average_play_time = IFNULL((SELECT AVG(accumulate_play_time) FROM play WHERE game_id = NEW.game_id), 0)
+        WHERE game_id = NEW.game_id;
+    ELSE
+        -- Same game: just recalc
+        UPDATE game
+        SET total_players = (SELECT COUNT(*) FROM play WHERE game_id = NEW.game_id),
+            average_play_time = IFNULL((SELECT AVG(accumulate_play_time) FROM play WHERE game_id = NEW.game_id), 0)
+        WHERE game_id = NEW.game_id;
+    END IF;
+END;//
+
+CREATE TRIGGER trg_play_after_delete
+AFTER DELETE ON play
+FOR EACH ROW
+BEGIN
+    UPDATE game
+    SET total_players = (SELECT COUNT(*) FROM play WHERE game_id = OLD.game_id),
+        average_play_time = IFNULL((SELECT AVG(accumulate_play_time) FROM play WHERE game_id = OLD.game_id), 0)
+    WHERE game_id = OLD.game_id;
+END;//
+
+DELIMITER ;
