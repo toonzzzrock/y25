@@ -249,7 +249,14 @@ INSERT INTO tag (tag_name, game_id) VALUES
 ('RPG', 8),
 ('FPS', 17),
 ('MOBA', 6),
-('RTS', 3);
+('RTS', 3),
+('MOBA', 3),
+('FPS', 1),
+('RTS', 5),
+('Fantasy', 10),
+('MOBA', 10),
+('FPS', 20),
+('RPG', 20);
 
 -- Reports
 INSERT INTO report (username, game_id, report_topic, detail, report_time) VALUES
