@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS developer (
 CREATE TABLE IF NOT EXISTS publisher (
     username VARCHAR(20) NOT NULL,
     account_name VARCHAR(70),
-    banck_account_serial VARCHAR(64),
+    bank_account_serial VARCHAR(64),
     constraint PK_Publisher PRIMARY KEY (username),
     constraint FK_Publisher_User FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE
 );
