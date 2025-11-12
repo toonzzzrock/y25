@@ -53,7 +53,7 @@ export async function GET(request: NextRequest, context: GameRouteContext) {
                 game_name AS title,
                 detail AS description,
                 publisher_username AS developer,
-                link_to_file AS imageUrl,
+                link_to_file AS playUrl,
                 release_date AS releaseDate
          FROM game
          WHERE game_id = ?
@@ -61,14 +61,38 @@ export async function GET(request: NextRequest, context: GameRouteContext) {
         [parsedId]
       );
 
-      const game = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+      const gameRow = Array.isArray(rows) && rows.length > 0 ? (rows[0] as Record<string, any>) : null;
 
-      if (!game) {
+      if (!gameRow) {
         return NextResponse.json(
           { error: 'Game not found', game: null },
           { status: 404 }
         );
       }
+
+      let resolvedPlayUrl: string | null = typeof gameRow.playUrl === 'string' ? gameRow.playUrl : null;
+
+      const [updateRows] = await connection.query(
+        `SELECT guh.link_to_new_file AS link
+         FROM update_version_relation uvr
+         INNER JOIN game_update_history guh ON guh.update_id = uvr.update_id
+         WHERE uvr.game_id = ?
+         ORDER BY guh.update_time DESC
+         LIMIT 1`,
+        [parsedId]
+      );
+
+      if (Array.isArray(updateRows) && updateRows.length > 0) {
+        const latestLink = (updateRows[0] as Record<string, any>)?.link;
+        if (typeof latestLink === 'string' && latestLink.trim().length > 0) {
+          resolvedPlayUrl = latestLink.trim();
+        }
+      }
+
+      const game = {
+        ...gameRow,
+        playUrl: resolvedPlayUrl,
+      };
 
       return NextResponse.json(
         { game },

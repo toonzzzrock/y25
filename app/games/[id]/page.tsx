@@ -173,13 +173,30 @@ export default function GameDetailPage() {
           return;
         }
 
-        const raw = data.game;
+  const raw = data.game;
         const parsedId = Number(raw?.id ?? decodedGameId);
         const safeId = Number.isFinite(parsedId) && parsedId > 0 ? parsedId : 0;
         const bannerUrl = resolveGameImage(safeId || decodedGameId);
-        const playUrl = typeof raw?.imageUrl === "string" && raw.imageUrl.trim().startsWith("http")
-          ? raw.imageUrl.trim()
-          : null;
+        const rawPlayUrl = typeof raw?.playUrl === "string" ? raw.playUrl.trim() : "";
+
+        let playUrl: string | null = null;
+        if (rawPlayUrl.length > 0) {
+          if (/^[a-zA-Z]+:\/\//.test(rawPlayUrl)) {
+            playUrl = rawPlayUrl;
+          } else if (rawPlayUrl.startsWith("/")) {
+            playUrl = rawPlayUrl;
+          } else {
+            const sanitizedFile = rawPlayUrl.replace(/^\.\/+/, "").replace(/^\/+/, "");
+            const versionFolder =
+              typeof raw?.gameVersion === "string" && raw.gameVersion.trim().length > 0
+                ? raw.gameVersion.trim().replace(/^\/+|\/+$/g, "")
+                : "0";
+            const baseId = safeId || decodedGameId;
+            playUrl = sanitizedFile.startsWith("game_version/")
+              ? `/data/game/${baseId}/${sanitizedFile}`
+              : `/data/game/${baseId}/game_version/${versionFolder}/${sanitizedFile}`;
+          }
+        }
 
         const normalized: GameDetailState = {
           id: safeId,
@@ -401,12 +418,19 @@ export default function GameDetailPage() {
 
   const handlePlay = useCallback(() => {
     if (game?.playUrl) {
-      window.open(game.playUrl, "_blank", "noopener,noreferrer");
-      showNotification(`Opening ${game.title}`, "success");
+      const destination = game.playUrl;
+
+      if (/^[a-zA-Z]+:\/\//.test(destination)) {
+        window.open(destination, "_blank", "noopener,noreferrer");
+      } else {
+        router.push(destination);
+      }
+
+      showNotification(`Launching ${game.title}`, "success");
     } else {
       showNotification("Playable build coming soon", "info");
     }
-  }, [game, showNotification]);
+  }, [game, router, showNotification]);
 
   const handleScreenshotClick = useCallback(
     (index: number) => {

@@ -54,6 +54,16 @@ type NotificationState = {
   type: NotificationVariant;
 };
 
+type ReportEntry = {
+  id: number;
+  gameId: number;
+  gameTitle: string;
+  reporter: string;
+  topic: string;
+  detail: string;
+  reportedAt: string;
+};
+
 const STATUS_LABEL: Record<SubmissionStatus, string> = {
   waiting: "Waiting",
   approved: "Approved",
@@ -217,10 +227,30 @@ const mapApiGameToPublished = (game: any, fallbackIndex: number = 0): PublishedG
         : resolvePublisherGameImage(safeId),
     releaseDate: rawRelease,
     metrics: {
-      players: typeof game?.metrics?.players === "number" ? game.metrics.players : null,
-      rating: typeof game?.metrics?.rating === "number" ? game.metrics.rating : null,
-      comments: typeof game?.metrics?.comments === "number" ? game.metrics.comments : null,
-      revenue: typeof game?.metrics?.revenue === "number" ? game.metrics.revenue : null,
+      players:
+        typeof game?.metrics?.players === "number"
+          ? game.metrics.players
+          : typeof game?.player_count === "number"
+          ? game.player_count
+          : null,
+      rating:
+        typeof game?.metrics?.rating === "number"
+          ? game.metrics.rating
+          : typeof game?.average_rating === "number"
+          ? game.average_rating
+          : null,
+      comments:
+        typeof game?.metrics?.comments === "number"
+          ? game.metrics.comments
+          : typeof game?.comment_count === "number"
+          ? game.comment_count
+          : null,
+      revenue:
+        typeof game?.metrics?.revenue === "number"
+          ? game.metrics.revenue
+          : typeof game?.total_revenue === "number"
+          ? game.total_revenue
+          : null,
     },
   };
 };
@@ -269,6 +299,10 @@ export default function PublisherPage() {
   const [error, setError] = useState<string | null>(null);
   const [notification, setNotification] = useState<NotificationState | null>(null);
   const [publisherGames, setPublisherGames] = useState<PublishedGame[]>([]);
+  const [reports, setReports] = useState<ReportEntry[]>([]);
+  const [isLoadingReports, setIsLoadingReports] = useState(false);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+  const [selectedGameFilter, setSelectedGameFilter] = useState<string>("all");
   const notificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showNotification = useCallback((message: string, type: NotificationVariant = "info") => {
@@ -473,6 +507,76 @@ export default function PublisherPage() {
     };
   }, [authLoading, showNotification, user?.username]);
 
+  useEffect(() => {
+    if (authLoading || !user?.username) {
+      return;
+    }
+
+    const controller = new AbortController();
+    let isMounted = true;
+
+    const loadReports = async () => {
+      setIsLoadingReports(true);
+      setReportsError(null);
+
+      try {
+        const params = new URLSearchParams({ limit: "100" });
+        if (selectedGameFilter !== "all") {
+          params.set("gameId", selectedGameFilter);
+        }
+
+        const response = await fetch(`/api/publisher/reports?${params.toString()}`, {
+          signal: controller.signal,
+        });
+        const data = await response.json();
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(data?.error || "Failed to load reports");
+        }
+
+        const normalized: ReportEntry[] = Array.isArray(data?.reports)
+          ? data.reports.map((item: any, index: number) => ({
+              id: Number.isFinite(Number(item?.id)) ? Number(item.id) : index + 1,
+              gameId: Number.isFinite(Number(item?.gameId ?? item?.game_id))
+                ? Number(item?.gameId ?? item?.game_id)
+                : 0,
+              gameTitle: item?.gameTitle ?? item?.gameName ?? item?.game_name ?? `Game ${index + 1}`,
+              reporter: item?.reporter ?? item?.username ?? "Unknown",
+              topic: item?.topic ?? item?.report_topic ?? "General",
+              detail: item?.detail ?? "",
+              reportedAt: item?.reportedAt ?? item?.report_time ?? new Date().toISOString(),
+            }))
+          : [];
+
+        setReports(normalized);
+      } catch (fetchError: any) {
+        if (fetchError?.name === "AbortError") {
+          return;
+        }
+        console.error("Publisher reports fetch error:", fetchError);
+        if (isMounted) {
+          setReports([]);
+          setReportsError(fetchError?.message || "Failed to load reports");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingReports(false);
+        }
+      }
+    };
+
+    loadReports();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [authLoading, selectedGameFilter, user?.username]);
+
   const handleUploadClick = useCallback(() => {
     showNotification("Game upload workflow coming soon!", "info");
   }, [showNotification]);
@@ -516,6 +620,44 @@ export default function PublisherPage() {
 
   const publishedGames = publisherGames;
   const submissions = dashboard?.submissions ?? [];
+
+  const reportFilterOptions = useMemo(() => {
+    const unique = new Map<number, string>();
+    publishedGames.forEach((game) => {
+      unique.set(game.id, game.title);
+    });
+
+    reports.forEach((report) => {
+      if (report.gameId) {
+        unique.set(report.gameId, report.gameTitle);
+      }
+    });
+
+    return Array.from(unique.entries()).map(([id, title]) => ({ id, title }));
+  }, [publishedGames, reports]);
+
+  useEffect(() => {
+    if (selectedGameFilter === "all") {
+      return;
+    }
+
+    const exists = reportFilterOptions.some((option) => String(option.id) === selectedGameFilter);
+    if (!exists) {
+      setSelectedGameFilter("all");
+    }
+  }, [reportFilterOptions, selectedGameFilter]);
+
+  const formatReportTime = useCallback((value: string) => {
+    try {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        return value;
+      }
+      return date.toLocaleString();
+    } catch {
+      return value;
+    }
+  }, []);
 
   const isInitialLoading =
     isRouteLoading ||
@@ -561,132 +703,203 @@ export default function PublisherPage() {
           </div>
         )}
 
-        <section className="publisher-section">
-          <div className="publisher-section-header">
-            <h1 className="publisher-section-title">My Games</h1>
-            <button type="button" className="publisher-upload-btn" onClick={handleUploadClick}>
-              Upload New Game
-            </button>
-          </div>
+        <div className="publisher-content-grid">
+          <div className="publisher-primary-column">
+            <section className="publisher-section">
+              <div className="publisher-section-header">
+                <h1 className="publisher-section-title">My Games</h1>
+                <button type="button" className="publisher-upload-btn" onClick={handleUploadClick}>
+                  Upload New Game
+                </button>
+              </div>
 
-          <div>
-            <div className="publisher-label">Published</div>
-            {publishedGames.length > 0 ? (
-              <div className="publisher-games-grid">
-                {publishedGames.map((game) => {
-                  const statBlocks = [
-                    {
-                      label: "Players",
-                      value: formatCompactNumber(game.metrics.players),
-                      icon: <PlayersIcon />,
-                    },
-                    {
-                      label: "Rating",
-                      value:
-                        game.metrics.rating !== null && game.metrics.rating !== undefined
-                          ? `${formatRating(game.metrics.rating)}/10`
-                          : "—",
-                      icon: <RatingIcon />,
-                    },
-                    {
-                      label: "Comments",
-                      value: formatCompactNumber(game.metrics.comments),
-                      icon: <CommentIcon />,
-                    },
-                    {
-                      label: "Revenue",
-                      value: formatCurrency(game.metrics.revenue),
-                      icon: <RevenueIcon />,
-                    },
-                  ];
+              <div>
+                <div className="publisher-label">Published</div>
+                {publishedGames.length > 0 ? (
+                  <div className="publisher-games-grid">
+                    {publishedGames.map((game) => {
+                      const statBlocks = [
+                        {
+                          label: "Players",
+                          value: formatCompactNumber(game.metrics.players),
+                          icon: <PlayersIcon />,
+                        },
+                        {
+                          label: "Rating",
+                          value:
+                            game.metrics.rating !== null && game.metrics.rating !== undefined
+                              ? `${formatRating(game.metrics.rating)}/10`
+                              : "—",
+                          icon: <RatingIcon />,
+                        },
+                        {
+                          label: "Comments",
+                          value: formatCompactNumber(game.metrics.comments),
+                          icon: <CommentIcon />,
+                        },
+                        {
+                          label: "Revenue",
+                          value: formatCurrency(game.metrics.revenue),
+                          icon: <RevenueIcon />,
+                        },
+                      ];
 
-                  return (
-                    <article key={`${game.id}-${game.title}`} className="publisher-game-card">
-                      <img
-                        src={game.bannerUrl || "/images/placeholder.svg"}
-                        alt={game.title}
-                        className="publisher-game-banner"
-                        onError={(event) => {
-                          (event.target as HTMLImageElement).src = "/images/placeholder.svg";
-                        }}
-                      />
-                      <div className="publisher-game-body">
-                        <h3 className="publisher-game-title">{game.title}</h3>
-                        <p className="publisher-game-description">
-                          {game.description || "No description provided yet."}
-                        </p>
-                        <div className="publisher-game-meta">
-                          <span>{formatReleaseDate(game.releaseDate)}</span>
-                          <span>By {publisherName}</span>
-                        </div>
-                        <div className="publisher-game-stats">
-                          {statBlocks.map((stat) => (
-                            <div key={`${game.id}-${stat.label}`} className="publisher-stat-card">
-                              {stat.icon}
-                              <div style={{ display: "flex", flexDirection: "column" }}>
-                                <span style={{ fontSize: "0.75rem", color: "rgba(230, 224, 219, 0.65)" }}>
-                                  {stat.label}
-                                </span>
-                                <span style={{ fontWeight: 600 }}>{stat.value}</span>
-                              </div>
+                      return (
+                        <article key={`${game.id}-${game.title}`} className="publisher-game-card">
+                          <img
+                            src={game.bannerUrl || "/images/placeholder.svg"}
+                            alt={game.title}
+                            className="publisher-game-banner"
+                            onError={(event) => {
+                              (event.target as HTMLImageElement).src = "/images/placeholder.svg";
+                            }}
+                          />
+                          <div className="publisher-game-body">
+                            <h3 className="publisher-game-title">{game.title}</h3>
+                            <p className="publisher-game-description">
+                              {game.description || "No description provided yet."}
+                            </p>
+                            <div className="publisher-game-meta">
+                              <span>{formatReleaseDate(game.releaseDate)}</span>
+                              <span>By {publisherName}</span>
                             </div>
-                          ))}
+                            <div className="publisher-game-stats">
+                              {statBlocks.map((stat) => (
+                                <div key={`${game.id}-${stat.label}`} className="publisher-stat-card">
+                                  {stat.icon}
+                                  <div style={{ display: "flex", flexDirection: "column" }}>
+                                    <span style={{ fontSize: "0.75rem", color: "rgba(230, 224, 219, 0.65)" }}>
+                                      {stat.label}
+                                    </span>
+                                    <span style={{ fontWeight: 600 }}>{stat.value}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="publisher-game-actions">
+                              <button
+                                type="button"
+                                className="publisher-action-link"
+                                onClick={() => handleGameAction("edit", game.title)}
+                              >
+                                EDIT
+                              </button>
+                              <button
+                                type="button"
+                                className="publisher-action-link"
+                                onClick={() => handleGameAction("delete", game.title)}
+                              >
+                                DELETE
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="publisher-empty-state">
+                    You have not published any games yet. Upload one to get started!
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="publisher-section">
+              <div className="publisher-section-header">
+                <h2 className="publisher-section-title" style={{ fontSize: "1.5rem" }}>
+                  Submission Queue
+                </h2>
+              </div>
+
+              <div>
+                <div className="publisher-label">In process</div>
+                {submissions.length > 0 ? (
+                  <div className="publisher-submissions-list">
+                    {submissions.map((submission) => (
+                      <div key={`${submission.id}-${submission.title}`} className="publisher-submission-card">
+                        <div>
+                          <p className="publisher-submission-title">{submission.title}</p>
+                          <div className="publisher-submission-meta">
+                            <span>{formatUpdatedAt(submission.updatedAt)}</span>
+                            <span>Submitted by {publisherName}</span>
+                          </div>
                         </div>
-                        <div className="publisher-game-actions">
-                          <button
-                            type="button"
-                            className="publisher-action-link"
-                            onClick={() => handleGameAction("edit", game.title)}
-                          >
-                            EDIT
-                          </button>
-                          <button
-                            type="button"
-                            className="publisher-action-link"
-                            onClick={() => handleGameAction("delete", game.title)}
-                          >
-                            DELETE
-                          </button>
-                        </div>
+                        <span className={statusClassName(submission.status)}>
+                          {statusIcon(submission.status)}
+                          {STATUS_LABEL[submission.status]}
+                        </span>
                       </div>
-                    </article>
-                  );
-                })}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="publisher-empty-state">
+                    No submissions in review. Upload a new game to start the approval process.
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="publisher-empty-state">
-                You have not published any games yet. Upload one to get started!
-              </div>
-            )}
+            </section>
           </div>
 
-          <div style={{ marginTop: "32px" }}>
-            <div className="publisher-label">In process</div>
-            {submissions.length > 0 ? (
-              <div className="publisher-submissions-list">
-                {submissions.map((submission) => (
-                  <div key={`${submission.id}-${submission.title}`} className="publisher-submission-card">
-                    <div>
-                      <p className="publisher-submission-title">{submission.title}</p>
-                      <div className="publisher-submission-meta">
-                        <span>{formatUpdatedAt(submission.updatedAt)}</span>
-                        <span>Submitted by {publisherName}</span>
-                      </div>
-                    </div>
-                    <span className={statusClassName(submission.status)}>
-                      {statusIcon(submission.status)}
-                      {STATUS_LABEL[submission.status]}
-                    </span>
-                  </div>
-                ))}
+          <aside className="publisher-reports-column">
+            <section className="publisher-reports-section">
+              <div className="publisher-reports-header">
+                <h2 className="publisher-reports-title">Game Reports</h2>
+                <select
+                  className="publisher-report-filter"
+                  value={selectedGameFilter}
+                  onChange={(event) => setSelectedGameFilter(event.target.value)}
+                >
+                  <option value="all">All Games</option>
+                  {reportFilterOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.title}
+                    </option>
+                  ))}
+                </select>
               </div>
-            ) : (
-              <div className="publisher-empty-state">
-                No submissions in review. Upload a new game to start the approval process.
-              </div>
-            )}
-          </div>
-        </section>
+
+              {isLoadingReports ? (
+                <div className="publisher-empty-state" style={{ textAlign: "left" }}>
+                  Loading reports…
+                </div>
+              ) : reportsError ? (
+                <div className="publisher-empty-state" style={{ textAlign: "left" }}>
+                  {reportsError}
+                </div>
+              ) : reports.length === 0 ? (
+                <div className="publisher-empty-state" style={{ textAlign: "left" }}>
+                  No reports filed yet.
+                </div>
+              ) : (
+                <div className="publisher-reports-list">
+                  {reports.map((report) => (
+                    <article key={report.id} className="publisher-report-card">
+                      <header className="publisher-report-card-header">
+                        <div>
+                          <h3 className="publisher-report-game">{report.gameTitle}</h3>
+                          <span className="publisher-report-topic">{report.topic}</span>
+                        </div>
+                        <time className="publisher-report-time">{formatReportTime(report.reportedAt)}</time>
+                      </header>
+                      <p className="publisher-report-detail">{report.detail}</p>
+                      <footer className="publisher-report-footer">
+                        <span>Reporter: {report.reporter}</span>
+                        <button
+                          type="button"
+                          className="publisher-report-filter-link"
+                          onClick={() => setSelectedGameFilter(String(report.gameId))}
+                        >
+                          View all for this game
+                        </button>
+                      </footer>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          </aside>
+        </div>
       </main>
 
       {notification && (

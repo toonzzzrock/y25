@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Y25 Chess Arena</title>
+    <link
+      rel="stylesheet"
+      href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css"
+      integrity="sha256-ELV+xyxFnw1xvG7N0pCw8Z8vKA1p2JkG3Q3uWXsgPzk="
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/css/chessboard.min.css"
+      integrity="sha512-bs/AV/Q93skS8+r9f9qByBXpEj31YpeOb07pLzNqRTITkh6DcgjDa6zqaFfXrKYqaJm0PCi80O9jUMHzKoxADA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Inter", "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top, #2e2a3b, #18161f);
+        color: #f5f2ff;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+      }
+
+      .game-shell {
+        max-width: 1100px;
+        width: 100%;
+        display: grid;
+        grid-template-columns: minmax(0, 480px) minmax(0, 1fr);
+        gap: 2rem;
+        align-items: stretch;
+      }
+
+      .panel {
+        background: rgba(21, 19, 29, 0.85);
+        border: 1px solid rgba(122, 92, 255, 0.35);
+        border-radius: 18px;
+        padding: 1.75rem;
+        box-shadow: 0 24px 60px rgba(12, 11, 18, 0.45);
+      }
+
+      h1 {
+        margin: 0 0 1rem;
+        font-size: 2rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .board-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: center;
+      }
+
+      #board {
+        width: 100%;
+        max-width: 480px;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+      }
+
+      .info-grid {
+        display: grid;
+        gap: 1.25rem;
+      }
+
+      .status-card {
+        background: rgba(40, 35, 55, 0.75);
+        border-radius: 12px;
+        padding: 1.25rem;
+        border: 1px solid rgba(131, 116, 255, 0.25);
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .status-card strong {
+        font-size: 0.9rem;
+        letter-spacing: 0.12em;
+        color: #b9a3ff;
+      }
+
+      .status-card span {
+        font-size: 1.1rem;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      button {
+        background: linear-gradient(135deg, #6c5cff 0%, #9d7bff 100%);
+        border: none;
+        border-radius: 999px;
+        padding: 0.9rem 1.8rem;
+        color: #fff;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 30px rgba(108, 92, 255, 0.35);
+      }
+
+      .log {
+        height: 240px;
+        overflow-y: auto;
+        background: rgba(24, 21, 32, 0.75);
+        border-radius: 12px;
+        padding: 1rem;
+        border: 1px solid rgba(108, 92, 255, 0.2);
+        font-family: "Courier New", monospace;
+        font-size: 0.95rem;
+      }
+
+      .log-entry {
+        margin-bottom: 0.35rem;
+      }
+
+      @media (max-width: 960px) {
+        .game-shell {
+          grid-template-columns: 1fr;
+        }
+
+        body {
+          padding: 1.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-shell">
+      <section class="panel board-wrapper">
+        <h1>Chess Arena</h1>
+        <div id="board"></div>
+        <div class="controls">
+          <button id="new-game">New Game</button>
+          <button id="flip-board">Flip Board</button>
+        </div>
+      </section>
+      <section class="panel info-grid">
+        <div class="status-card">
+          <strong>Status</strong>
+          <span id="status">Loading board...</span>
+        </div>
+        <div class="status-card">
+          <strong>Captured</strong>
+          <span id="captures">—</span>
+        </div>
+        <div class="status-card">
+          <strong>Engine</strong>
+          <span style="display: block; line-height: 1.4">
+            The bot analyses positions and selects from the three highest-evaluated moves.
+            Expect quick tactics but room to outplay!
+          </span>
+        </div>
+        <div class="status-card">
+          <strong>Move Log</strong>
+          <div id="move-log" class="log"></div>
+        </div>
+      </section>
+    </div>
+
+    <script
+      src="https://code.jquery.com/jquery-3.6.4.min.js"
+      integrity="sha256-o88Awf4w+c3TL9Q0qGqORdzdrFJtfJZpyYhX1PtiBMs="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"
+      integrity="sha256-lYX1Qte9YWhEtw/2BH73WJ6dJd1rPxO2BQTSbQ0v7V4="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui-touch-punch/0.2.3/jquery.ui.touch-punch.min.js"
+      integrity="sha512-fssCOY1Se1x3u0w6Bhl0Tn3XJyozPw4SXMuYGZqbyGqrWQVa+hNk+lxiq9yRdhKUa6HZ8Pg97L4pLI4r8nGzGw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/1.0.0/chess.min.js"
+      integrity="sha512-6s3LsvPPm+zmr7jg2d+VNhpUg4FTIwirFqPOsJWvQCZPw3s2cEUu9kXgwItVu7WWPlJqumSX6Z84gv6SW0RE8Q=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard.min.js"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script>
+      function initChessArena() {
+        const statusEl = document.getElementById('status');
+        const capturesEl = document.getElementById('captures');
+        const logEl = document.getElementById('move-log');
+
+        const ChessFactory = window.Chess || window.CHESS;
+        const BoardFactory = window.Chessboard || window.ChessBoard;
+
+        if (!ChessFactory || !BoardFactory) {
+          statusEl.textContent = 'Failed to load chess assets.';
+          return;
+        }
+
+        const game = new ChessFactory();
+        const capturePieces = [];
+
+        const board = BoardFactory('board', {
+          draggable: true,
+          position: 'start',
+          pieceTheme:
+            'https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/img/chesspieces/wikipedia/{piece}.png',
+          onDrop: onDrop,
+          onSnapEnd: () => board.position(game.fen(), false),
+        });
+
+        function logMove(move) {
+          const entry = document.createElement('div');
+          entry.className = 'log-entry';
+          entry.textContent = move;
+          logEl.appendChild(entry);
+          logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function updateStatus(message) {
+          statusEl.textContent = message;
+          if (game.in_checkmate()) {
+            statusEl.textContent = game.turn() === 'b' ? 'White delivers checkmate!' : 'Black delivers checkmate!';
+          } else if (game.in_draw()) {
+            statusEl.textContent = 'Drawn position.';
+          } else if (game.in_check()) {
+            statusEl.textContent += ' Check!';
+          }
+        }
+
+        function updateCaptures() {
+          if (capturePieces.length === 0) {
+            capturesEl.textContent = '—';
+            return;
+          }
+
+          capturesEl.textContent = capturePieces.join(' ');
+        }
+
+        function algebraicToEmoji(move) {
+          const map = {
+            p: '♙',
+            n: '♘',
+            b: '♗',
+            r: '♖',
+            q: '♕',
+            k: '♔',
+          };
+          const piece = move.piece ? map[move.piece.toLowerCase()] || move.piece : '';
+          return `${piece} ${move.from}→${move.to}`;
+        }
+
+        function onDrop(source, target) {
+          const move = game.move({ from: source, to: target, promotion: 'q' });
+          if (!move) {
+            return 'snapback';
+          }
+
+          if (move.captured) {
+            capturePieces.push(move.color === 'w' ? move.captured.toUpperCase() : move.captured.toLowerCase());
+            updateCaptures();
+          }
+
+          logMove(`You: ${algebraicToEmoji(move)}`);
+          updateStatus('Bot thinking...');
+          window.setTimeout(botMove, 320);
+        }
+
+        function evaluateMove(move) {
+          if (move.san.includes('#')) return 100;
+          if (move.san.includes('+')) return 10;
+          if (move.captured) return 6;
+          if (move.promotion) return 8;
+          return Math.random();
+        }
+
+        function botMove() {
+          if (game.game_over()) {
+            updateStatus('Game over. Start a new game!');
+            return;
+          }
+
+          const moves = game.moves({ verbose: true });
+          if (moves.length === 0) {
+            updateStatus('Stalemate.');
+            return;
+          }
+
+          moves.sort((a, b) => evaluateMove(b) - evaluateMove(a));
+          const consider = moves.slice(0, Math.min(3, moves.length));
+          const choice = consider[Math.floor(Math.random() * consider.length)];
+          const move = game.move(choice);
+
+          if (move && move.captured) {
+            capturePieces.push(move.color === 'w' ? move.captured.toUpperCase() : move.captured.toLowerCase());
+            updateCaptures();
+          }
+
+          board.position(game.fen(), false);
+          logMove(`Bot: ${algebraicToEmoji(move)}`);
+          updateStatus('Your move');
+        }
+
+        function resetGame() {
+          game.reset();
+          capturePieces.length = 0;
+          board.start();
+          updateCaptures();
+          logEl.innerHTML = '';
+          updateStatus('New game. Your move');
+        }
+
+        document.getElementById('new-game').addEventListener('click', resetGame);
+        document.getElementById('flip-board').addEventListener('click', () => board.flip());
+
+        updateCaptures();
+        updateStatus('New game. Your move');
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initChessArena);
+      } else {
+        initChessArena();
+      }
+    </script>
+  </body>
+</html>
