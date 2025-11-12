@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS game (
     average_play_time FLOAT DEFAULT 0,
     publisher_username VARCHAR(20) NOT NULL,
     constraint PK_Game PRIMARY KEY (game_id),
-    constraint FK_Game_Publisher FOREIGN KEY (publisher_username) REFERENCES publisher(username)
+    constraint FK_Game_Publisher FOREIGN KEY (publisher_username) REFERENCES publisher(username) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS game_update_history (
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS game_update_history (
     approve_by VARCHAR(20),
     game_id INT NOT NULL,
     constraint PK_Game_Update_History PRIMARY KEY (update_id),
-    constraint FK_Game_Update_History_Game FOREIGN KEY (game_id) REFERENCES game(game_id),
+    constraint FK_Game_Update_History_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE,
     constraint FK_Game_Update_History_Admin FOREIGN KEY (approve_by) REFERENCES admin(username)
 );
 
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS reply (
     reply_to_comment_id INT,
     constraint PK_Reply PRIMARY KEY (thread_name, username, comment_id),
     constraint FK_Reply_Forum FOREIGN KEY (thread_name) REFERENCES forum(thread_name) ON DELETE CASCADE,
-    constraint FK_Reply_User FOREIGN KEY (username) REFERENCES User(username), -- ON DELETE CASCADE???
+    constraint FK_Reply_User FOREIGN KEY (username) REFERENCES User(username), 
     constraint FK_Reply_Comment FOREIGN KEY (comment_id) REFERENCES comment(comment_id) ON DELETE CASCADE,
     constraint FK_Reply_ReplyToComment FOREIGN KEY (reply_to_comment_id) REFERENCES comment(comment_id) ON DELETE CASCADE
 );
@@ -109,8 +109,8 @@ CREATE TABLE IF NOT EXISTS report (
     detail VARCHAR(255),
     report_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     constraint PK_Report PRIMARY KEY (username, game_id),
-    constraint FK_Report_User FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE,
-    constraint FK_Report_Game FOREIGN KEY (game_id) REFERENCES game(game_id) -- ???ON DELETE CASCADE
+    constraint FK_Report_User FOREIGN KEY (username) REFERENCES User(username),
+    constraint FK_Report_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS play (
@@ -135,8 +135,8 @@ CREATE TABLE IF NOT EXISTS create_relation (
     game_id INT NOT NULL,
     constraint PK_Create_Relation PRIMARY KEY (thread_name, username, game_id),
     constraint FK_Create_Relation_Forum FOREIGN KEY (thread_name) REFERENCES forum(thread_name) ON DELETE CASCADE,
-    constraint FK_Create_Relation_User FOREIGN KEY (username) REFERENCES User(username), -- ON DELETE CASCADE???
-    constraint FK_Create_Relation_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
+    constraint FK_Create_Relation_User FOREIGN KEY (username) REFERENCES User(username),
+    constraint FK_Create_Relation_Game FOREIGN KEY (game_id) REFERENCES game(game_id)
 );
 
 
