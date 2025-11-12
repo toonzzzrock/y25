@@ -7,17 +7,31 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
+type UserRole = 'user' | 'publisher';
+
 interface User {
   username: string;
-  email: string;
+  email?: string | null;
+  role?: UserRole;
 }
+
+type SignupPayload = {
+  username: string;
+  email: string;
+  dateOfBirth: string;
+  sex: string;
+  password: string;
+  userType: 'user' | 'publisher';
+  bankAccountName?: string;
+  bankAccountSerial?: string;
+};
 
 interface AuthContextType {
   user: User | null;
   authenticated: boolean;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  signup: (username: string, email: string, dateOfBirth: string, sex: string, password: string, userType: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<User>;
+  signup: (payload: SignupPayload) => Promise<void>;
   logout: () => Promise<void>;
   checkSession: () => Promise<void>;
 }
@@ -40,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch('/api/auth/session', { credentials: 'include' });
       const data = await response.json();
-      setAuthenticated(data.authenticated);
-      setUser(data.user);
+      setAuthenticated(Boolean(data?.authenticated));
+      setUser(data?.user ?? null);
     } catch (error) {
       console.error('Failed to check session:', error);
       setAuthenticated(false);
@@ -51,9 +65,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string): Promise<User> => {
+    setLoading(true);
     try {
-      setLoading(true);
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -62,40 +76,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.status === 503) {
-        // Database connection error
         throw new Error('Database connection failed');
       }
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Login failed');
+        throw new Error(data?.error || 'Login failed');
       }
 
-      const data = await response.json();
-      setUser(data.user);
+      if (!data?.user) {
+        throw new Error('Login failed: missing user data');
+      }
+
+      const userData: User = data.user;
+      setUser(userData);
       setAuthenticated(true);
+      return userData;
     } finally {
       setLoading(false);
     }
   };
 
-  const signup = async (username: string, email: string, dateOfBirth: string, sex: string, password: string, userType: string) => {
+  const signup = async (payload: SignupPayload) => {
     try {
       setLoading(true);
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, dateOfBirth, sex, password, userType }),
+        body: JSON.stringify(payload),
         credentials: 'include'
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Signup failed');
+        throw new Error(data?.error || 'Signup failed');
       }
 
-      const data = await response.json();
-      setUser(data.user);
+      setUser(data?.user ?? null);
       setAuthenticated(false); // User needs to login after signup
     } finally {
       setLoading(false);

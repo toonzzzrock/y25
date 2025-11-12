@@ -16,7 +16,9 @@ export default function SignupPage() {
     sex: "Other",
     password: "",
     confirmPassword: "",
-    terms: false
+    terms: false,
+    bankAccountName: "",
+    bankAccountSerial: ""
   });
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -32,6 +34,8 @@ export default function SignupPage() {
     password?: string;
     confirmPassword?: string;
     terms?: string;
+    bankAccountName?: string;
+    bankAccountSerial?: string;
   }>({});
 
   // Real-time password strength validation
@@ -146,6 +150,19 @@ export default function SignupPage() {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
+    if (userType === "publisher") {
+      const trimmedBankAccountName = values.bankAccountName.trim();
+      const trimmedBankAccountSerial = values.bankAccountSerial.trim();
+
+      if (!trimmedBankAccountName) {
+        newErrors.bankAccountName = "Bank account name is required";
+      }
+
+      if (!trimmedBankAccountSerial) {
+        newErrors.bankAccountSerial = "Bank account serial number is required";
+      }
+    }
+
     if (!values.terms) {
       newErrors.terms = "You must accept Terms & Conditions";
     }
@@ -187,13 +204,26 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      await signup(values.username, values.email, values.dateOfBirth, values.sex, values.password, userType);
+      const trimmedBankAccountName = values.bankAccountName.trim();
+      const trimmedBankAccountSerial = values.bankAccountSerial.trim();
+
+      await signup({
+        username: values.username,
+        email: values.email,
+        dateOfBirth: values.dateOfBirth,
+        sex: values.sex,
+        password: values.password,
+        userType,
+        bankAccountName: userType === "publisher" ? trimmedBankAccountName : undefined,
+        bankAccountSerial: userType === "publisher" ? trimmedBankAccountSerial : undefined,
+      });
       show("Account created successfully! Redirecting to login...", 'success');
       setTimeout(() => {
         router.push('/');
       }, 2000);
-    } catch (error: any) {
-      show(error.message || "Failed to create account", 'error');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create account";
+      show(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -244,7 +274,16 @@ export default function SignupPage() {
                     type="button"
                     key={t}
                     className={`toggle-btn ${userType === t ? "active" : ""}`}
-                    onClick={() => setUserType(t)}
+                    onClick={() => {
+                      setUserType(t);
+                      if (t === "user") {
+                        setErrors((prev) => ({
+                          ...prev,
+                          bankAccountName: undefined,
+                          bankAccountSerial: undefined,
+                        }));
+                      }
+                    }}
                   >
                     {t === "user" ? "User" : "Publisher"}
                   </button>
@@ -553,6 +592,74 @@ export default function SignupPage() {
                     </div>
                   )}
                 </div>
+
+                {userType === 'publisher' && (
+                  <>
+                    <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.35rem', fontSize: '0.9rem' }}>
+                        <span style={{ color: '#000000ff' }}>Bank Account Name</span>
+                        {!values.bankAccountName && <span style={{ color: '#ff6600', marginLeft: '0.25rem' }}>*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input signup-input"
+                        placeholder="Bank account name"
+                        value={values.bankAccountName}
+                        onChange={(e) => {
+                          const nextValue = e.target.value;
+                          setValues((prev) => ({ ...prev, bankAccountName: nextValue }));
+                          if (nextValue.trim()) {
+                            setErrors((prev) => ({ ...prev, bankAccountName: undefined }));
+                          }
+                        }}
+                        style={{
+                          borderColor: errors.bankAccountName ? '#ff3333' : undefined,
+                          borderWidth: errors.bankAccountName ? '2px' : undefined,
+                          backgroundColor: errors.bankAccountName ? '#ffebee' : undefined,
+                          color: '#1a1a1a',
+                        }}
+                        required={userType === 'publisher'}
+                      />
+                      {errors.bankAccountName && (
+                        <div style={{ color: '#d32f2f', fontSize: '0.75rem', marginTop: '0.25rem', fontWeight: '500' }}>
+                          {errors.bankAccountName}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.35rem', fontSize: '0.9rem' }}>
+                        <span style={{ color: '#000000ff' }}>Bank Account Serial Number</span>
+                        {!values.bankAccountSerial && <span style={{ color: '#ff6600', marginLeft: '0.25rem' }}>*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input signup-input"
+                        placeholder="Serial number"
+                        value={values.bankAccountSerial}
+                        onChange={(e) => {
+                          const nextValue = e.target.value;
+                          setValues((prev) => ({ ...prev, bankAccountSerial: nextValue }));
+                          if (nextValue.trim()) {
+                            setErrors((prev) => ({ ...prev, bankAccountSerial: undefined }));
+                          }
+                        }}
+                        style={{
+                          borderColor: errors.bankAccountSerial ? '#ff3333' : undefined,
+                          borderWidth: errors.bankAccountSerial ? '2px' : undefined,
+                          backgroundColor: errors.bankAccountSerial ? '#ffebee' : undefined,
+                          color: '#1a1a1a',
+                        }}
+                        required={userType === 'publisher'}
+                      />
+                      {errors.bankAccountSerial && (
+                        <div style={{ color: '#d32f2f', fontSize: '0.75rem', marginTop: '0.25rem', fontWeight: '500' }}>
+                          {errors.bankAccountSerial}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 <div className="form-group checkbox-group" style={{ marginTop: "0.75rem" }}>
                   <label className="checkbox-label" style={{

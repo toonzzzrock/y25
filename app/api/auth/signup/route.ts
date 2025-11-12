@@ -6,12 +6,31 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
-import { generateSalt, hashPassword, validatePasswordStrength, validateEmail, generateUsernameFromEmail } from '@/lib/auth';
+import { generateSalt, hashPassword, validatePasswordStrength, validateEmail } from '@/lib/auth';
+import type { RowDataPacket } from 'mysql2';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { username, email, dateOfBirth, sex, password, userType } = body;
+    const {
+      username,
+      email,
+      dateOfBirth,
+      sex,
+      password,
+      userType,
+      bankAccountName,
+      bankAccountSerial,
+    } = body as {
+      username?: string;
+      email?: string;
+      dateOfBirth?: string;
+      sex?: string;
+      password?: string;
+      userType?: string;
+      bankAccountName?: string;
+      bankAccountSerial?: string;
+    };
 
     // Validation
     if (!username || !email || !dateOfBirth || !sex || !password) {
@@ -19,6 +38,27 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields' },
         { status: 400 }
       );
+    }
+
+    const normalizedUserType: 'user' | 'publisher' = userType === 'publisher' ? 'publisher' : 'user';
+
+    const trimmedBankAccountName = typeof bankAccountName === 'string' ? bankAccountName.trim() : '';
+    const trimmedBankAccountSerial = typeof bankAccountSerial === 'string' ? bankAccountSerial.trim() : '';
+
+    if (normalizedUserType === 'publisher') {
+      if (!trimmedBankAccountName) {
+        return NextResponse.json(
+          { error: 'Bank account name is required for publisher accounts' },
+          { status: 400 }
+        );
+      }
+
+      if (!trimmedBankAccountSerial) {
+        return NextResponse.json(
+          { error: 'Bank account serial number is required for publisher accounts' },
+          { status: 400 }
+        );
+      }
     }
 
     // Validate email
@@ -41,11 +81,11 @@ export async function POST(request: NextRequest) {
     // Check for username and email availability
     const connection = await pool.getConnection();
     try {
-      const [usernameRows] = await connection.query(
+      const [usernameRows] = await connection.query<RowDataPacket[]>(
         'SELECT COUNT(*) as count FROM `User` WHERE username = ?',
         [username]
       );
-      const usernameCount = (usernameRows as any[])[0]?.count || 0;
+      const usernameCount = (usernameRows[0]?.count as number | undefined) ?? 0;
       if (usernameCount > 0) {
         return NextResponse.json(
           { error: 'Username already taken' },
@@ -53,11 +93,11 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const [emailRows] = await connection.query(
+      const [emailRows] = await connection.query<RowDataPacket[]>(
         'SELECT COUNT(*) as count FROM `User` WHERE email = ?',
         [email]
       );
-      const emailCount = (emailRows as any[])[0]?.count || 0;
+      const emailCount = (emailRows[0]?.count as number | undefined) ?? 0;
       if (emailCount > 0) {
         return NextResponse.json(
           { error: 'Email already registered' },
@@ -81,11 +121,11 @@ export async function POST(request: NextRequest) {
       );
 
       // If user role is Publisher, add to publisher table
-      if (userType === 'publisher') {
+      if (normalizedUserType === 'publisher') {
         await connection.query(
-          `INSERT INTO publisher (username, account_name)
-           VALUES (?, ?)`,
-          [username, username]
+          `INSERT INTO publisher (username, account_name, bank_account_serial)
+           VALUES (?, ?, ?)`,
+          [username, trimmedBankAccountName || username, trimmedBankAccountSerial]
         );
       }
 
@@ -100,11 +140,11 @@ export async function POST(request: NextRequest) {
     } finally {
       connection.release();
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Signup error:', error);
     
     // Handle duplicate email
-    if (error.code === 'ER_DUP_ENTRY') {
+    if (typeof error === 'object' && error !== null && 'code' in error && (error as { code?: string }).code === 'ER_DUP_ENTRY') {
       return NextResponse.json(
         { error: 'Email already registered' },
         { status: 409 }

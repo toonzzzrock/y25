@@ -39,7 +39,8 @@ export async function GET(request: NextRequest) {
           authenticated: true,
           user: {
             username: sessionData.username,
-            email: sessionData.email
+            email: sessionData.email,
+            role: sessionData.role ?? 'user'
           }
         },
         { status: 200 }

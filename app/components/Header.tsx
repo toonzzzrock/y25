@@ -1,6 +1,4 @@
 'use client';
-
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
@@ -26,7 +24,7 @@ export default function Header({
   hideUserIcon = false,
 }: HeaderProps) {
   const router = useRouter();
-  const { authenticated } = useAuth();
+  const { authenticated, user } = useAuth();
 
   const handleYClick = () => {
     router.push(authenticated ? '/home' : '/');
@@ -36,17 +34,41 @@ export default function Header({
     router.push('/profile');
   };
 
+  const handlePublisherClick = () => {
+    router.push('/publisher');
+  };
+
   return (
     <header className="home-header">
-      <button
+      <div
         className="logo-btn"
+        role="button"
+        tabIndex={0}
         onClick={handleYClick}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            handleYClick();
+          }
+        }}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex' }}
       >
         <div className="logo">
           <span className="logo-y25">Y25</span>
+          {user?.role === 'publisher' && (
+            <button
+              type="button"
+              className="publisher-tag"
+              onClick={(event) => {
+                event.stopPropagation();
+                handlePublisherClick();
+              }}
+            >
+              PUBLISHER
+            </button>
+          )}
         </div>
-      </button>
+      </div>
 
       {showSearch && (
         <div className="search-container" style={{ position: 'relative' }}>

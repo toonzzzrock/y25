@@ -7,7 +7,19 @@ import Header from "@/app/components/Header";
 import { getAllCategories } from "@/lib/data/categoriesUtils";
 import "../home.css";
 
-type Game = { id: string; img: string; alt: string; section: "trending" | "new" };
+type GameSummary = {
+  id: number | string;
+  title: string;
+  description?: string | null;
+  developer?: string | null;
+  releaseDate?: string | null;
+  genre?: string | null;
+  cardImage?: string | null;
+};
+type NormalizedGame = GameSummary & {
+  image_url?: string | null;
+  release_date?: string | null;
+};
 type HomeThreadSummary = {
   thread_name: string;
   detail: string | null;
@@ -16,26 +28,56 @@ type HomeThreadSummary = {
   reply_count: number;
   game_name: string | null;
 };
-const trendingGames: Game[] = [
-  { id: "boxing", img: "/images/boxing-game.svg", alt: "Boxing Game", section: "trending" },
-  { id: "platform", img: "/images/mario-game.svg", alt: "Platform Game", section: "trending" },
-  { id: "racing", img: "/images/racing-game.svg", alt: "Racing Game", section: "trending" },
-  { id: "city", img: "/images/city-game.svg", alt: "City Builder", section: "trending" },
-  { id: "survival", img: "/images/survival-game.svg", alt: "Survival Game", section: "trending" },
-  { id: "space", img: "/images/space-shooter.svg", alt: "Space Shooter", section: "trending" },
-  { id: "underwater", img: "/images/underwater-game.svg", alt: "Underwater Game", section: "trending" },
-  { id: "dungeon", img: "/images/dungeon-game.svg", alt: "Dungeon Game", section: "trending" },
-];
-const newGames: Game[] = [
-  { id: "kawai", img: "/images/farm-game.svg", alt: "Kawai Run", section: "new" },
-  { id: "squirrel", img: "/images/jungle-game.svg", alt: "Squirrel Game", section: "new" },
-  { id: "flaaaa", img: "/images/adventure-game.svg", alt: "Flaaaa vs Mutt", section: "new" },
-  { id: "petfriends", img: "/images/forest-game.svg", alt: "Pet Friends", section: "new" },
-  { id: "jungle", img: "/images/castle-game.svg", alt: "Jungle Game", section: "new" },
-  { id: "winter", img: "/images/winter-game.svg", alt: "Winter Game", section: "new" },
-  { id: "pirate", img: "/images/pirate-game.svg", alt: "Pirate Game", section: "new" },
-  { id: "candy", img: "/images/candy-game.svg", alt: "Candy Game", section: "new" },
-];
+const resolveGameImage = (rawId: number | string | null | undefined) => {
+  if (rawId === null || rawId === undefined) {
+    return "/images/placeholder.svg";
+  }
+
+  const numericId = typeof rawId === "number" ? rawId : Number(rawId);
+  if (!Number.isFinite(numericId)) {
+    return "/images/placeholder.svg";
+  }
+
+  return `/data/game/${numericId}/game_profile.svg`;
+};
+
+const toGameSummary = (game: any, fallbackIndex: number = 0): GameSummary => {
+  const rawId = game?.id ?? game?.game_id ?? fallbackIndex + 1;
+  const numericId = typeof rawId === "number" ? rawId : Number(rawId);
+  const safeId = Number.isFinite(numericId) ? numericId : fallbackIndex + 1;
+
+  return {
+    id: safeId,
+    title: game?.title ?? game?.game_name ?? `Game ${safeId}`,
+    description: game?.description ?? game?.detail ?? null,
+    developer: game?.developer ?? game?.publisher_username ?? null,
+    releaseDate: game?.release_date ?? game?.releaseDate ?? null,
+    genre: game?.genre ?? null,
+    cardImage: resolveGameImage(safeId),
+  };
+};
+
+const toNormalizedGame = (game: any, fallbackIndex: number = 0): NormalizedGame => {
+  const summary = toGameSummary(game, fallbackIndex);
+  return {
+    ...summary,
+    description: summary.description ?? game?.description ?? game?.detail ?? null,
+    developer: summary.developer ?? game?.publisher_username ?? null,
+    releaseDate: summary.releaseDate ?? game?.release_date ?? game?.releaseDate ?? null,
+    genre: summary.genre ?? game?.genre ?? null,
+    cardImage: summary.cardImage ?? game?.cardImage ?? game?.image_url ?? '/images/placeholder.svg',
+    image_url: game?.image_url ?? summary.cardImage ?? '/images/placeholder.svg',
+    release_date: game?.release_date ?? null,
+  };
+};
+
+const normalizeGameList = (games: any[] | undefined | null, startIndex: number = 0): NormalizedGame[] => {
+  if (!Array.isArray(games) || games.length === 0) {
+    return [];
+  }
+
+  return games.map((game, index) => toNormalizedGame(game, startIndex + index));
+};
 
 export default function HomePage() {
   // All hooks must be called unconditionally at the top
@@ -44,19 +86,21 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [notification, setNotification] = useState<{ message: string; type: string } | null>(null);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<NormalizedGame[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchSuggestions, setSearchSuggestions] = useState<any[]>([]);
+  const [searchSuggestions, setSearchSuggestions] = useState<NormalizedGame[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [categoryGames, setCategoryGames] = useState<any[]>([]);
+  const [categoryGames, setCategoryGames] = useState<NormalizedGame[]>([]);
   const [isLoadingCategory, setIsLoadingCategory] = useState(false);
   const [latestThreads, setLatestThreads] = useState<HomeThreadSummary[]>([]);
   const [isLoadingCommunity, setIsLoadingCommunity] = useState(true);
   const [communityError, setCommunityError] = useState<string | null>(null);
-  const [allGamesLibrary, setAllGamesLibrary] = useState<any[]>([]);
+  const [allGamesLibrary, setAllGamesLibrary] = useState<NormalizedGame[]>([]);
   const [isLoadingAllGames, setIsLoadingAllGames] = useState(false);
   const [allGamesError, setAllGamesError] = useState<string | null>(null);
+  const [trendingGames, setTrendingGames] = useState<NormalizedGame[]>([]);
+  const [newGames, setNewGames] = useState<NormalizedGame[]>([]);
   const allCategories = getAllCategories();
 
   const showNotification = useCallback((message: string, type: string = "info") => {
@@ -127,7 +171,16 @@ export default function HomePage() {
         }
 
         const games = Array.isArray(data.games) ? data.games : [];
-        setAllGamesLibrary(games);
+        const normalized = normalizeGameList(games);
+
+        setAllGamesLibrary(normalized);
+
+        const trendingCount = Math.min(8, normalized.length);
+        const trendingList = normalized.slice(0, trendingCount);
+        const newList = normalized.slice(trendingCount, trendingCount + 8);
+
+        setTrendingGames(trendingList);
+        setNewGames(newList.length > 0 ? newList : trendingList);
       } catch (error: any) {
         if (error?.name === 'AbortError') {
           return;
@@ -163,7 +216,7 @@ export default function HomePage() {
       const categoryName = data?.category || categoryId.toUpperCase();
 
       if (response.ok && data.games && data.games.length > 0) {
-        setCategoryGames(data.games);
+  setCategoryGames(normalizeGameList(data.games));
         showNotification(`Found ${data.games.length} ${categoryName} game${data.games.length === 1 ? '' : 's'}`, "success");
       } else {
         setCategoryGames([]);
@@ -196,7 +249,7 @@ export default function HomePage() {
       const data = await response.json();
 
       if (response.ok && data.games && data.games.length > 0) {
-        setSearchSuggestions(data.games.slice(0, 5)); // Show top 5 suggestions
+        setSearchSuggestions(normalizeGameList(data.games.slice(0, 5)));
         setShowSuggestions(true);
       } else {
         setSearchSuggestions([]);
@@ -248,7 +301,7 @@ export default function HomePage() {
         }
 
         if (response.ok && data.games && data.games.length > 0) {
-          setSearchResults(data.games);
+          setSearchResults(normalizeGameList(data.games));
           if (!silent) {
             const plural = data.games.length === 1 ? "" : "s";
             showNotification(`Found ${data.games.length} game${plural}${categorySuffix}`, "success");
@@ -274,9 +327,12 @@ export default function HomePage() {
     await executeSearch(activeCategory);
   }, [activeCategory, executeSearch]);
 
-  function handlePlay(game: Game) {
-    showNotification(`Starting ${game.alt}...`, "success");
-  }
+  const navigateToGame = useCallback(
+    (gameId: number | string) => {
+      router.push(`/games/${encodeURIComponent(String(gameId))}`);
+    },
+    [router]
+  );
 
   function handleSuggestionClick(suggestion: any) {
     setSearchQuery(suggestion.title);
@@ -290,25 +346,55 @@ export default function HomePage() {
   }
 
   const renderDynamicGameCard = (game: any, index: number) => {
-    const title = game.title || game.game_name || 'Game';
-    const cardKey = `${game.id ?? `${title}-${index}`}`;
-    const imageSrc = game.image_url || '/images/placeholder.svg';
+    const rawId = game?.id ?? game?.game_id ?? index + 1;
+    const gameId = typeof rawId === 'string' || typeof rawId === 'number' ? rawId : index + 1;
+    const title = game?.title || game?.game_name || `Game ${index + 1}`;
+    const imageSrc = game?.cardImage || game?.image_url || resolveGameImage(gameId);
+    const releaseRaw = game?.release_date || game?.releaseDate;
+    let releaseLabel: string | null = null;
+
+    if (releaseRaw) {
+      try {
+        const parsedDate = new Date(releaseRaw);
+        if (!Number.isNaN(parsedDate.getTime())) {
+          releaseLabel = `Released ${parsedDate.toLocaleDateString()}`;
+        } else if (typeof releaseRaw === 'string') {
+          releaseLabel = releaseRaw;
+        }
+      } catch {
+        releaseLabel = typeof releaseRaw === 'string' ? releaseRaw : null;
+      }
+    }
+
+    const secondaryLabel = game?.genre || game?.developer || releaseLabel || null;
+
+    const handleNavigate = () => {
+      navigateToGame(gameId);
+    };
 
     return (
       <div
-        key={cardKey}
+        key={String(gameId)}
         style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}
       >
         <div
           className="game-card"
-          onClick={() => showNotification(`Viewing ${title}`, 'info')}
+          role="button"
+          tabIndex={0}
+          onClick={handleNavigate}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              handleNavigate();
+            }
+          }}
         >
           <img
             src={imageSrc}
             alt={title}
             className="game-image"
             onError={(event) => {
-              (event.target as HTMLImageElement).src = '/images/boxing-game.svg';
+              (event.target as HTMLImageElement).src = '/images/placeholder.svg';
             }}
           />
           <div className="game-overlay">
@@ -316,7 +402,7 @@ export default function HomePage() {
               className="play-btn"
               onClick={(event) => {
                 event.stopPropagation();
-                showNotification(`Starting ${title}...`, 'success');
+                handleNavigate();
               }}
             >
               Play Now
@@ -334,7 +420,7 @@ export default function HomePage() {
           >
             {title}
           </p>
-          {game.genre && (
+          {secondaryLabel && (
             <p
               style={{
                 margin: '0',
@@ -342,7 +428,7 @@ export default function HomePage() {
                 color: '#ff6600',
               }}
             >
-              {game.genre}
+              {secondaryLabel}
             </p>
           )}
         </div>
@@ -564,19 +650,7 @@ export default function HomePage() {
                     </button>
                   </div>
                   <div className="game-grid trending-grid">
-                    {trendingGames.map((g) => (
-                      <div key={g.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <div className="game-card" onClick={() => showNotification('Game card clicked', 'info')}>
-                          <img src={g.img} alt={g.alt} className="game-image" />
-                          <div className="game-overlay">
-                            <button className="play-btn" onClick={(e) => { e.stopPropagation(); handlePlay(g); }}>Play Now</button>
-                          </div>
-                        </div>
-                        <p style={{ margin: '0', textAlign: 'center', fontSize: '0.9rem', color: '#fff', fontWeight: '500' }}>
-                          {g.alt}
-                        </p>
-                      </div>
-                    ))}
+                    {trendingGames.map((game, index) => renderDynamicGameCard(game, index))}
                   </div>
                 </section>
                 <section className="game-section">
@@ -589,19 +663,7 @@ export default function HomePage() {
                     </button>
                   </div>
                   <div className="game-grid newgame-grid">
-                    {newGames.map((g) => (
-                      <div key={g.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <div className="game-card" onClick={() => showNotification('Game card clicked', 'info')}>
-                          <img src={g.img} alt={g.alt} className="game-image" />
-                          <div className="game-overlay">
-                            <button className="play-btn" onClick={(e) => { e.stopPropagation(); handlePlay(g); }}>Play Now</button>
-                          </div>
-                        </div>
-                        <p style={{ margin: '0', textAlign: 'center', fontSize: '0.9rem', color: '#fff', fontWeight: '500' }}>
-                          {g.alt}
-                        </p>
-                      </div>
-                    ))}
+                    {newGames.map((game, index) => renderDynamicGameCard(game, index))}
                   </div>
                 </section>
                 <section className="game-section">

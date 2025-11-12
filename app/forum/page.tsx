@@ -902,11 +902,11 @@ export default function ForumPage() {
     };
   }, [user?.username]);
 
-  const recentThreads = useMemo(() => allThreads.slice(0, 3), [allThreads]);
+  const recentThreads = useMemo(() => allThreads.slice(0, 5), [allThreads]);
   const mostDiscussedThreads = useMemo(() => (
     [...allThreads]
       .sort((a, b) => b.reply_count - a.reply_count)
-      .slice(0, 3)
+      .slice(0, 5)
   ), [allThreads]);
   const filteredCommentedThreads = useMemo(() => {
     if (userCommentedThreads.length === 0) {
@@ -1026,15 +1026,6 @@ export default function ForumPage() {
                 ) : (
                   <div className="muted">No activity yet.</div>
                 )}
-              </div>
-            </div>
-
-            {/* Featured */}
-            <div className="feature">
-              <img src="/images/placeholder.svg" alt="Featured" />
-              <div style={{ marginTop: '10px' }}>
-                <div>Screen New Shark</div>
-                <h3 style={{ margin: '6px 0 0 0', color: '#fff' }}>Hungry Shark</h3>
               </div>
             </div>
 

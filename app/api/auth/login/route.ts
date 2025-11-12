@@ -78,11 +78,20 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const [publisherRows] = await connection.query(
+        'SELECT account_name FROM publisher WHERE username = ? LIMIT 1',
+        [user.username]
+      );
+
+      const isPublisher = Array.isArray(publisherRows) && publisherRows.length > 0;
+      const role: 'publisher' | 'user' = isPublisher ? 'publisher' : 'user';
+
       // Create session token (simple approach - in production use JWT or secure session)
       const sessionToken = Buffer.from(
         JSON.stringify({
           username: user.username,
           email: user.email,
+          role,
           timestamp: Date.now()
         })
       ).toString('base64');
@@ -92,7 +101,7 @@ export async function POST(request: NextRequest) {
         {
           success: true,
           message: 'Login successful',
-          user: { username: user.username, email: user.email }
+          user: { username: user.username, email: user.email, role }
         },
         { status: 200 }
       );

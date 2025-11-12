@@ -330,6 +330,35 @@ export default function ProfilePage() {
             </div>
 
             <div style={{ display: 'grid', gap: '0.75rem' }}>
+              {user?.role === 'publisher' && (
+                <button
+                  type="button"
+                  onClick={() => router.push('/publisher')}
+                  style={{
+                    background: '#2f1c17',
+                    color: '#ffb88b',
+                    border: '1px solid rgba(255, 122, 43, 0.45)',
+                    borderRadius: '10px',
+                    padding: '0.85rem 1.5rem',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s ease, background 0.2s ease, color 0.2s ease',
+                  }}
+                  onMouseEnter={(event) => {
+                    event.currentTarget.style.transform = 'translateY(-2px)';
+                    event.currentTarget.style.background = '#ff7a2b';
+                    event.currentTarget.style.color = '#fff';
+                  }}
+                  onMouseLeave={(event) => {
+                    event.currentTarget.style.transform = 'translateY(0)';
+                    event.currentTarget.style.background = '#2f1c17';
+                    event.currentTarget.style.color = '#ffb88b';
+                  }}
+                >
+                  Publisher dashboard
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => router.push('/home')}

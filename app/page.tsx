@@ -43,9 +43,10 @@ export default function HomeLoginPage() {
     setLoginLoading(true);
     try {
       await login(username, password);
+      const destination = '/home';
       showNotification("Login successful! Redirecting...", "success");
       setTimeout(() => {
-        router.push('/home');
+        router.push(destination);
       }, 1000);
     } catch (error: any) {
       const errorMessage = error.message || "Login failed";

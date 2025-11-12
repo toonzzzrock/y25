@@ -12,23 +12,36 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
     const offset = parseInt(searchParams.get('offset') || '0');
+    const publisherUsername = searchParams.get('publisher');
 
     const connection = await pool.getConnection();
     try {
+      const whereClauses: string[] = [];
+      const values: any[] = [];
+
+      if (publisherUsername && publisherUsername.trim().length > 0) {
+        whereClauses.push('publisher_username = ?');
+        values.push(publisherUsername.trim());
+      }
+
+      const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
       // Get paginated games
       const [games] = await connection.query(
-        `SELECT game_id as id, game_name as title, detail as description, 
-                publisher_username as developer, link_to_file as image_url, 
+        `SELECT game_id as id, game_name as title, detail as description,
+                publisher_username as developer, link_to_file as image_url,
                 release_date
-         FROM game 
-         ORDER BY release_date DESC
+         FROM game
+         ${whereSql}
+         ORDER BY release_date DESC, game_id DESC
          LIMIT ? OFFSET ?`,
-        [limit, offset]
+        [...values, limit, offset]
       );
 
       // Get total count
       const [countResult] = await connection.query(
-        `SELECT COUNT(*) as total FROM game`
+        `SELECT COUNT(*) as total FROM game ${whereSql}`,
+        values
       );
 
       const total = (countResult as any)[0]?.total || 0;

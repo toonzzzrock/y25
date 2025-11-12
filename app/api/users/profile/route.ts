@@ -11,6 +11,7 @@ import { validateEmail } from '@/lib/auth';
 type SessionUser = {
   username: string;
   email?: string | null;
+  role?: string | null;
 };
 
 function getSessionUser(request: NextRequest): SessionUser | null {
@@ -28,6 +29,7 @@ function getSessionUser(request: NextRequest): SessionUser | null {
     return {
       username: decoded.username,
       email: decoded.email ?? null,
+      role: decoded.role ?? null,
     };
   } catch (error) {
     console.error('Profile session parse error:', error);
@@ -211,6 +213,7 @@ export async function PUT(request: NextRequest) {
       const sessionPayload = {
         username: record.username,
         email: updatedEmail,
+        role: session.role ?? null,
         timestamp: Date.now(),
       };
 

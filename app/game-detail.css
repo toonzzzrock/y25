@@ -59,6 +59,7 @@
 }
 
 .search-input:focus {
+
   background-color: rgba(255, 255, 255, 0.08);
   border-color: var(--color-primary);
 }
@@ -107,9 +108,13 @@
 }
 
 .hero-container {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1.75rem;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
 .game-banner-container {
@@ -117,31 +122,49 @@
   border-radius: 12px;
   overflow: hidden;
   display: flex;
-  gap: 0;
-  max-width: 100%;
-  height: auto;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: none;
+  aspect-ratio: 16 / 9;
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5);
 }
 
 .game-banner-image {
   width: 100%;
-  height: auto;
-  min-height: 350px;
+  height: 100%;
   object-fit: cover;
   display: block;
 }
 
 .game-hero-info {
-  padding-top: 1.5rem;
-  padding-left: 1rem;
-  flex: 1;
+  width: 100%;
+  max-width: none;
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: stretch;
 }
 
 .game-header-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.game-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.game-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 .game-header-row > div {
@@ -149,9 +172,9 @@
 }
 
 .game-title {
-  font-size: 2.5rem;
+  font-size: 2.75rem;
   font-weight: 900;
-  letter-spacing: 2px;
+  letter-spacing: 1.2px;
   color: #d4a574;
   margin-bottom: 0.5rem;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
@@ -178,6 +201,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-height: 48px;
 }
 
 .report-btn:hover {
@@ -198,8 +222,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  min-height: 48px;
 }
 
 .fullscreen-btn:hover {
@@ -207,6 +231,47 @@
   border-color: rgba(170, 170, 170, 0.6);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(100, 100, 100, 0.4);
+}
+
+.fullscreen-btn svg {
+  pointer-events: none;
+}
+
+@media (max-width: 960px) {
+  .game-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .game-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+.game-banner-container.fullscreen-active {
+  position: fixed;
+  inset: 0;
+  max-width: none;
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto;
+  background: #000;
+  z-index: 30;
+  border-radius: 0;
+}
+
+.game-banner-container.fullscreen-active .game-banner-image {
+  object-fit: contain;
+  width: 100vw;
+  height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .game-hero-info {
+    width: 100%;
+    padding-top: 0;
+  }
 }
 
 /* Game Info Section */
@@ -217,6 +282,10 @@
   padding: 2rem;
   backdrop-filter: blur(10px);
   margin-top: 2rem;
+  width: 100%;
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .game-info-header {
@@ -327,6 +396,10 @@
 /* Screenshots Section */
 .screenshots-section {
   margin-bottom: 2.5rem;
+  width: 100%;
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .screenshots-section h3 {
@@ -476,6 +549,162 @@
   font-size: 0.85rem;
   line-height: 1.5;
   letter-spacing: 1px;
+}
+
+/* Report Modal */
+.report-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  padding: 1.5rem;
+  backdrop-filter: blur(6px);
+}
+
+.report-modal {
+  background: #1f120c;
+  border: 1px solid rgba(212, 165, 116, 0.3);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.report-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(212, 165, 116, 0.15);
+}
+
+.report-header h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: #d4a574;
+}
+
+.report-close {
+  background: transparent;
+  border: none;
+  color: #ffb88b;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+}
+
+.report-close:hover {
+  background: rgba(255, 136, 85, 0.15);
+}
+
+.report-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.report-label {
+  font-size: 0.85rem;
+  color: #d4a574;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.report-select,
+.report-textarea {
+  width: 100%;
+  background: rgba(25, 15, 12, 0.85);
+  border: 1px solid rgba(212, 165, 116, 0.25);
+  border-radius: 8px;
+  color: #f1e2dc;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+
+.report-select:focus,
+.report-textarea:focus {
+  border-color: rgba(255, 136, 85, 0.5);
+  box-shadow: 0 0 0 2px rgba(255, 136, 85, 0.2);
+}
+
+.report-textarea {
+  resize: vertical;
+  min-height: 140px;
+}
+
+.report-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid rgba(212, 165, 116, 0.15);
+  background: rgba(25, 15, 12, 0.6);
+}
+
+.report-secondary,
+.report-primary {
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.report-secondary {
+  background: rgba(90, 60, 45, 0.6);
+  color: #f1e2dc;
+}
+
+.report-secondary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+}
+
+.report-primary {
+  background: linear-gradient(135deg, #ff5722 0%, #ff7043 100%);
+  color: white;
+}
+
+.report-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(255, 87, 34, 0.4);
+}
+
+.report-primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+@media (max-width: 520px) {
+  .report-modal {
+    max-width: 100%;
+  }
+
+  .report-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .report-secondary,
+  .report-primary {
+    width: 100%;
+  }
 }
 
 /* Footer */
