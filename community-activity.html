@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Activity - Y25</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="community-activity-styles.css">
+</head>
+<body>
+    <header class="home-header">
+        <div class="logo">
+            <span class="logo-y25"><span class="logo-y">Y</span>25</span>
+        </div>
+        
+        <div class="search-container">
+            <input 
+                type="text" 
+                class="search-input" 
+                placeholder="Search the game"
+                id="searchInput"
+            >
+            <button class="search-button" id="searchBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                    <path d="M21 21L16.5 16.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+
+        <button class="user-icon-btn" id="userMenuBtn">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="16" cy="16" r="15" stroke="currentColor" stroke-width="2"/>
+                <circle cx="16" cy="12" r="5" fill="currentColor"/>
+                <path d="M6 26C6 21 10 18 16 18C22 18 26 21 26 26" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+    </header>
+
+    <main class="community-activity-main">
+        <div class="community-container">
+            <!-- Page Title -->
+            <section class="community-header">
+                <h1 class="community-title">Community Activity</h1>
+                <p class="community-subtitle">Community and offical content for all games and software on Y25.</p>
+            </section>
+
+            <!-- Main Content Grid -->
+            <div class="community-content-grid">
+                <!-- Left Column -->
+                <div class="community-left-column">
+                    <!-- Recently Viewed Hubs -->
+                    <section class="community-section">
+                        <h2 class="section-title">YOUR RECENTLY VIEWED HUBS</h2>
+                        <div class="hubs-list">
+                            <div class="hub-item">
+                                <img src="images/hungey-shark-thumb.svg" alt="Hungry Shark" class="hub-thumbnail">
+                                <div class="hub-info">
+                                    <h3 class="hub-name">Hungry Shark</h3>
+                                    <p class="hub-stat">285 new screenshots</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Featured Game Banner -->
+                    <section class="community-section featured-banner">
+                        <div class="banner-image-container">
+                            <img src="images/the-frenzy-banner.svg" alt="The Frenzy - Hungry Shark World" class="banner-image">
+                            <div class="banner-label">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="12" cy="12" r="10"/>
+                                </svg>
+                                <span>The Frenzy</span>
+                            </div>
+                        </div>
+                        <h3 class="banner-title">Screen New Shark</h3>
+                        <p class="banner-description">Hungry Shark</p>
+                    </section>
+                </div>
+
+                <!-- Middle Column -->
+                <div class="community-middle-column">
+                    <!-- Popular Hubs -->
+                    <section class="community-section">
+                        <h2 class="section-title">POPULAR HUBS</h2>
+                        <div class="popular-hubs-list">
+                            <div class="hub-card">
+                                <img src="images/bad-ice-cream-thumb.svg" alt="Bad Ice-cream" class="hub-card-thumbnail">
+                                <div class="hub-card-content">
+                                    <h3 class="hub-card-name">Bad Ice-cream</h3>
+                                    <p class="hub-card-stat">117 new screens this week</p>
+                                </div>
+                            </div>
+
+                            <div class="hub-card">
+                                <img src="images/fruit-ninja-thumb.svg" alt="Fruit Ninja" class="hub-card-thumbnail">
+                                <div class="hub-card-content">
+                                    <h3 class="hub-card-name">Fruit Ninja</h3>
+                                    <p class="hub-card-stat">155 new screenshots</p>
+                                </div>
+                            </div>
+
+                            <div class="hub-card">
+                                <img src="images/hungry-shark-thumb.svg" alt="Hungry Shark" class="hub-card-thumbnail">
+                                <div class="hub-card-content">
+                                    <h3 class="hub-card-name">Hungry Shark</h3>
+                                    <p class="hub-card-stat">283 new screenshots</p>
+                                </div>
+                            </div>
+
+                            <div class="hub-card">
+                                <img src="images/plants-zombies-thumb.svg" alt="Plants vs. Zombies 2" class="hub-card-thumbnail">
+                                <div class="hub-card-content">
+                                    <h3 class="hub-card-name">Plants vs. Zombies 2</h3>
+                                    <p class="hub-card-stat">142 new screenshots</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Right Column -->
+                <div class="community-right-column">
+                    <!-- Find Hubs Search -->
+                    <section class="community-section">
+                        <h2 class="section-title">FIND HUBS</h2>
+                        <div class="search-box">
+                            <input 
+                                type="text" 
+                                class="search-input-box" 
+                                placeholder="Search hubs..."
+                                id="hubSearchInput"
+                            >
+                            <button class="search-box-btn" id="hubSearchBtn">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                                    <path d="M21 21L16.5 16.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- Find People Search -->
+                    <section class="community-section">
+                        <h2 class="section-title">FIND PEOPLE</h2>
+                        <div class="search-box">
+                            <input 
+                                type="text" 
+                                class="search-input-box" 
+                                placeholder="Search people..."
+                                id="peopleSearchInput"
+                            >
+                            <button class="search-box-btn" id="peopleSearchBtn">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                                    <path d="M21 21L16.5 16.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- Record Achievements -->
+                    <section class="community-section">
+                        <h2 class="section-title">Yeah, I have set my new record!</h2>
+                        <div class="achievement-card">
+                            <img src="images/king-of-fruit-slicing.svg" alt="King of fruit slicing" class="achievement-icon">
+                            <div class="achievement-info">
+                                <h3 class="achievement-name">King of fruit slicing</h3>
+                                <p class="achievement-badge">Badge indicating a new record</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Bottom Section -->
+            <section class="community-bottom">
+                <div class="bottom-content-grid">
+                    <div class="bottom-item">
+                        <h3 class="bottom-item-title">Hungry Shark</h3>
+                        <p class="bottom-item-count">9</p>
+                    </div>
+                    <div class="bottom-item">
+                        <h3 class="bottom-item-title">Fruit Ninja</h3>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="community-activity-script.js"></script>
+</body>
+</html>

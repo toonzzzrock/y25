@@ -202,16 +202,17 @@ INSERT INTO `play` (`username`, `game_id`) VALUES
 
 CREATE TABLE `publisher` (
   `username` varchar(20) NOT NULL,
-  `account_name` varchar(70) DEFAULT NULL
+  `account_name` varchar(70) DEFAULT NULL,
+  `bank_account_serial` varchar(64) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `publisher`
 --
 
-INSERT INTO `publisher` (`username`, `account_name`) VALUES
-('jane_smith', 'Creative Gaming Labs'),
-('sarah_pub', 'Amazing Games Studio');
+INSERT INTO `publisher` (`username`, `account_name`, `bank_account_serial`) VALUES
+('jane_smith', 'Creative Gaming Labs', 'ACC-001-XYZ'),
+('sarah_pub', 'Amazing Games Studio', 'ACC-002-ABC');
 
 -- --------------------------------------------------------
 
