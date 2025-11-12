@@ -15,23 +15,21 @@ CREATE TABLE IF NOT EXISTS User (
     username VARCHAR(20) NOT NULL,
     password_encrypted VARCHAR(255) NOT NULL,
     salt_random_value VARBINARY(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) NOT NULL,
     DOB DATE NOT NULL,
     sex enum('Male', 'Female', 'Other') NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    constraint PK_User PRIMARY KEY (username)
+    constraint PK_User PRIMARY KEY (username),
+    UNIQUE KEY email (email)
 );
 
 CREATE TABLE IF NOT EXISTS session (
     session_id INT NOT NULL AUTO_INCREMENT,
     username VARCHAR(20) NOT NULL,
-    game_id INT NOT NULL,
-    start_play_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    end_play_time DATETIME,
+    last_login_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     device VARCHAR(50) NOT NULL,
     constraint PK_Session PRIMARY KEY (session_id),
-    constraint FK_Session_User FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE,
-    constraint FK_Session_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
+    constraint FK_Session_User FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS developer (
@@ -45,6 +43,7 @@ CREATE TABLE IF NOT EXISTS developer (
 CREATE TABLE IF NOT EXISTS publisher (
     username VARCHAR(20) NOT NULL,
     account_name VARCHAR(70),
+    banck_account_serial VARCHAR(64),
     constraint PK_Publisher PRIMARY KEY (username),
     constraint FK_Publisher_User FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE
 );
@@ -59,6 +58,7 @@ CREATE TABLE IF NOT EXISTS game (
     game_id INT NOT NULL AUTO_INCREMENT,
     game_name VARCHAR(70) NOT NULL,
     detail VARCHAR(255),
+    link_to_file VARCHAR(255) NOT NULL,
     release_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status enum("Published", "Decline", "Pending"),
     live_players INT DEFAULT 0,
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS game_update_history (
     detail VARCHAR(255),
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     link_to_new_file VARCHAR(255) NOT NULL,
-    is_approve BOOLEAN NOT NULL,
+    is_approve BOOLEAN NOT NULL DEFAULT FALSE,
     approve_time DATETIME,
     approve_by VARCHAR(20),
     game_id INT NOT NULL,
@@ -94,15 +94,9 @@ CREATE TABLE IF NOT EXISTS forum (
 
 CREATE TABLE IF NOT EXISTS comment (
     comment_id INT NOT NULL AUTO_INCREMENT,
-    comment_text VARBINARY(255) NOT NULL,
-    thread_name VARCHAR(70) NOT NULL,
-    username VARCHAR(20) NOT NULL,
-    reply_to_id INT,
+    comment_text VARCHAR(255) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    constraint PK_Comment PRIMARY KEY (comment_id),
-    constraint FK_Comment_Forum FOREIGN KEY (thread_name) REFERENCES forum(thread_name) ON DELETE CASCADE,
-    constraint FK_Comment_User FOREIGN KEY (username) REFERENCES User(username),
-    constraint FK_Comment_Reply FOREIGN KEY (reply_to_id) REFERENCES comment(comment_id)
+    constraint PK_Comment PRIMARY KEY (comment_id)
 );
 
 CREATE TABLE IF NOT EXISTS reply (
@@ -131,8 +125,7 @@ CREATE TABLE IF NOT EXISTS report (
 CREATE TABLE IF NOT EXISTS play (
     username VARCHAR(20) NOT NULL,
     game_id INT NOT NULL,
-    total_playtime INT DEFAULT 0,
-    last_session_start DATETIME,
+    accumulate_play_time INT NOT NULL,
     constraint PK_Play PRIMARY KEY (username, game_id),
     constraint FK_Play_User FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE,
     constraint FK_Play_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
@@ -148,21 +141,21 @@ CREATE TABLE IF NOT EXISTS tag (
 CREATE TABLE IF NOT EXISTS create_relation (
     thread_name VARCHAR(70) NOT NULL,
     username VARCHAR(20) NOT NULL,
-    game_id INT,
-    constraint PK_Create_Relation PRIMARY KEY (thread_name, username),
+    game_id INT NOT NULL,
+    constraint PK_Create_Relation PRIMARY KEY (thread_name, username, game_id),
     constraint FK_Create_Relation_Forum FOREIGN KEY (thread_name) REFERENCES forum(thread_name) ON DELETE CASCADE,
     constraint FK_Create_Relation_User FOREIGN KEY (username) REFERENCES User(username), -- ON DELETE CASCADE???
     constraint FK_Create_Relation_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS forum_participants (
-    thread_name VARCHAR(70) NOT NULL,
-    username VARCHAR(20) NOT NULL,
-    first_comment_time DATETIME NOT NULL,
-    constraint PK_Forum_Participants PRIMARY KEY (thread_name, username),
-    constraint FK_Forum_Participants_Forum FOREIGN KEY (thread_name) REFERENCES forum(thread_name) ON DELETE CASCADE,
-    constraint FK_Forum_Participants_User FOREIGN KEY (username) REFERENCES User(username)
-);
+--CREATE TABLE IF NOT EXISTS forum_participants (
+--    thread_name VARCHAR(70) NOT NULL,
+  --  username VARCHAR(20) NOT NULL,
+    --first_comment_time DATETIME NOT NULL,
+    --constraint PK_Forum_Participants PRIMARY KEY (thread_name, username),
+    --constraint FK_Forum_Participants_Forum FOREIGN KEY (thread_name) REFERENCES forum(thread_name) ON DELETE CASCADE,
+    --constraint FK_Forum_Participants_User FOREIGN KEY (username) REFERENCES User(username)
+--);
 
 ------------------------------------------------------
 ---- TRIGGER and PROCEDURE
