@@ -51,8 +51,8 @@ CREATE TABLE IF NOT EXISTS game (
     game_id INT NOT NULL AUTO_INCREMENT,
     game_name VARCHAR(70) NOT NULL,
     detail VARCHAR(255),
-    link_to_file VARCHAR(255) NOT NULL,
     release_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status enum("Published", "Decline", "Pending"),
     publisher_username VARCHAR(20) NOT NULL,
     constraint PK_Game PRIMARY KEY (game_id),
     constraint FK_Game_Publisher FOREIGN KEY (publisher_username) REFERENCES publisher(username)
@@ -65,7 +65,13 @@ CREATE TABLE IF NOT EXISTS game_update_history (
     detail VARCHAR(255),
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     link_to_new_file VARCHAR(255) NOT NULL,
-    constraint PK_Game_Update_History PRIMARY KEY (update_id)
+    is_approve BOOLEAN NOT NULL,
+    approve_time DATETIME,
+    approve_by VARCHAR(20),
+    game_id INT NOT NULL,
+    constraint PK_Game_Update_History PRIMARY KEY (update_id),
+    constraint FK_Game_Update_History_Game FOREIGN KEY (game_id) REFERENCES game(game_id),
+    constraint FK_Game_Update_History_Admin FOREIGN KEY (approve_by) REFERENCES admin(username)
 );
 
 CREATE TABLE IF NOT EXISTS forum (
@@ -134,14 +140,4 @@ CREATE TABLE IF NOT EXISTS create_relation (
     constraint FK_Create_Relation_Forum FOREIGN KEY (thread_name) REFERENCES forum(thread_name) ON DELETE CASCADE,
     constraint FK_Create_Relation_User FOREIGN KEY (username) REFERENCES User(username), -- ON DELETE CASCADE???
     constraint FK_Create_Relation_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS update_version_relation (
-    game_id INT NOT NULL,
-    update_id INT NOT NULL,
-    username VARCHAR(20) NOT NULL,
-    constraint PK_Update_Version_Relation PRIMARY KEY (game_id, update_id, username),
-    constraint FK_Update_Version_Relation_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE,
-    constraint FK_Update_Version_Relation_Game_Update_History FOREIGN KEY (update_id) REFERENCES game_update_history(update_id) ON DELETE CASCADE,
-    constraint FK_Update_Version_Relation_Publisher FOREIGN KEY (username) REFERENCES publisher(username)
 );
