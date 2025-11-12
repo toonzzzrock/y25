@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS game (
     detail VARCHAR(255),
     link_to_file VARCHAR(255) NOT NULL,
     release_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status enum("Published", "Decline", "Pending"),
+    status enum("Approve", "Reject", "Pending") DEFAULT "Pending",
     total_players INT DEFAULT 0,
     average_play_time FLOAT DEFAULT 0,
     publisher_username VARCHAR(20) NOT NULL,
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS game_update_history (
     detail VARCHAR(255),
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     link_to_new_file VARCHAR(255) NOT NULL,
-    is_approve BOOLEAN NOT NULL DEFAULT FALSE,
+    is_approve ENUM("Approve", "Reject", "Pending") DEFAULT "Pending",
     approve_time DATETIME,
     approve_by VARCHAR(20),
     game_id INT NOT NULL,
@@ -174,35 +174,35 @@ INSERT INTO developer (username, role, contact) VALUES
 
 -- Insert games (use the provided names, cycle publishers)
 INSERT INTO game (game_name, detail, link_to_file, release_date, status, total_players, average_play_time, publisher_username) VALUES
-('Adventure Game', 'Open-world exploration', 'index.html', '2024-06-01 10:00:00', 'Published', 12, 120.5, 'sarah_pub'),
-('Altos Odyssey', 'Endless runner with beautiful visuals', 'index.html', '2024-06-10 11:00:00', 'Published', 8, 45.0, 'jane_smith'),
-('Bad Ice-Cream', 'Local co-op puzzle brawler', 'index.html', '2024-07-01 12:00:00', 'Published', 5, 30.0, 'pub_one'),
-('Boxing Game', 'Arcade boxing action', 'index.html', '2024-07-10 09:30:00', 'Published', 3, 25.0, 'pub_two'),
-('Candy Game', 'Casual match-3 candy fun', 'index.html', '2024-07-20 14:00:00', 'Published', 20, 60.0, 'sarah_pub'),
+('Adventure Game', 'Open-world exploration', 'index.html', '2024-06-01 10:00:00', 'Approve', 12, 120.5, 'sarah_pub'),
+('Altos Odyssey', 'Endless runner with beautiful visuals', 'index.html', '2024-06-10 11:00:00', 'Approve', 8, 45.0, 'jane_smith'),
+('Bad Ice-Cream', 'Local co-op puzzle brawler', 'index.html', '2024-07-01 12:00:00', 'Approve', 5, 30.0, 'pub_one'),
+('Boxing Game', 'Arcade boxing action', 'index.html', '2024-07-10 09:30:00', 'Approve', 3, 25.0, 'pub_two'),
+('Candy Game', 'Casual match-3 candy fun', 'index.html', '2024-07-20 14:00:00', 'Approve', 20, 60.0, 'sarah_pub'),
 ('Castle Game', 'Tower defense in medieval setting', 'index.html', '2024-08-01 10:15:00', 'Pending', 0, 0.0, 'pub_three'),
-('City Game', 'City building simulator', 'index.html', '2024-08-15 15:00:00', 'Published', 6, 200.0, 'jane_smith'),
-('Dungeon Game', 'Roguelike dungeon crawler', 'index.html', '2024-09-01 18:00:00', 'Published', 9, 85.0, 'pub_one'),
-('Farm Game', 'Relaxing farming sim', 'index.html', '2024-09-15 10:00:00', 'Published', 4, 150.0, 'pub_two'),
-('Forest Game', 'Survival in a haunted forest', 'index.html', '2024-10-01 12:00:00', 'Decline', 0, 0.0, 'sarah_pub'),
-('Fruit Ninja', 'Slice-and-dice fruit arcade', 'index.html', '2024-06-05 09:00:00', 'Published', 30, 10.0, 'jane_smith'),
-('Hungry Shark', 'Underwater predator arcade', 'index.html', '2024-06-12 11:15:00', 'Published', 18, 55.0, 'pub_one'),
-('Jungle Game', 'Platformer through jungle temples', 'index.html', '2024-08-22 13:40:00', 'Published', 7, 70.0, 'pub_two'),
-('Mario Game', 'Classic platformer homage', 'index.html', '2024-07-03 16:00:00', 'Published', 25, 95.0, 'sarah_pub'),
-('Pirate Game', 'Open-sea adventure', 'index.html', '2024-07-25 17:10:00', 'Published', 11, 140.0, 'pub_three'),
-('Plants VS Zombies', 'Tower defense with plants', 'index.html', '2024-06-20 08:20:00', 'Published', 40, 120.0, 'jane_smith'),
-('Racing Game', 'Arcade racing championship', 'index.html', '2024-09-10 15:00:00', 'Published', 22, 35.0, 'pub_two'),
-('Space Shooter', '2D space shooter with upgrades', 'index.html', '2024-08-30 20:00:00', 'Published', 13, 50.0, 'pub_one'),
+('City Game', 'City building simulator', 'index.html', '2024-08-15 15:00:00', 'Approve', 6, 200.0, 'jane_smith'),
+('Dungeon Game', 'Roguelike dungeon crawler', 'index.html', '2024-09-01 18:00:00', 'Approve', 9, 85.0, 'pub_one'),
+('Farm Game', 'Relaxing farming sim', 'index.html', '2024-09-15 10:00:00', 'Approve', 4, 150.0, 'pub_two'),
+('Forest Game', 'Survival in a haunted forest', 'index.html', '2024-10-01 12:00:00', 'Reject', 0, 0.0, 'sarah_pub'),
+('Fruit Ninja', 'Slice-and-dice fruit arcade', 'index.html', '2024-06-05 09:00:00', 'Approve', 30, 10.0, 'jane_smith'),
+('Hungry Shark', 'Underwater predator arcade', 'index.html', '2024-06-12 11:15:00', 'Approve', 18, 55.0, 'pub_one'),
+('Jungle Game', 'Platformer through jungle temples', 'index.html', '2024-08-22 13:40:00', 'Approve', 7, 70.0, 'pub_two'),
+('Mario Game', 'Classic platformer homage', 'index.html', '2024-07-03 16:00:00', 'Approve', 25, 95.0, 'sarah_pub'),
+('Pirate Game', 'Open-sea adventure', 'index.html', '2024-07-25 17:10:00', 'Approve', 11, 140.0, 'pub_three'),
+('Plants VS Zombies', 'Tower defense with plants', 'index.html', '2024-06-20 08:20:00', 'Approve', 40, 120.0, 'jane_smith'),
+('Racing Game', 'Arcade racing championship', 'index.html', '2024-09-10 15:00:00', 'Approve', 22, 35.0, 'pub_two'),
+('Space Shooter', '2D space shooter with upgrades', 'index.html', '2024-08-30 20:00:00', 'Approve', 13, 50.0, 'pub_one'),
 ('Survival Game', 'Hardcore survival sim', 'index.html', '2024-10-10 21:00:00', 'Pending', 0, 0.0, 'sarah_pub'),
-('Underwater Game', 'Explore the deep sea', 'index.html', '2024-09-20 14:30:00', 'Published', 2, 300.0, 'pub_three'),
+('Underwater Game', 'Explore the deep sea', 'index.html', '2024-09-20 14:30:00', 'Approve', 2, 300.0, 'pub_three'),
 ('Winter Game', 'Snowball fights and sledding', 'index.html', '2024-12-01 09:00:00', 'Pending', 0, 0.0, 'jane_smith');
 
 -- Game update history (linking to some game ids)
 INSERT INTO game_update_history (patch_number, title, detail, update_time, link_to_new_file, is_approve, approve_time, approve_by, game_id) VALUES
-('1.0.1', 'Bug Fix', 'Fixed minor issues', '2024-06-15 09:30:00', 'index.html', TRUE, '2024-06-16 10:00:00', 'admin_user', 1),
-('1.1.0', 'Content Update', 'Added new levels', '2024-07-05 12:00:00', 'index.html', TRUE, '2024-07-06 13:00:00', 'admin_user', 2),
-('1.0.1', 'Balance Patch', 'Tuned weapons', '2024-08-05 08:00:00', 'index.html', FALSE, NULL, NULL, 8),
-('2.0.0', 'Major Update', 'New game mode', '2024-09-15 10:00:00', 'index.html', TRUE, '2024-09-16 11:00:00', 'admin_user', 17),
-('1.0.2', 'Hotfix', 'Crash fix', '2024-06-20 14:00:00', 'index.html', TRUE, '2024-06-21 09:00:00', 'admin_user', 11);
+('1.0.1', 'Bug Fix', 'Fixed minor issues', '2024-06-15 09:30:00', 'index.html', 'Approve', '2024-06-16 10:00:00', 'admin_user', 1),
+('1.1.0', 'Content Update', 'Added new levels', '2024-07-05 12:00:00', 'index.html', 'Approve', '2024-07-06 13:00:00', 'admin_user', 2),
+('1.0.1', 'Balance Patch', 'Tuned weapons', '2024-08-05 08:00:00', 'index.html', 'Reject', NULL, NULL, 8),
+('2.0.0', 'Major Update', 'New game mode', '2024-09-15 10:00:00', 'index.html', 'Approve', '2024-09-16 11:00:00', 'admin_user', 17),
+('1.0.2', 'Hotfix', 'Crash fix', '2024-06-20 14:00:00', 'index.html', 'Approve', '2024-06-21 09:00:00', 'admin_user', 11);
 
 -- Forum threads
 INSERT INTO forum (thread_name, detail, created_at, comment_count, unique_users) VALUES
@@ -321,6 +321,38 @@ BEGIN
     SET total_players = (SELECT COUNT(*) FROM play WHERE game_id = OLD.game_id),
         average_play_time = IFNULL((SELECT AVG(accumulate_play_time) FROM play WHERE game_id = OLD.game_id), 0)
     WHERE game_id = OLD.game_id;
+END;//
+
+DELIMITER ;
+
+-- Stored procedure to safely delete a game and its dependent records.
+-- Simpler, MySQL 5.7 friendly version that avoids handler blocks.
+-- Usage: CALL sp_delete_game(123);
+DELIMITER //
+
+CREATE PROCEDURE sp_delete_game(IN p_game_id INT)
+BEGIN
+    DECLARE v_exists INT DEFAULT 0;
+
+    SELECT COUNT(*) INTO v_exists FROM game WHERE game_id = p_game_id;
+
+    IF v_exists = 0 THEN
+        -- Game does not exist; nothing to do
+        SELECT CONCAT('Game id ', p_game_id, ' does not exist') AS message;
+    ELSE
+        START TRANSACTION;
+            -- Delete rows that reference game but do not have ON DELETE CASCADE
+            DELETE FROM create_relation WHERE game_id = p_game_id;
+            DELETE FROM report WHERE game_id = p_game_id;
+            DELETE FROM play WHERE game_id = p_game_id;
+            DELETE FROM tag WHERE game_id = p_game_id;
+
+            -- Delete the game row; cascading FKs (if any) will be handled by the DB
+            DELETE FROM game WHERE game_id = p_game_id;
+        COMMIT;
+
+        SELECT CONCAT('Game ', p_game_id, ' and related records deleted') AS message;
+    END IF;
 END;//
 
 DELIMITER ;
