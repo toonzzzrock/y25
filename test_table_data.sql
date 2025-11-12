@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS play (
 CREATE TABLE IF NOT EXISTS tag (
     tag_name enum('Fantasy', 'RPG', 'FPS', 'MOBA', 'RTS') NOT NULL,
     game_id INT NOT NULL,
-    constraint PK_Tag PRIMARY KEY (tag_name),
+    constraint PK_Tag PRIMARY KEY (tag_name, game_id),
     constraint FK_Tag_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
 );
 
