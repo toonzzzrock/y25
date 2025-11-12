@@ -174,35 +174,35 @@ INSERT INTO developer (username, role, contact) VALUES
 
 -- Insert games (use the provided names, cycle publishers)
 INSERT INTO game (game_name, detail, link_to_file, release_date, status, total_players, average_play_time, publisher_username) VALUES
-('Adventure Game', 'Open-world exploration', 'https://games.example.com/adventure', '2024-06-01 10:00:00', 'Published', 12, 120.5, 'sarah_pub'),
-('Altos Odyssey', 'Endless runner with beautiful visuals', 'https://games.example.com/altos', '2024-06-10 11:00:00', 'Published', 8, 45.0, 'jane_smith'),
-('Bad Ice-Cream', 'Local co-op puzzle brawler', 'https://games.example.com/bad-ice-cream', '2024-07-01 12:00:00', 'Published', 5, 30.0, 'pub_one'),
-('Boxing Game', 'Arcade boxing action', 'https://games.example.com/boxing', '2024-07-10 09:30:00', 'Published', 3, 25.0, 'pub_two'),
-('Candy Game', 'Casual match-3 candy fun', 'https://games.example.com/candy', '2024-07-20 14:00:00', 'Published', 20, 60.0, 'sarah_pub'),
-('Castle Game', 'Tower defense in medieval setting', 'https://games.example.com/castle', '2024-08-01 10:15:00', 'Pending', 0, 0.0, 'pub_three'),
-('City Game', 'City building simulator', 'https://games.example.com/city', '2024-08-15 15:00:00', 'Published', 6, 200.0, 'jane_smith'),
-('Dungeon Game', 'Roguelike dungeon crawler', 'https://games.example.com/dungeon', '2024-09-01 18:00:00', 'Published', 9, 85.0, 'pub_one'),
-('Farm Game', 'Relaxing farming sim', 'https://games.example.com/farm', '2024-09-15 10:00:00', 'Published', 4, 150.0, 'pub_two'),
-('Forest Game', 'Survival in a haunted forest', 'https://games.example.com/forest', '2024-10-01 12:00:00', 'Decline', 0, 0.0, 'sarah_pub'),
-('Fruit Ninja', 'Slice-and-dice fruit arcade', 'https://games.example.com/fruit-ninja', '2024-06-05 09:00:00', 'Published', 30, 10.0, 'jane_smith'),
-('Hungry Shark', 'Underwater predator arcade', 'https://games.example.com/hungry-shark', '2024-06-12 11:15:00', 'Published', 18, 55.0, 'pub_one'),
-('Jungle Game', 'Platformer through jungle temples', 'https://games.example.com/jungle', '2024-08-22 13:40:00', 'Published', 7, 70.0, 'pub_two'),
-('Mario Game', 'Classic platformer homage', 'https://games.example.com/mario', '2024-07-03 16:00:00', 'Published', 25, 95.0, 'sarah_pub'),
-('Pirate Game', 'Open-sea adventure', 'https://games.example.com/pirate', '2024-07-25 17:10:00', 'Published', 11, 140.0, 'pub_three'),
-('Plants VS Zombies', 'Tower defense with plants', 'https://games.example.com/pvz', '2024-06-20 08:20:00', 'Published', 40, 120.0, 'jane_smith'),
-('Racing Game', 'Arcade racing championship', 'https://games.example.com/racing', '2024-09-10 15:00:00', 'Published', 22, 35.0, 'pub_two'),
-('Space Shooter', '2D space shooter with upgrades', 'https://games.example.com/space-shooter', '2024-08-30 20:00:00', 'Published', 13, 50.0, 'pub_one'),
-('Survival Game', 'Hardcore survival sim', 'https://games.example.com/survival', '2024-10-10 21:00:00', 'Pending', 0, 0.0, 'sarah_pub'),
-('Underwater Game', 'Explore the deep sea', 'https://games.example.com/underwater', '2024-09-20 14:30:00', 'Published', 2, 300.0, 'pub_three'),
-('Winter Game', 'Snowball fights and sledding', 'https://games.example.com/winter', '2024-12-01 09:00:00', 'Pending', 0, 0.0, 'jane_smith');
+('Adventure Game', 'Open-world exploration', 'index.html', '2024-06-01 10:00:00', 'Published', 12, 120.5, 'sarah_pub'),
+('Altos Odyssey', 'Endless runner with beautiful visuals', 'index.html', '2024-06-10 11:00:00', 'Published', 8, 45.0, 'jane_smith'),
+('Bad Ice-Cream', 'Local co-op puzzle brawler', 'index.html', '2024-07-01 12:00:00', 'Published', 5, 30.0, 'pub_one'),
+('Boxing Game', 'Arcade boxing action', 'index.html', '2024-07-10 09:30:00', 'Published', 3, 25.0, 'pub_two'),
+('Candy Game', 'Casual match-3 candy fun', 'index.html', '2024-07-20 14:00:00', 'Published', 20, 60.0, 'sarah_pub'),
+('Castle Game', 'Tower defense in medieval setting', 'index.html', '2024-08-01 10:15:00', 'Pending', 0, 0.0, 'pub_three'),
+('City Game', 'City building simulator', 'index.html', '2024-08-15 15:00:00', 'Published', 6, 200.0, 'jane_smith'),
+('Dungeon Game', 'Roguelike dungeon crawler', 'index.html', '2024-09-01 18:00:00', 'Published', 9, 85.0, 'pub_one'),
+('Farm Game', 'Relaxing farming sim', 'index.html', '2024-09-15 10:00:00', 'Published', 4, 150.0, 'pub_two'),
+('Forest Game', 'Survival in a haunted forest', 'index.html', '2024-10-01 12:00:00', 'Decline', 0, 0.0, 'sarah_pub'),
+('Fruit Ninja', 'Slice-and-dice fruit arcade', 'index.html', '2024-06-05 09:00:00', 'Published', 30, 10.0, 'jane_smith'),
+('Hungry Shark', 'Underwater predator arcade', 'index.html', '2024-06-12 11:15:00', 'Published', 18, 55.0, 'pub_one'),
+('Jungle Game', 'Platformer through jungle temples', 'index.html', '2024-08-22 13:40:00', 'Published', 7, 70.0, 'pub_two'),
+('Mario Game', 'Classic platformer homage', 'index.html', '2024-07-03 16:00:00', 'Published', 25, 95.0, 'sarah_pub'),
+('Pirate Game', 'Open-sea adventure', 'index.html', '2024-07-25 17:10:00', 'Published', 11, 140.0, 'pub_three'),
+('Plants VS Zombies', 'Tower defense with plants', 'index.html', '2024-06-20 08:20:00', 'Published', 40, 120.0, 'jane_smith'),
+('Racing Game', 'Arcade racing championship', 'index.html', '2024-09-10 15:00:00', 'Published', 22, 35.0, 'pub_two'),
+('Space Shooter', '2D space shooter with upgrades', 'index.html', '2024-08-30 20:00:00', 'Published', 13, 50.0, 'pub_one'),
+('Survival Game', 'Hardcore survival sim', 'index.html', '2024-10-10 21:00:00', 'Pending', 0, 0.0, 'sarah_pub'),
+('Underwater Game', 'Explore the deep sea', 'index.html', '2024-09-20 14:30:00', 'Published', 2, 300.0, 'pub_three'),
+('Winter Game', 'Snowball fights and sledding', 'index.html', '2024-12-01 09:00:00', 'Pending', 0, 0.0, 'jane_smith');
 
 -- Game update history (linking to some game ids)
 INSERT INTO game_update_history (patch_number, title, detail, update_time, link_to_new_file, is_approve, approve_time, approve_by, game_id) VALUES
-('1.0.1', 'Bug Fix', 'Fixed minor issues', '2024-06-15 09:30:00', 'https://patches.example.com/adventure/1.0.1', TRUE, '2024-06-16 10:00:00', 'admin_user', 1),
-('1.1.0', 'Content Update', 'Added new levels', '2024-07-05 12:00:00', 'https://patches.example.com/altos/1.1.0', TRUE, '2024-07-06 13:00:00', 'admin_user', 2),
-('1.0.1', 'Balance Patch', 'Tuned weapons', '2024-08-05 08:00:00', 'https://patches.example.com/dungeon/1.0.1', FALSE, NULL, NULL, 8),
-('2.0.0', 'Major Update', 'New game mode', '2024-09-15 10:00:00', 'https://patches.example.com/racing/2.0.0', TRUE, '2024-09-16 11:00:00', 'admin_user', 17),
-('1.0.2', 'Hotfix', 'Crash fix', '2024-06-20 14:00:00', 'https://patches.example.com/fruit-ninja/1.0.2', TRUE, '2024-06-21 09:00:00', 'admin_user', 11);
+('1.0.1', 'Bug Fix', 'Fixed minor issues', '2024-06-15 09:30:00', 'index.html', TRUE, '2024-06-16 10:00:00', 'admin_user', 1),
+('1.1.0', 'Content Update', 'Added new levels', '2024-07-05 12:00:00', 'index.html', TRUE, '2024-07-06 13:00:00', 'admin_user', 2),
+('1.0.1', 'Balance Patch', 'Tuned weapons', '2024-08-05 08:00:00', 'index.html', FALSE, NULL, NULL, 8),
+('2.0.0', 'Major Update', 'New game mode', '2024-09-15 10:00:00', 'index.html', TRUE, '2024-09-16 11:00:00', 'admin_user', 17),
+('1.0.2', 'Hotfix', 'Crash fix', '2024-06-20 14:00:00', 'index.html', TRUE, '2024-06-21 09:00:00', 'admin_user', 11);
 
 -- Forum threads
 INSERT INTO forum (thread_name, detail, created_at, comment_count, unique_users) VALUES
