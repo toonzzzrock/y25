@@ -110,6 +110,8 @@ export default function GameDetailPage() {
   const [isFetching, setIsFetching] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const playSessionRef = useRef({ gameId: 0, start: 0, reported: true });
+  const finalizePlaySessionRef = useRef<() => void>(() => undefined);
 
   const showNotification = useCallback((message: string, type: NotificationState["type"] = "info") => {
     if (notificationTimeout.current) {
@@ -231,6 +233,74 @@ export default function GameDetailPage() {
       controller.abort();
     };
   }, [decodedGameId, showNotification]);
+
+  const sendPlayDuration = useCallback((elapsedMs: number) => {
+    const activeSession = playSessionRef.current;
+    if (!activeSession.gameId || elapsedMs <= 0) {
+      return;
+    }
+
+    const payload = {
+      gameId: activeSession.gameId,
+      durationMs: Math.round(elapsedMs),
+    };
+
+    try {
+      if (navigator.sendBeacon) {
+        const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+        navigator.sendBeacon("/api/play", blob);
+      } else {
+        fetch("/api/play", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+          keepalive: true,
+        }).catch((error) => {
+          console.warn("Failed to report play duration via fetch:", error);
+        });
+      }
+    } catch (error) {
+      console.warn("Failed to report play duration:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!game?.id) {
+      return;
+    }
+
+    const session = playSessionRef.current;
+    session.gameId = game.id;
+    session.start = Date.now();
+    session.reported = false;
+
+    const finalize = () => {
+      if (session.reported || !session.start) {
+        return;
+      }
+
+      const elapsed = Date.now() - session.start;
+      session.reported = true;
+
+      if (elapsed > 250) {
+        sendPlayDuration(elapsed);
+      }
+    };
+
+    finalizePlaySessionRef.current = finalize;
+
+    window.addEventListener("pagehide", finalize);
+    window.addEventListener("beforeunload", finalize);
+
+    return () => {
+      window.removeEventListener("pagehide", finalize);
+      window.removeEventListener("beforeunload", finalize);
+      finalize();
+      finalizePlaySessionRef.current = () => undefined;
+    };
+  }, [game?.id, sendPlayDuration]);
 
   const releaseDateDisplay = useMemo(() => formatReleaseDate(game?.releaseDate ?? null), [game?.releaseDate]);
   const uppercaseTitle = useMemo(() => normalizeTitle(game?.title ?? null), [game?.title]);
@@ -417,6 +487,8 @@ export default function GameDetailPage() {
   }, [showNotification]);
 
   const handlePlay = useCallback(() => {
+    finalizePlaySessionRef.current?.();
+
     if (game?.playUrl) {
       const destination = game.playUrl;
 

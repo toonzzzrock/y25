@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { validateEmail } from '@/lib/auth';
+import { resolveUserAssets } from '@/lib/user-assets';
 
 type SessionUser = {
   username: string;
@@ -66,6 +67,7 @@ export async function GET(request: NextRequest) {
       }
 
       const record = rows[0] as any;
+      const assets = await resolveUserAssets(record.username);
 
       return NextResponse.json(
         {
@@ -75,6 +77,8 @@ export async function GET(request: NextRequest) {
             dateOfBirth: record.dateOfBirth ?? null,
             sex: record.sex ?? null,
             createdAt: record.createdAt ?? null,
+            avatarUrl: assets.avatarUrl,
+            description: assets.description,
           },
         },
         { status: 200 }
@@ -195,6 +199,7 @@ export async function PUT(request: NextRequest) {
       }
 
       const record = rows[0] as any;
+      const assets = await resolveUserAssets(record.username);
       const updatedEmail = record.email as string | null;
 
       const response = NextResponse.json(
@@ -205,6 +210,8 @@ export async function PUT(request: NextRequest) {
             dateOfBirth: record.dateOfBirth ?? null,
             sex: record.sex ?? null,
             createdAt: record.createdAt ?? null,
+            avatarUrl: assets.avatarUrl,
+            description: assets.description,
           },
         },
         { status: 200 }

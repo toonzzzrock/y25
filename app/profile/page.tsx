@@ -1,5 +1,5 @@
 "use client";
-import React, { FormEvent, useEffect, useMemo, useState } from "react";
+import React, { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useProtectedRoute } from "@/lib/use-protected-route";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
@@ -12,6 +12,8 @@ interface UserProfile {
   dateOfBirth?: string | null;
   sex?: string | null;
   createdAt?: string | null;
+  avatarUrl?: string | null;
+  description?: string | null;
 }
 
 interface ProfileFormState {
@@ -30,6 +32,32 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [formState, setFormState] = useState<ProfileFormState>({ email: '', dateOfBirth: '', sex: '' });
   const [isSaving, setIsSaving] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState('');
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isSavingAppearance, setIsSavingAppearance] = useState(false);
+  const imagePreviewUrlRef = useRef<string | null>(null);
+
+  const updateImagePreview = useCallback((url: string | null, isBlob = false) => {
+    if (imagePreviewUrlRef.current) {
+      URL.revokeObjectURL(imagePreviewUrlRef.current);
+      imagePreviewUrlRef.current = null;
+    }
+
+    if (isBlob && url) {
+      imagePreviewUrlRef.current = url;
+    }
+
+    setImagePreview(url);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrlRef.current) {
+        URL.revokeObjectURL(imagePreviewUrlRef.current);
+      }
+    };
+  }, []);
 
   const memberSinceLabel = useMemo(() => {
     if (!userProfile?.createdAt) {
@@ -71,6 +99,10 @@ export default function ProfilePage() {
     return userProfile?.sex || 'Not provided';
   }, [userProfile?.sex]);
 
+  const descriptionChanged = descriptionDraft !== (userProfile?.description ?? '');
+  const hasImageChange = Boolean(selectedImage);
+  const appearanceDirty = descriptionChanged || hasImageChange;
+
   useEffect(() => {
     if (isLoading) {
       return;
@@ -88,11 +120,18 @@ export default function ProfilePage() {
         const data = await response.json();
 
         if (response.ok && data.profile) {
-          setUserProfile(data.profile as UserProfile);
+          const profileData = data.profile as UserProfile;
+          setUserProfile({
+            ...profileData,
+            avatarUrl: profileData.avatarUrl ?? null,
+            description: profileData.description ?? '',
+          });
         } else if (user) {
           setUserProfile({
             username: user.username,
             email: user.email || 'Not provided',
+            avatarUrl: null,
+            description: '',
           });
         } else {
           setNotification({ message: data.error || 'Failed to load profile', type: 'error' });
@@ -106,6 +145,8 @@ export default function ProfilePage() {
           setUserProfile({
             username: user.username,
             email: user.email || 'Not provided',
+            avatarUrl: null,
+            description: '',
           });
         }
         setNotification({ message: 'Failed to load profile', type: 'error' });
@@ -120,6 +161,106 @@ export default function ProfilePage() {
       controller.abort();
     };
   }, [isLoading, user]);
+
+  useEffect(() => {
+    updateImagePreview(userProfile?.avatarUrl ?? null);
+    setDescriptionDraft(userProfile?.description ?? '');
+    setSelectedImage(null);
+  }, [userProfile?.avatarUrl, userProfile?.description, updateImagePreview]);
+
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setNotification({ message: 'Please select an image file (PNG, JPEG, or WEBP)', type: 'error' });
+      return;
+    }
+
+    setSelectedImage(file);
+    const previewUrl = URL.createObjectURL(file);
+    updateImagePreview(previewUrl, true);
+  };
+
+  const clearSelectedImage = () => {
+    setSelectedImage(null);
+    updateImagePreview(userProfile?.avatarUrl ?? null);
+  };
+
+  const resetAppearanceChanges = () => {
+    setDescriptionDraft(userProfile?.description ?? '');
+    clearSelectedImage();
+  };
+
+  const handleAppearanceSave = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!userProfile) {
+      setNotification({ message: 'Profile not loaded yet', type: 'error' });
+      return;
+    }
+
+    const descriptionChanged = descriptionDraft !== (userProfile.description ?? '');
+    const hasImageChange = Boolean(selectedImage);
+
+    if (!descriptionChanged && !hasImageChange) {
+      setNotification({ message: 'No appearance changes to save', type: 'info' });
+      return;
+    }
+
+    const formData = new FormData();
+
+    if (hasImageChange && selectedImage) {
+      formData.append('profileImage', selectedImage);
+    }
+
+    if (descriptionChanged) {
+      formData.append('description', descriptionDraft);
+    }
+
+    setIsSavingAppearance(true);
+
+    try {
+      const response = await fetch('/api/users/profile/content', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to update profile appearance');
+      }
+
+      const nextAvatar = data?.avatarUrl ?? userProfile.avatarUrl ?? null;
+      const nextDescription = data?.description ?? userProfile.description ?? '';
+
+      setUserProfile((previous) => {
+        if (!previous) {
+          return previous;
+        }
+        return {
+          ...previous,
+          avatarUrl: nextAvatar,
+          description: nextDescription,
+        };
+      });
+
+      updateImagePreview(nextAvatar ?? null);
+      setSelectedImage(null);
+      setDescriptionDraft(nextDescription);
+      setNotification({ message: 'Profile appearance updated', type: 'success' });
+    } catch (error: any) {
+      console.error('Profile appearance update error:', error);
+      setNotification({ message: error?.message || 'Failed to update profile appearance', type: 'error' });
+    } finally {
+      setIsSavingAppearance(false);
+    }
+  };
 
   const avatarLetter = userProfile?.username?.charAt(0)?.toUpperCase() || '?';
 
@@ -289,17 +430,24 @@ export default function ProfilePage() {
                   width: '140px',
                   height: '140px',
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #ff7a2b, #ff4500)',
+                  overflow: 'hidden',
+                  border: '2px solid rgba(255, 122, 43, 0.4)',
+                  background: imagePreview ? '#120806' : 'linear-gradient(135deg, #ff7a2b, #ff4500)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '3.5rem',
-                  fontWeight: 700,
-                  color: '#0b0402',
-                  boxShadow: '0 12px 24px rgba(255, 90, 0, 0.4)',
+                  boxShadow: '0 12px 24px rgba(255, 90, 0, 0.35)',
                 }}
               >
-                {avatarLetter}
+                {imagePreview ? (
+                  <img
+                    src={imagePreview}
+                    alt={`${userProfile?.username || 'Player'} avatar`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <span style={{ fontSize: '3.5rem', fontWeight: 700, color: '#0b0402' }}>{avatarLetter}</span>
+                )}
               </div>
               <div>
                 <h1 style={{ margin: '0 0 0.35rem 0', fontSize: '2.2rem', color: '#fff' }}>{userProfile?.username}</h1>
@@ -328,6 +476,146 @@ export default function ProfilePage() {
                 <div style={{ fontSize: '1.15rem', color: '#fff', wordBreak: 'break-word' }}>{userProfile?.email || 'Not provided'}</div>
               </div>
             </div>
+
+            <div
+              style={{
+                background: '#241411',
+                borderRadius: '12px',
+                padding: '1.5rem',
+                border: '1px solid rgba(255, 122, 43, 0.25)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+              }}
+            >
+              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'rgba(255, 184, 139, 0.8)' }}>About me</span>
+              <div style={{ color: '#fff', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                {userProfile?.description && userProfile.description.trim().length > 0
+                  ? userProfile.description
+                  : 'This player has not added a description yet.'}
+              </div>
+            </div>
+
+            <form
+              onSubmit={handleAppearanceSave}
+              style={{
+                background: '#241411',
+                borderRadius: '12px',
+                padding: '1.5rem',
+                border: '1px solid rgba(255, 122, 43, 0.25)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.2rem',
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0, color: '#fff', fontSize: '1.4rem' }}>Customize appearance</h2>
+                <p style={{ margin: '0.35rem 0 0', color: 'rgba(255, 184, 139, 0.8)', fontSize: '0.9rem' }}>
+                  Update your avatar and share a short bio with the community.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label htmlFor="profile-image-input" style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: '#ffb88b' }}>
+                  Profile image
+                </label>
+                <input
+                  id="profile-image-input"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={handleImageChange}
+                  style={{
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 122, 43, 0.35)',
+                    background: '#140b08',
+                    padding: '0.75rem 1rem',
+                    color: '#fff',
+                    fontSize: '0.95rem',
+                  }}
+                />
+                <span style={{ fontSize: '0.8rem', color: 'rgba(255, 184, 139, 0.7)' }}>
+                  PNG, JPEG, or WEBP up to 5MB.
+                </span>
+                {selectedImage && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', color: '#ffb88b', fontSize: '0.85rem' }}>
+                    <span>Selected: {selectedImage.name}</span>
+                    <button
+                      type="button"
+                      onClick={clearSelectedImage}
+                      style={{
+                        alignSelf: 'flex-start',
+                        background: 'transparent',
+                        border: '1px solid rgba(255, 122, 43, 0.35)',
+                        color: '#ffb88b',
+                        borderRadius: '999px',
+                        padding: '0.35rem 0.9rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Remove image
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', color: '#ffb88b', fontSize: '0.85rem', textTransform: 'uppercase' }}>
+                Profile description
+                <textarea
+                  value={descriptionDraft}
+                  onChange={(event) => setDescriptionDraft(event.target.value)}
+                  rows={5}
+                  style={{
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 122, 43, 0.35)',
+                    background: '#140b08',
+                    padding: '0.9rem 1rem',
+                    color: '#fff',
+                    fontSize: '0.95rem',
+                    resize: 'vertical',
+                  }}
+                  placeholder="Tell other players about yourself, your favourite games, or achievements."
+                  maxLength={4000}
+                />
+              </label>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={resetAppearanceChanges}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid rgba(255, 122, 43, 0.35)',
+                    color: '#ffb88b',
+                    borderRadius: '999px',
+                    padding: '0.6rem 1.3rem',
+                    fontWeight: 600,
+                    cursor: appearanceDirty && !isSavingAppearance ? 'pointer' : 'not-allowed',
+                    opacity: appearanceDirty ? 1 : 0.4,
+                  }}
+                  disabled={!appearanceDirty || isSavingAppearance}
+                >
+                  Reset
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    background: appearanceDirty ? 'linear-gradient(135deg, #ff7a2b, #ff4500)' : 'rgba(255, 122, 43, 0.35)',
+                    border: 'none',
+                    color: '#fff',
+                    borderRadius: '999px',
+                    padding: '0.6rem 1.6rem',
+                    fontWeight: 600,
+                    cursor: appearanceDirty && !isSavingAppearance ? 'pointer' : 'not-allowed',
+                    minWidth: '140px',
+                    opacity: appearanceDirty ? 1 : 0.6,
+                  }}
+                  disabled={!appearanceDirty || isSavingAppearance}
+                >
+                  {isSavingAppearance ? 'Saving…' : 'Save appearance'}
+                </button>
+              </div>
+            </form>
 
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               {user?.role === 'publisher' && (
@@ -584,7 +872,12 @@ export default function ProfilePage() {
             right: 20,
             padding: "1rem 1.5rem",
             borderRadius: 8,
-            backgroundColor: notification.type === 'error' ? "#f44336" : "#4caf50",
+            backgroundColor:
+              notification.type === 'error'
+                ? "#f44336"
+                : notification.type === 'info'
+                ? "#ff9800"
+                : "#4caf50",
             color: "white",
             fontWeight: 600,
             boxShadow: "0 4px 12px rgba(0,0,0,0.3)",

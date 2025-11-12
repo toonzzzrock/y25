@@ -4,19 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Y25 Chess Arena</title>
-    <link
-      rel="stylesheet"
-      href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css"
-      integrity="sha256-ELV+xyxFnw1xvG7N0pCw8Z8vKA1p2JkG3Q3uWXsgPzk="
-      crossorigin="anonymous"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/css/chessboard.min.css"
-      integrity="sha512-bs/AV/Q93skS8+r9f9qByBXpEj31YpeOb07pLzNqRTITkh6DcgjDa6zqaFfXrKYqaJm0PCi80O9jUMHzKoxADA=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    />
     <style>
       :root {
         color-scheme: dark;
@@ -179,57 +166,104 @@
       </section>
     </div>
 
-    <script
-      src="https://code.jquery.com/jquery-3.6.4.min.js"
-      integrity="sha256-o88Awf4w+c3TL9Q0qGqORdzdrFJtfJZpyYhX1PtiBMs="
-      crossorigin="anonymous"
-    ></script>
-    <script
-      src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"
-      integrity="sha256-lYX1Qte9YWhEtw/2BH73WJ6dJd1rPxO2BQTSbQ0v7V4="
-      crossorigin="anonymous"
-    ></script>
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui-touch-punch/0.2.3/jquery.ui.touch-punch.min.js"
-      integrity="sha512-fssCOY1Se1x3u0w6Bhl0Tn3XJyozPw4SXMuYGZqbyGqrWQVa+hNk+lxiq9yRdhKUa6HZ8Pg97L4pLI4r8nGzGw=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    ></script>
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/1.0.0/chess.min.js"
-      integrity="sha512-6s3LsvPPm+zmr7jg2d+VNhpUg4FTIwirFqPOsJWvQCZPw3s2cEUu9kXgwItVu7WWPlJqumSX6Z84gv6SW0RE8Q=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    ></script>
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard.min.js"
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    ></script>
     <script>
-      function initChessArena() {
+      function loadScript(url) {
+        return new Promise((resolve, reject) => {
+          console.log('[Chess] Loading script:', url);
+          const script = document.createElement('script');
+          script.src = url;
+          script.async = false;
+          script.onload = () => {
+            console.log('[Chess] Successfully loaded:', url);
+            resolve(url);
+          };
+          script.onerror = () => {
+            const msg = `Failed to load ${url}`;
+            console.error('[Chess]', msg);
+            reject(new Error(msg));
+          };
+          document.head.appendChild(script);
+        });
+      }
+
+      async function ensureLibrary(name, checkFn, sources) {
+        console.log(`[Chess] Ensuring ${name}...`);
+        if (checkFn()) {
+          console.log(`[Chess] ${name} already loaded`);
+          return;
+        }
+
+        let lastError = null;
+        for (const source of sources) {
+          try {
+            await loadScript(source);
+            if (checkFn()) {
+              console.log(`[Chess] ${name} loaded successfully`);
+              return;
+            } else {
+              console.warn(`[Chess] Script loaded but ${name} not found in window`);
+            }
+          } catch (error) {
+            console.warn(`[Chess] Source failed for ${name}:`, error.message);
+            lastError = error;
+          }
+        }
+
+        throw lastError || new Error(`${name} load failure`);
+      }
+
+      async function bootstrapChessArena() {
+        console.log('[Chess] Bootstrapping chess arena...');
         const statusEl = document.getElementById('status');
         const capturesEl = document.getElementById('captures');
         const logEl = document.getElementById('move-log');
 
+        statusEl.textContent = 'Preparing board...';
+
+        try {
+          await ensureLibrary(
+            'Chess.js',
+            () => window.Chess || window.CHESS,
+            [
+              './libs/chess.js',
+            ]
+          );
+
+          await ensureLibrary(
+            'Chessboard.js',
+            () => window.Chessboard || window.ChessBoard,
+            [
+              './libs/chessboard.js',
+            ]
+          );
+
+          console.log('[Chess] All libraries loaded successfully');
+        } catch (error) {
+          console.error('[Chess] Asset load error:', error);
+          statusEl.textContent = 'Failed to load chess assets: ' + error.message;
+          return;
+        }
+
         const ChessFactory = window.Chess || window.CHESS;
         const BoardFactory = window.Chessboard || window.ChessBoard;
 
+        console.log('[Chess] ChessFactory:', typeof ChessFactory, 'BoardFactory:', typeof BoardFactory);
+
         if (!ChessFactory || !BoardFactory) {
+          console.error('[Chess] Missing libraries: Chess=' + typeof ChessFactory + ', Chessboard=' + typeof BoardFactory);
           statusEl.textContent = 'Failed to load chess assets.';
           return;
         }
 
+        console.log('[Chess] Initializing game with libraries');
         const game = new ChessFactory();
         const capturePieces = [];
 
         const board = BoardFactory('board', {
           draggable: true,
           position: 'start',
-          pieceTheme:
-            'https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/img/chesspieces/wikipedia/{piece}.png',
-          onDrop: onDrop,
-          onSnapEnd: () => board.position(game.fen(), false),
+          onDrop,
+          onSnapEnd: () => board.position(game.fen()),
         });
 
         function logMove(move) {
@@ -319,7 +353,7 @@
             updateCaptures();
           }
 
-          board.position(game.fen(), false);
+          board.position(game.fen());
           logMove(`Bot: ${algebraicToEmoji(move)}`);
           updateStatus('Your move');
         }
@@ -340,9 +374,22 @@
         updateStatus('New game. Your move');
       }
 
+      function initChessArena() {
+        console.log('[Chess] initChessArena called');
+        bootstrapChessArena().catch((error) => {
+          console.error('[Chess] Chess init error:', error);
+          const statusEl = document.getElementById('status');
+          if (statusEl) {
+            statusEl.textContent = 'Failed to load chess assets.';
+          }
+        });
+      }
+
       if (document.readyState === 'loading') {
+        console.log('[Chess] DOM still loading, attaching DOMContentLoaded listener');
         document.addEventListener('DOMContentLoaded', initChessArena);
       } else {
+        console.log('[Chess] DOM ready, initializing immediately');
         initChessArena();
       }
     </script>
