@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="360" viewBox="0 0 800 360" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="0" x2="1">
+      <stop offset="0%" stop-color="#052033"/>
+      <stop offset="100%" stop-color="#0b1626"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#2ec4ff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#1b6b8a" stop-opacity="0.4"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#g1)" rx="6"/>
+
+  <!-- grid lines -->
+  <g stroke="#14242e" stroke-width="1">
+    <line x1="60" y1="300" x2="740" y2="300"/>
+    <line x1="60" y1="240" x2="740" y2="240"/>
+    <line x1="60" y1="180" x2="740" y2="180"/>
+    <line x1="60" y1="120" x2="740" y2="120"/>
+    <line x1="60" y1="60" x2="740" y2="60"/>
+  </g>
+
+  <!-- bars -->
+  <g fill="url(#g2)">
+    <rect x="80" y="200" width="40" height="100" rx="6"/>
+    <rect x="150" y="140" width="40" height="160" rx="6"/>
+    <rect x="220" y="180" width="40" height="120" rx="6"/>
+    <rect x="290" y="110" width="40" height="190" rx="6"/>
+    <rect x="360" y="90" width="40" height="210" rx="6"/>
+    <rect x="430" y="150" width="40" height="150" rx="6"/>
+    <rect x="500" y="80" width="40" height="220" rx="6"/>
+    <rect x="570" y="130" width="40" height="170" rx="6"/>
+    <rect x="640" y="170" width="40" height="130" rx="6"/>
+  </g>
+
+  <!-- line on top of bars -->
+  <polyline points="100,220 170,160 240,200 310,130 380,110 450,170 520,100 590,150 660,190" fill="none" stroke="#8fe9ff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="100" cy="220" r="4" fill="#8fe9ff"/>
+  <circle cx="170" cy="160" r="4" fill="#8fe9ff"/>
+  <circle cx="240" cy="200" r="4" fill="#8fe9ff"/>
+  <circle cx="310" cy="130" r="4" fill="#8fe9ff"/>
+  <circle cx="380" cy="110" r="4" fill="#8fe9ff"/>
+  <circle cx="450" cy="170" r="4" fill="#8fe9ff"/>
+  <circle cx="520" cy="100" r="4" fill="#8fe9ff"/>
+  <circle cx="590" cy="150" r="4" fill="#8fe9ff"/>
+  <circle cx="660" cy="190" r="4" fill="#8fe9ff"/>
+
+  <!-- axes labels -->
+  <g font-family="Arial" font-size="12" fill="#7da8b6">
+    <text x="60" y="320">Jan</text>
+    <text x="150" y="320">Feb</text>
+    <text x="240" y="320">Mar</text>
+    <text x="330" y="320">Apr</text>
+    <text x="420" y="320">May</text>
+    <text x="510" y="320">Jun</text>
+    <text x="600" y="320">Jul</text>
+    <text x="690" y="320">Aug</text>
+  </g>
+</svg>

@@ -1,0 +1,57 @@
+/* Admin dashboard styles */
+body { background:#060404; color:#e6e0db; font-family: Arial, Helvetica, sans-serif; }
+.admin-header { display:flex; justify-content:space-between; align-items:center; padding:24px 40px; background:linear-gradient(180deg,#000, rgba(0,0,0,0.6)); }
+.logo-y25 { color:#ff6a00; font-weight:800; font-size:34px; }
+.site-title { margin-left:12px; font-size:22px; color:#ddd; font-weight:700; font-style:italic; }
+.admin-label { color:#19e6ff; font-weight:800; font-size:22px; }
+
+.admin-main { max-width:100%; margin:30px auto; padding:0 20px; }
+.section-heading { color:#ff7a2b; font-size:22px; margin:8px 0 12px; font-weight:800; }
+
+.analytics-grid { display:grid; grid-template-columns: 1fr 480px; gap:20px; }
+.chart-card, .stats-card { background:#1a1410; padding:18px; border-radius:6px; }
+.chart-placeholder { height:180px; background:#0b0b0b; border-radius:4px; }
+.chart-placeholder .chart-img { width:100%; height:180px; object-fit:cover; border-radius:4px; display:block; }
+.chart-title { color:#fff; font-weight:800; margin:0 0 10px; }
+
+.stat-row { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:30px; }
+.stat-label { color:#ddd; }
+.stat-value { color:#fff; font-weight:700; font-size: 20px; }
+.highlight { color:#ff7a2b; font-size:22px; font-weight:900; }
+.popular-list { margin:0 0 0 18px; color:#ff8a33; font-size: 22px;}
+
+.management-grid { display:flex; gap:20px; }
+.manage-card { background:#1a1410; padding:18px; border-radius:6px; width:100%; }
+.manage-title { color:#fff; margin:0 0 8px; }
+.user-search { display:flex; gap:8px; margin-bottom:12px; }
+.user-search input { background:#0b0b0b; border:0; padding:8px 10px; color:#ddd; border-radius:4px; }
+.manage-list { display:flex; flex-direction:column; gap:10px; }
+.manage-item { display:flex; gap:8px; align-items:center; }
+.pill { width:60px; height:18px; background:#3a3433; border-radius:12px; }
+.manage-actions { color:#bdb0ab; margin-left:auto; display:flex; gap:8px; align-items:center; }
+.btn-edit { background:transparent; color:#f3853c; border:1px solid rgba(255,160,120,0.12); padding:6px 10px; border-radius:8px; cursor:pointer; font-weight:700; }
+.btn-edit:hover { background:rgba(255,160,120,0.04); }
+.btn-ban { background:#e42e3d; color:#fff; border:0; padding:6px 10px; border-radius:8px; cursor:pointer; font-weight:700; }
+.btn-ban:hover { filter:brightness(0.95); }
+.view-more-btn { background:transparent; color:#ff7a2b; border:1px solid rgba(255,122,43,0.18); padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:700; margin-top: 15px; }
+.view-more-btn:hover { background:rgba(255,122,43,0.06); }
+
+.manage-games-row { display:flex; flex-direction:column; gap:12px; margin-bottom:12px; }
+.game-search { background:#0b0b0b; border:0; padding:10px; color:#ddd; border-radius:4px; width:260px; }
+.games-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap:12px; padding:16px; background:#141212; border-radius:6px; min-height:120px; }
+.thumb { display:flex; flex-direction:column; gap:8px; align-items:center; }
+.thumb-img { width:92px; height:92px; background:#2a2626; border-radius:6px; }
+.thumb-actions { color:#bdb0ab; font-size:12px; }
+.thumb-actions { display:flex; gap:8px; }
+.btn-edit.small { padding:4px 8px; font-size:12px; border-radius:6px; }
+.btn-ban.small { padding:4px 8px; font-size:12px; border-radius:6px; }
+
+.pending-row { display:flex; gap:18px; align-items:center; }
+.pending-card { background:#1a1410; padding:16px; border-radius:6px; width:220px; display:flex; flex-direction:column; gap:10px; align-items:flex-start; }
+.pending-card.small { width:150px; }
+.pending-thumb { width:64px; height:64px; background:#2a2626; border-radius:4px; }
+.pending-actions { display:flex; gap:8px; margin-top:6px; }
+.approve { background:#18c27b; color:#fff; border:0; padding:8px 12px; border-radius:16px; }
+.reject { background:#e04b58; color:#fff; border:0; padding:8px 12px; border-radius:16px; }
+
+@media (max-width:900px){ .analytics-grid { grid-template-columns:1fr; } .management-grid { flex-direction:column; } .pending-row { flex-wrap:wrap; } }
