@@ -97,6 +97,7 @@ export default function ForumPage() {
   const [selectedThreadGame, setSelectedThreadGame] = useState<{ id: number; title: string } | null>(null);
   const [isSearchingThreadGames, setIsSearchingThreadGames] = useState(false);
   const [showThreadGameSuggestions, setShowThreadGameSuggestions] = useState(false);
+  const [userAssets, setUserAssets] = useState<Record<string, string | null>>({});
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const isFetchingMoreRef = useRef(false);
   const isMountedRef = useRef(false);
@@ -106,12 +107,83 @@ export default function ForumPage() {
     setTimeout(() => setNotification(null), 3000);
   }, []);
 
+  const getAvatarForUsername = useCallback((username?: string | null) => {
+    if (!username) {
+      return '/images/placeholder.svg';
+    }
+    return userAssets[username] ?? '/images/placeholder.svg';
+  }, [userAssets]);
+
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    const usernameSet = new Set<string>();
+    const collect = (threads: ThreadSummary[]) => {
+      threads.forEach((thread) => {
+        if (thread.creator_username) {
+          usernameSet.add(thread.creator_username);
+        }
+      });
+    };
+
+    collect(allThreads);
+    collect(threadResults);
+    collect(threadSuggestions);
+    collect(userCreatedThreads);
+    collect(userCommentedThreads);
+
+    const pending = Array.from(usernameSet).filter((name) => !(name in userAssets));
+    if (pending.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const results = await Promise.all(
+          pending.map(async (name) => {
+            try {
+              const response = await fetch(`/api/users/assets/${encodeURIComponent(name)}`);
+              if (!response.ok) {
+                return [name, null] as const;
+              }
+              const data = await response.json();
+              return [name, data?.avatarUrl ?? null] as const;
+            } catch (error) {
+              console.warn('Failed to load avatar for', name, error);
+              return [name, null] as const;
+            }
+          })
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setUserAssets((previous) => {
+          const next = { ...previous };
+          results.forEach(([name, avatar]) => {
+            next[name] = avatar;
+          });
+          return next;
+        });
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Forum avatar preload failed:', error);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [allThreads, threadResults, threadSuggestions, userCreatedThreads, userCommentedThreads, userAssets]);
 
   const resetCreateThreadForm = useCallback(() => {
     setNewThreadName("");
@@ -232,8 +304,22 @@ export default function ForumPage() {
     }
   }, [isCreatingThread, newThreadDetail, newThreadName, resetCreateThreadForm, selectedGame, showNotification, threadQuery]);
 
+  const renderThreadMetaRow = useCallback((thread: ThreadSummary) => {
+    const parts: string[] = [];
+    if (thread.creator_username) {
+      parts.push(`By ${thread.creator_username}`);
+    }
+    if (thread.created_at) {
+      const createdTime = new Date(thread.created_at).toLocaleString();
+      parts.push(createdTime);
+    }
+    parts.push(`${thread.reply_count} repl${thread.reply_count === 1 ? 'y' : 'ies'}`);
+    return parts.join(' · ');
+  }, []);
+
   const renderThreadSummaryCard = useCallback((thread: ThreadSummary, keyPrefix: string) => {
-    const createdDate = thread.created_at ? new Date(thread.created_at).toLocaleDateString() : 'Recently created';
+  const avatarSrc = getAvatarForUsername(thread.creator_username);
+    const metaLine = renderThreadMetaRow(thread);
 
     return (
       <button
@@ -242,92 +328,124 @@ export default function ForumPage() {
         onClick={() => router.push(`/forum/${encodeURIComponent(thread.thread_name)}`)}
         style={{
           display: 'flex',
-          flexDirection: 'column',
-          padding: '0.5rem 0.75rem',
+          alignItems: 'flex-start',
+          gap: '12px',
+          padding: '0.65rem 0.85rem',
           background: 'rgba(255, 255, 255, 0.05)',
-          borderRadius: '8px',
-          border: '1px solid rgba(255, 122, 43, 0.3)',
+          borderRadius: '10px',
+          border: '1px solid rgba(255, 122, 43, 0.25)',
           color: '#fff',
-          gap: '0.35rem',
           textAlign: 'left',
           cursor: 'pointer',
         }}
       >
-        <strong style={{ fontSize: '0.95rem' }}>{thread.thread_name}</strong>
-        <span className="muted" style={{ fontSize: '0.8rem' }}>{thread.detail || 'No description yet'}</span>
-        <span className="muted" style={{ fontSize: '0.75rem' }}>
-          {thread.creator_username ? `Creator: ${thread.creator_username}` : 'Creator unavailable'}
-        </span>
-        {thread.game_name && (
-          <span className="muted" style={{ fontSize: '0.75rem' }}>
-            Game:{' '}
-            {thread.game_id ? (
-              <button
-                type="button"
-                className="thread-game-link"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  router.push(`/games/${thread.game_id}`);
-                }}
-              >
-                {thread.game_name}
-              </button>
-            ) : (
-              thread.game_name
-            )}
-          </span>
-        )}
-        <div style={{ fontSize: '0.75rem', color: '#ff7a2b', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <span>Created {createdDate}</span>
-          <span>{thread.reply_count} repl{thread.reply_count === 1 ? 'y' : 'ies'}</span>
+        <img
+          src={avatarSrc}
+          alt={thread.creator_username || 'Thread creator'}
+          style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+          onError={(event) => {
+            (event.target as HTMLImageElement).src = '/images/placeholder.svg';
+          }}
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1 }}>
+          <strong style={{ fontSize: '1rem', color: '#fff' }}>{thread.thread_name}</strong>
+          <span className="muted" style={{ fontSize: '0.8rem' }}>{thread.detail || 'No description yet'}</span>
+          {thread.game_name && (
+            <span className="muted" style={{ fontSize: '0.75rem' }}>
+              Game:{' '}
+              {thread.game_id ? (
+                <span
+                  role="link"
+                  tabIndex={0}
+                  className="thread-game-link"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    router.push(`/games/${thread.game_id}`);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      router.push(`/games/${thread.game_id}`);
+                    }
+                  }}
+                >
+                  {thread.game_name}
+                </span>
+              ) : (
+                thread.game_name
+              )}
+            </span>
+          )}
+          <span style={{ fontSize: '0.75rem', color: '#ffb88b' }}>{metaLine}</span>
         </div>
       </button>
     );
-  }, [router]);
+  }, [getAvatarForUsername, renderThreadMetaRow, router]);
 
-  const renderUserThreadCard = useCallback((thread: ThreadSummary, keyPrefix: string) => (
-    <button
-      key={`${keyPrefix}-${thread.thread_name}`}
-      type="button"
-      className="record-card"
-      onClick={() => router.push(`/forum/${encodeURIComponent(thread.thread_name)}`)}
-      style={{
-        width: '100%',
-        border: 'none',
-        background: '#2b1f1d',
-        textAlign: 'left',
-        color: '#fff',
-        cursor: 'pointer',
-      }}
-    >
-      <img src="/images/placeholder.svg" alt={thread.thread_name} />
-      <div>
-        <strong>{thread.thread_name}</strong>
-        {thread.game_name && (
-          <div className="muted" style={{ fontSize: '0.75rem' }}>
-            Game:{' '}
-            {thread.game_id ? (
-              <button
-                type="button"
-                className="thread-game-link"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  router.push(`/games/${thread.game_id}`);
-                }}
-              >
-                {thread.game_name}
-              </button>
-            ) : (
-              thread.game_name
-            )}
-          </div>
-        )}
-        <div className="muted" style={{ fontSize: '0.75rem' }}>
-          {thread.reply_count} repl{thread.reply_count === 1 ? 'y' : 'ies'}
+  const renderUserThreadCard = useCallback((thread: ThreadSummary, keyPrefix: string) => {
+    const avatarSrc = getAvatarForUsername(thread.creator_username);
+    const metaLine = renderThreadMetaRow(thread);
+
+    return (
+      <button
+        key={`${keyPrefix}-${thread.thread_name}`}
+        type="button"
+        className="record-card"
+        onClick={() => router.push(`/forum/${encodeURIComponent(thread.thread_name)}`)}
+        style={{
+          width: '100%',
+          border: 'none',
+          background: '#2b1f1d',
+          textAlign: 'left',
+          color: '#fff',
+          cursor: 'pointer',
+        }}
+      >
+        <img
+          src={avatarSrc}
+          alt={thread.creator_username || thread.thread_name}
+          onError={(event) => {
+            (event.target as HTMLImageElement).src = '/images/placeholder.svg';
+          }}
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1 }}>
+          <strong>{thread.thread_name}</strong>
+          {thread.detail && (
+            <div className="muted" style={{ fontSize: '0.75rem', lineHeight: 1.3 }}>{thread.detail}</div>
+          )}
+          {thread.game_name && (
+            <div className="muted" style={{ fontSize: '0.75rem' }}>
+              Game:{' '}
+              {thread.game_id ? (
+                <span
+                  role="link"
+                  tabIndex={0}
+                  className="thread-game-link"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    router.push(`/games/${thread.game_id}`);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      router.push(`/games/${thread.game_id}`);
+                    }
+                  }}
+                >
+                  {thread.game_name}
+                </span>
+              ) : (
+                thread.game_name
+              )}
+            </div>
+          )}
+          <span style={{ fontSize: '0.75rem', color: '#ffb88b' }}>{metaLine}</span>
         </div>
-      </div>
-    </button>
-  ), [router]);
+      </button>
+    );
+  }, [getAvatarForUsername, renderThreadMetaRow, router]);
 
   const fetchThreads = useCallback(async ({ cursor = null, append = false }: { cursor?: string | null; append?: boolean } = {}) => {
     const isAppending = Boolean(append);
@@ -963,30 +1081,7 @@ export default function ForumPage() {
                 ) : threadsError ? (
                   <div className="muted">{threadsError}</div>
                 ) : recentThreads.length > 0 ? (
-                  recentThreads.map((thread) => (
-                    <button
-                      key={`latest-thread-${thread.thread_name}`}
-                      type="button"
-                      className="hub-item"
-                      onClick={() => router.push(`/forum/${encodeURIComponent(thread.thread_name)}`)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        display: 'flex',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        padding: 0,
-                      }}
-                    >
-                      <img src="/images/placeholder.svg" alt={thread.thread_name} />
-                      <div>
-                        <strong>{thread.thread_name}</strong>
-                        <div className="muted" style={{ fontSize: '0.75rem' }}>
-                          {thread.creator_username ? `By ${thread.creator_username}` : 'Creator unavailable'}
-                        </div>
-                      </div>
-                    </button>
-                  ))
+                  recentThreads.map((thread) => renderUserThreadCard(thread, 'latest-thread'))
                 ) : (
                   <div className="muted">No threads yet.</div>
                 )}
@@ -999,30 +1094,7 @@ export default function ForumPage() {
                 ) : threadsError ? (
                   <div className="muted">{threadsError}</div>
                 ) : mostDiscussedThreads.length > 0 ? (
-                  mostDiscussedThreads.map((thread) => (
-                    <button
-                      key={`top-thread-${thread.thread_name}`}
-                      type="button"
-                      className="hub-item"
-                      onClick={() => router.push(`/forum/${encodeURIComponent(thread.thread_name)}`)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        display: 'flex',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        padding: 0,
-                      }}
-                    >
-                      <img src="/images/placeholder.svg" alt={thread.thread_name} />
-                      <div>
-                        <strong>{thread.thread_name}</strong>
-                        <div className="muted" style={{ fontSize: '0.75rem' }}>
-                          {thread.reply_count} repl{thread.reply_count === 1 ? 'y' : 'ies'}
-                        </div>
-                      </div>
-                    </button>
-                  ))
+                  mostDiscussedThreads.map((thread) => renderUserThreadCard(thread, 'top-thread'))
                 ) : (
                   <div className="muted">No activity yet.</div>
                 )}

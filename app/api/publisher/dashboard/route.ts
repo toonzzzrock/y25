@@ -8,26 +8,22 @@ type SessionUser = {
   role?: string | null;
 };
 
-type PublishedGameRecord = {
+type GameRecord = {
   id: number;
   title: string;
   description: string | null;
   bannerUrl: string | null;
   releaseDate: string | null;
+  gameStatus: 'Approve' | 'Reject' | 'Pending';
+  updateStatus: 'Approve' | 'Reject' | 'Pending' | null;
+  patchNumber: string | null;
   metrics: {
-    players: number | null;
-    rating: number | null;
-    comments: number | null;
-    revenue: number | null;
+    total_players: number | null;
+    average_playtime: number | null;
   };
 };
 
-type SubmissionRecord = {
-  id: number;
-  title: string;
-  status: 'waiting' | 'approved' | 'rejected';
-  updatedAt: string | null;
-};
+
 
 function getSessionUser(request: NextRequest): SessionUser | null {
   const rawToken = request.cookies.get('auth_session')?.value;
@@ -53,21 +49,7 @@ function getSessionUser(request: NextRequest): SessionUser | null {
   }
 }
 
-function normalizeStatus(rawStatus: unknown): SubmissionRecord['status'] {
-  const normalized = String(rawStatus ?? '').toLowerCase();
 
-  if (normalized.includes('reject')) {
-    return 'rejected';
-  }
-  if (normalized.includes('approve') || normalized.includes('accept')) {
-    return 'approved';
-  }
-  if (normalized.includes('wait') || normalized.includes('pending') || normalized.includes('review')) {
-    return 'waiting';
-  }
-
-  return 'waiting';
-}
 
 export async function GET(request: NextRequest) {
   const session = getSessionUser(request);
@@ -99,69 +81,41 @@ export async function GET(request: NextRequest) {
     const publisherRecord = publisherRows[0] as any;
     const accountName: string | null = publisherRecord?.account_name ?? null;
 
-    const [publishedRows] = await connection.query(
-      `SELECT game_id, game_name, detail, link_to_file, release_date
-       FROM game
-       WHERE publisher_username = ?
-       ORDER BY release_date DESC, game_id DESC`,
+    const [gamesRows] = await connection.query(
+      `SELECT 
+         g.game_id, 
+         g.game_name, 
+         g.detail, 
+         g.link_to_file, 
+         g.release_date,
+         g.status as game_status,
+         g.total_players,
+         g.average_play_time,
+         guh.patch_number,
+         guh.is_approve as update_status
+       FROM game g
+       LEFT JOIN game_update_history guh ON g.game_id = guh.game_id 
+       WHERE g.publisher_username = ?
+       ORDER BY g.release_date DESC, g.game_id DESC`,
       [session.username]
     );
 
-    const publishedGames: PublishedGameRecord[] = Array.isArray(publishedRows)
-      ? (publishedRows as any[]).map((row) => ({
+    const games: GameRecord[] = Array.isArray(gamesRows)
+      ? (gamesRows as any[]).map((row) => ({
           id: Number(row.game_id),
           title: row.game_name ?? 'Untitled Game',
           description: row.detail ?? null,
           bannerUrl: row.link_to_file ?? null,
           releaseDate: row.release_date ? new Date(row.release_date).toISOString() : null,
+          gameStatus: row.game_status ?? 'Pending',
+          updateStatus: row.update_status ? (row.update_status === true ? 'Approve' : row.update_status === false ? 'Pending' : row.update_status) : null,
+          patchNumber: row.patch_number ?? null,
           metrics: {
-            players: typeof row.player_count === 'number' ? row.player_count : null,
-            rating: typeof row.average_rating === 'number' ? row.average_rating : null,
-            comments: typeof row.comment_count === 'number' ? row.comment_count : null,
-            revenue: typeof row.total_revenue === 'number' ? row.total_revenue : null,
+            total_players: typeof row.total_players === 'number' ? row.total_players : null,
+            average_playtime: typeof row.average_play_time === 'number' ? Math.round(row.average_play_time) : null,
           },
         }))
       : [];
-
-    let submissions: SubmissionRecord[] = [];
-
-    try {
-      const [submissionRows] = await connection.query(
-        `SELECT request_id, game_name, status, updated_at, created_at
-         FROM game_submission
-         WHERE publisher_username = ?
-         ORDER BY COALESCE(updated_at, created_at) DESC`,
-        [session.username]
-      );
-
-      submissions = Array.isArray(submissionRows)
-        ? (submissionRows as any[]).map((row, index) => {
-            const rawId =
-              typeof row.request_id === 'number'
-                ? row.request_id
-                : row.request_id
-                ? Number(row.request_id)
-                : NaN;
-            const resolvedId = Number.isFinite(rawId) ? Number(rawId) : index + 1;
-
-            return {
-              id: resolvedId,
-              title: row.game_name ?? 'Untitled Game',
-              status: normalizeStatus(row.status),
-              updatedAt: row.updated_at
-                ? new Date(row.updated_at).toISOString()
-                : row.created_at
-                ? new Date(row.created_at).toISOString()
-                : null,
-            };
-          })
-        : [];
-    } catch (submissionError: any) {
-      if (submissionError?.code !== 'ER_NO_SUCH_TABLE') {
-        console.warn('Publisher submissions query failed:', submissionError);
-      }
-      submissions = [];
-    }
 
     return NextResponse.json(
       {
@@ -169,15 +123,15 @@ export async function GET(request: NextRequest) {
           username: session.username,
           accountName,
         },
-        publishedGames,
-        submissions,
+        games,
+        totalGames: games.length,
       },
       { status: 200 }
     );
   } catch (error: any) {
     console.error('Publisher dashboard error:', error);
     return NextResponse.json(
-      { error: 'Failed to load publisher dashboard', publisher: null, publishedGames: [], submissions: [] },
+      { error: 'Failed to load publisher dashboard', publisher: null, games: [], totalGames: 0 },
       { status: 500 }
     );
   } finally {

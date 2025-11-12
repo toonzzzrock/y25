@@ -54,7 +54,9 @@ export async function GET(request: NextRequest, context: GameRouteContext) {
                 detail AS description,
                 publisher_username AS developer,
                 link_to_file AS playUrl,
-                release_date AS releaseDate
+                release_date AS releaseDate,
+                total_players,
+                average_play_time
          FROM game
          WHERE game_id = ?
          LIMIT 1`,
@@ -73,11 +75,11 @@ export async function GET(request: NextRequest, context: GameRouteContext) {
       let resolvedPlayUrl: string | null = typeof gameRow.playUrl === 'string' ? gameRow.playUrl : null;
 
       const [updateRows] = await connection.query(
-        `SELECT guh.link_to_new_file AS link
-         FROM update_version_relation uvr
-         INNER JOIN game_update_history guh ON guh.update_id = uvr.update_id
-         WHERE uvr.game_id = ?
-         ORDER BY guh.update_time DESC
+        `SELECT link_to_new_file AS link
+         FROM game_update_history
+         WHERE game_id = ?
+           AND is_approve = TRUE
+         ORDER BY COALESCE(approve_time, update_time) DESC
          LIMIT 1`,
         [parsedId]
       );

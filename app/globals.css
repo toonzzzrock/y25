@@ -171,7 +171,7 @@ body::after { content:""; position: fixed; bottom:-20%; right:-10%; width:70%; h
 .play-btn { background:var(--color-primary); color:var(--color-text); border:none; padding:.75rem 1.5rem; border-radius:6px; font-weight:600; cursor:pointer; transition:all .3s ease; transform:translateY(20px); }
 .game-card:hover .play-btn { transform:translateY(0); }
 .play-btn:hover { background:var(--color-primary-hover); box-shadow:0 4px 12px rgba(255,87,34,.6); }
-.community-sidebar { width:320px; flex-shrink:0; background:var(--color-surface); border-radius:12px; padding:1.5rem; height:fit-content; position:sticky; top:2rem; }
+.community-sidebar { width:clamp(380px, 32vw, 480px); flex-shrink:0; background:var(--color-surface); border-radius:12px; padding:1.5rem; height:fit-content; position:sticky; top:2rem; }
 .community-header { display:flex; align-items:center; gap:.75rem; margin-bottom:1.5rem; }
 .community-icon { width:12px; height:12px; background:var(--color-primary); border-radius:2px; }
 .community-title { font-size:1.25rem; font-weight:700; letter-spacing:1px; color:var(--color-text); }

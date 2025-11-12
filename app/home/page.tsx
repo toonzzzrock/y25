@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useProtectedRoute } from "@/lib/use-protected-route";
@@ -19,6 +19,7 @@ type GameSummary = {
 type NormalizedGame = GameSummary & {
   image_url?: string | null;
   release_date?: string | null;
+  total_players?: number | null;
 };
 type HomeThreadSummary = {
   thread_name: string;
@@ -38,7 +39,7 @@ const resolveGameImage = (rawId: number | string | null | undefined) => {
     return "/images/placeholder.svg";
   }
 
-  return `/data/game/${numericId}/game_profile.svg`;
+  return `/api/games/${numericId}/profile`;
 };
 
 const toGameSummary = (game: any, fallbackIndex: number = 0): GameSummary => {
@@ -68,6 +69,7 @@ const toNormalizedGame = (game: any, fallbackIndex: number = 0): NormalizedGame 
     cardImage: summary.cardImage ?? game?.cardImage ?? game?.image_url ?? '/images/placeholder.svg',
     image_url: game?.image_url ?? summary.cardImage ?? '/images/placeholder.svg',
     release_date: game?.release_date ?? null,
+    total_players: typeof game?.total_players === 'number' ? game.total_players : null,
   };
 };
 
@@ -76,7 +78,23 @@ const normalizeGameList = (games: any[] | undefined | null, startIndex: number =
     return [];
   }
 
-  return games.map((game, index) => toNormalizedGame(game, startIndex + index));
+  const seen = new Set<string>();
+  const normalized: NormalizedGame[] = [];
+
+  games.forEach((game, index) => {
+    const entry = toNormalizedGame(game, startIndex + index);
+    const identity = entry.id ?? entry.title ?? `${startIndex + index}`;
+    const key = String(identity).toLowerCase();
+
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    normalized.push(entry);
+  });
+
+  return normalized;
 };
 
 export default function HomePage() {
@@ -94,6 +112,7 @@ export default function HomePage() {
   const [categoryGames, setCategoryGames] = useState<NormalizedGame[]>([]);
   const [isLoadingCategory, setIsLoadingCategory] = useState(false);
   const [latestThreads, setLatestThreads] = useState<HomeThreadSummary[]>([]);
+  const [threadAvatars, setThreadAvatars] = useState<Record<string, string | null>>({});
   const [isLoadingCommunity, setIsLoadingCommunity] = useState(true);
   const [communityError, setCommunityError] = useState<string | null>(null);
   const [allGamesLibrary, setAllGamesLibrary] = useState<NormalizedGame[]>([]);
@@ -102,6 +121,7 @@ export default function HomePage() {
   const [trendingGames, setTrendingGames] = useState<NormalizedGame[]>([]);
   const [newGames, setNewGames] = useState<NormalizedGame[]>([]);
   const allCategories = getAllCategories();
+  const categoryTrackRef = useRef<HTMLDivElement | null>(null);
 
   const showNotification = useCallback((message: string, type: string = "info") => {
     setNotification({ message, type });
@@ -156,6 +176,66 @@ export default function HomePage() {
   }, [showNotification]);
 
   useEffect(() => {
+    if (latestThreads.length === 0) {
+      return;
+    }
+
+    const usernameSet = new Set<string>();
+    latestThreads.forEach((thread) => {
+      if (thread.creator_username) {
+        usernameSet.add(thread.creator_username);
+      }
+    });
+
+    const pending = Array.from(usernameSet).filter((name) => !(name in threadAvatars));
+    if (pending.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const results = await Promise.all(
+          pending.map(async (name) => {
+            try {
+              const response = await fetch(`/api/users/assets/${encodeURIComponent(name)}`);
+              if (!response.ok) {
+                return [name, null] as const;
+              }
+              const data = await response.json();
+              return [name, data?.avatarUrl ?? null] as const;
+            } catch (error) {
+              console.warn('Homepage avatar load failed for', name, error);
+              return [name, null] as const;
+            }
+          })
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setThreadAvatars((previous) => {
+          const next = { ...previous };
+          results.forEach(([name, avatar]) => {
+            next[name] = avatar;
+          });
+          return next;
+        });
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Homepage avatar preload aborted:', error);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [latestThreads, threadAvatars]);
+
+  useEffect(() => {
     const controller = new AbortController();
 
     const loadAllGames = async () => {
@@ -175,12 +255,11 @@ export default function HomePage() {
 
         setAllGamesLibrary(normalized);
 
-        const trendingCount = Math.min(8, normalized.length);
-        const trendingList = normalized.slice(0, trendingCount);
-        const newList = normalized.slice(trendingCount, trendingCount + 8);
-
-        setTrendingGames(trendingList);
-        setNewGames(newList.length > 0 ? newList : trendingList);
+        // Set new games (most recent games)
+        const newList = normalized.slice(0, 8);
+        setNewGames(newList);
+        
+        // Fetch trending games separately (will be called after allGamesLibrary is updated)
       } catch (error: any) {
         if (error?.name === 'AbortError') {
           return;
@@ -230,6 +309,34 @@ export default function HomePage() {
       setIsLoadingCategory(false);
     }
   }, [showNotification]);
+
+  // Fetch trending games based on total_players
+  const fetchTrendingGames = useCallback(async () => {
+    try {
+      const response = await fetch('/api/games/trending?limit=8');
+      const data = await response.json();
+
+      if (response.ok && data.games && data.games.length > 0) {
+        setTrendingGames(normalizeGameList(data.games));
+      } else {
+        // Fallback to first 8 games from all games if no trending data
+        const fallback = allGamesLibrary.slice(0, 8);
+        setTrendingGames(fallback);
+      }
+    } catch (error) {
+      console.error('Trending games fetch error:', error);
+      // Fallback to first 8 games from all games
+      const fallback = allGamesLibrary.slice(0, 8);
+      setTrendingGames(fallback);
+    }
+  }, [allGamesLibrary]);
+
+  // Fetch trending games when allGamesLibrary is populated
+  useEffect(() => {
+    if (allGamesLibrary.length > 0) {
+      fetchTrendingGames();
+    }
+  }, [allGamesLibrary, fetchTrendingGames]);
 
   // Handle real-time search as user types
   const handleSearchChange = useCallback(async (value: string) => {
@@ -436,27 +543,112 @@ export default function HomePage() {
     );
   };
 
+  const renderTrendingGameCard = (game: any, index: number) => {
+    const rawId = game?.id ?? game?.game_id ?? index + 1;
+    const gameId = typeof rawId === 'string' || typeof rawId === 'number' ? rawId : index + 1;
+    const title = game?.title || game?.game_name || `Game ${index + 1}`;
+    const imageSrc = game?.cardImage || game?.image_url || resolveGameImage(gameId);
+    const totalPlayers = game?.total_players || 0;
+    
+    // Format player count
+    const formatPlayerCount = (count: number) => {
+      if (count >= 1000000) {
+        return `${(count / 1000000).toFixed(1)}M players`;
+      } else if (count >= 1000) {
+        return `${(count / 1000).toFixed(1)}K players`;
+      } else {
+        return `${count} player${count !== 1 ? 's' : ''}`;
+      }
+    };
+
+    const playerLabel = totalPlayers > 0 ? formatPlayerCount(totalPlayers) : 'New Game';
+    const rankLabel = `#${index + 1}`;
+
+    const handleNavigate = () => {
+      navigateToGame(gameId);
+    };
+
+    return (
+      <div
+        key={String(gameId)}
+        style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}
+      >
+        <div
+          className="game-card trending-card"
+          role="button"
+          tabIndex={0}
+          onClick={handleNavigate}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              handleNavigate();
+            }
+          }}
+        >
+          <div className="trending-rank">{rankLabel}</div>
+          <img
+            src={imageSrc}
+            alt={title}
+            className="game-image"
+            onError={(event) => {
+              (event.target as HTMLImageElement).src = '/images/placeholder.svg';
+            }}
+          />
+          <div className="game-overlay">
+            <button
+              className="play-btn"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleNavigate();
+              }}
+            >
+              Play Now
+            </button>
+          </div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <p
+            style={{
+              margin: '0',
+              fontSize: '0.9rem',
+              fontWeight: 500,
+              color: '#fff',
+            }}
+          >
+            {title}
+          </p>
+          <p
+            style={{
+              margin: '0',
+              fontSize: '0.75rem',
+              color: '#ff6600',
+              fontWeight: 600,
+            }}
+          >
+            {playerLabel}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   const formatThreadMeta = useCallback((thread: HomeThreadSummary) => {
     const parts: string[] = [];
 
     if (thread.creator_username) {
-      parts.push(`by ${thread.creator_username}`);
-    }
-
-    const repliesLabel = `${thread.reply_count} repl${thread.reply_count === 1 ? 'y' : 'ies'}`;
-    parts.push(repliesLabel);
-
-    if (thread.game_name) {
-      parts.push(thread.game_name);
+      parts.push(`By ${thread.creator_username}`);
     }
 
     if (thread.created_at) {
       try {
-        parts.push(new Date(thread.created_at).toLocaleDateString());
+        parts.push(new Date(thread.created_at).toLocaleString());
       } catch {
         parts.push(thread.created_at);
       }
     }
+
+    const repliesLabel = `${thread.reply_count} repl${thread.reply_count === 1 ? 'y' : 'ies'}`;
+    parts.push(repliesLabel);
 
     return parts.join(' • ');
   }, []);
@@ -515,11 +707,12 @@ export default function HomePage() {
         showSuggestions={showSuggestions}
       />
       <nav className="category-nav">
-        {allCategories.map((category) => (
-          <button
-            key={category.id}
-            className={`category-btn ${activeCategory === category.id ? "active" : ""}`}
-            onClick={() => {
+        <div className="category-nav-track" ref={categoryTrackRef}>
+          {allCategories.map((category) => (
+            <button
+              key={category.id}
+              className={`category-btn ${activeCategory === category.id ? "active" : ""}`}
+              onClick={() => {
               if (activeCategory === category.id) {
                 // If clicking the active category, deselect it
                 setActiveCategory("all");
@@ -564,14 +757,13 @@ export default function HomePage() {
           >
             <span>{category.icon}</span>
             <span>{category.name}</span>
-          </button>
-        ))}
-
+            </button>
+          ))}
+        </div>
         <button
           className="nav-arrow-btn"
-          onClick={(e) => {
-            const nav = (e.currentTarget.parentElement as HTMLElement);
-            nav.scrollBy({ left: 200, behavior: "smooth" });
+          onClick={() => {
+            categoryTrackRef.current?.scrollBy({ left: 220, behavior: "smooth" });
           }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -642,21 +834,21 @@ export default function HomePage() {
               <>
                 <section className="game-section">
                   <div className="section-header">
-                    <h2 className="section-title">TRENDING</h2>
-                    <button className="section-arrow" onClick={() => showNotification('Loading more trending games...', 'info')}>
+                    <h2 className="section-title">TRENDING BY PLAYERS</h2>
+                    <button className="section-arrow" onClick={() => router.push('/games/list?type=trending')}>
                       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 8L20 16L12 24" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </button>
                   </div>
                   <div className="game-grid trending-grid">
-                    {trendingGames.map((game, index) => renderDynamicGameCard(game, index))}
+                    {trendingGames.map((game, index) => renderTrendingGameCard(game, index))}
                   </div>
                 </section>
                 <section className="game-section">
                   <div className="section-header">
                     <h2 className="section-title">NEW GAME</h2>
-                    <button className="section-arrow" onClick={() => showNotification('Loading more new games...', 'info')}>
+                    <button className="section-arrow" onClick={() => router.push('/games/list?type=new')}>
                       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 8L20 16L12 24" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
@@ -671,7 +863,7 @@ export default function HomePage() {
                     <h2 className="section-title">ALL GAMES</h2>
                     <button
                       className="section-arrow"
-                      onClick={() => showNotification('Browse the full library coming soon!', 'info')}
+                      onClick={() => router.push('/games/list?type=all')}
                     >
                       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 8L20 16L12 24" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
@@ -708,23 +900,43 @@ export default function HomePage() {
                 ) : latestThreads.length > 0 ? (
                   latestThreads.map((thread) => {
                     const meta = formatThreadMeta(thread);
+                    const avatarSrc = thread.creator_username
+                      ? threadAvatars[thread.creator_username] ?? '/images/placeholder.svg'
+                      : '/images/placeholder.svg';
+
                     return (
                       <div
                         key={thread.thread_name}
                         className="hub-item"
+                        role="button"
+                        tabIndex={0}
                         onClick={() => router.push(`/forum/${encodeURIComponent(thread.thread_name)}`)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            router.push(`/forum/${encodeURIComponent(thread.thread_name)}`);
+                          }
+                        }}
                       >
                         <img
-                          src="/images/placeholder.svg"
-                          alt={thread.thread_name}
+                          src={avatarSrc}
+                          alt={thread.creator_username || thread.thread_name}
                           className="hub-avatar"
+                          onError={(event) => {
+                            (event.target as HTMLImageElement).src = '/images/placeholder.svg';
+                          }}
                         />
                         <div className="hub-info">
                           <h5 className="hub-name">{thread.thread_name}</h5>
-                          <p className="hub-stats">{meta}</p>
                           {thread.detail && (
                             <p className="hub-detail">{thread.detail}</p>
                           )}
+                          {thread.game_name && (
+                            <p className="hub-game">
+                              Game: <span>{thread.game_name}</span>
+                            </p>
+                          )}
+                          <p className="hub-stats">{meta}</p>
                         </div>
                       </div>
                     );

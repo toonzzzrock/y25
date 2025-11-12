@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation";
 import Header from "@/app/components/Header";
 import { useProtectedRoute } from "@/lib/use-protected-route";
+import { checkGameFileExists, extractGameIdFromUrl } from "@/lib/game-utils";
 import "../../game-detail.css";
 
 type NotificationState = {
@@ -11,18 +12,25 @@ type NotificationState = {
   type: "info" | "success" | "error";
 };
 
-type GameDetailState = {
+interface GameDetailState {
   id: number;
   title: string;
   description: string | null;
   developer: string | null;
   releaseDate: string | null;
-  genre: string | null;
   bannerUrl: string;
   playUrl: string | null;
-  rating: number | null;
-  downloads: string | null;
-};
+  totalPlayers: number | null;
+  averagePlayTime: number | null;
+}
+
+interface GameVersion {
+  version: string;
+  approvedDate: string;
+  createdDate: string;
+  description: string | null;
+  linkToFilePath: string | null;
+}
 
 const DEFAULT_SCREENSHOTS = [
   "/images/boxing-game.svg",
@@ -38,7 +46,7 @@ const resolveGameImage = (rawId: number | string | null | undefined) => {
     return "/images/placeholder.svg";
   }
 
-  return `/data/game/${numericId}/game_profile.svg`;
+  return `/api/games/${numericId}/profile`;
 };
 
 const normalizeTitle = (title?: string | null) => {
@@ -107,9 +115,15 @@ export default function GameDetailPage() {
   const [reportTopic, setReportTopic] = useState<"Lag" | "Disconnect" | "Bug" | "">("");
   const [reportDetail, setReportDetail] = useState("");
   const [game, setGame] = useState<GameDetailState | null>(null);
+  const [gameVersions, setGameVersions] = useState<GameVersion[]>([]);
+  const [gameTags, setGameTags] = useState<string[]>([]);
   const [isFetching, setIsFetching] = useState(true);
+  const [adSlotCount, setAdSlotCount] = useState(3);
+  const [versionsHeight, setVersionsHeight] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [versionsLoading, setVersionsLoading] = useState(true);
+  const [tagsLoading, setTagsLoading] = useState(true);
   const playSessionRef = useRef({ gameId: 0, start: 0, reported: true });
   const finalizePlaySessionRef = useRef<() => void>(() => undefined);
 
@@ -119,6 +133,59 @@ export default function GameDetailPage() {
     }
     setNotification({ message, type });
     notificationTimeout.current = setTimeout(() => setNotification(null), 3000);
+  }, []);
+
+  const updateSidebarHeight = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (window.innerWidth <= 1024) {
+      setVersionsHeight(null);
+      return;
+    }
+
+    if (!bannerRef.current) {
+      return;
+    }
+
+    const { height } = bannerRef.current.getBoundingClientRect();
+    if (height > 0) {
+      setVersionsHeight((previous) => {
+        const next = Math.round(height);
+        return previous === next ? previous : next;
+      });
+    }
+  }, []);
+
+  const fetchGameVersions = useCallback(async (gameId: number) => {
+    try {
+      setVersionsLoading(true);
+      const response = await fetch(`/api/games/${gameId}/versions`);
+      if (response.ok) {
+        const data = await response.json();
+        setGameVersions(data.versions || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch game versions:', error);
+    } finally {
+      setVersionsLoading(false);
+    }
+  }, []);
+
+  const fetchGameTags = useCallback(async (gameId: number) => {
+    try {
+      setTagsLoading(true);
+      const response = await fetch(`/api/games/${gameId}/tags`);
+      if (response.ok) {
+        const data = await response.json();
+        setGameTags(data.tags || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch game tags:', error);
+    } finally {
+      setTagsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -146,6 +213,38 @@ export default function GameDetailPage() {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
   }, []);
+
+  useEffect(() => {
+    updateSidebarHeight();
+    window.addEventListener("resize", updateSidebarHeight);
+    return () => {
+      window.removeEventListener("resize", updateSidebarHeight);
+    };
+  }, [updateSidebarHeight]);
+
+  useEffect(() => {
+    const updateAdSlots = () => {
+      const MIN_SLOTS = 3;
+      const MAX_SLOTS = 8;
+      const sidebarPadding = 160; // approximate vertical padding and spacing in the sidebar
+      const cardMinHeight = 140; // keep in sync with CSS minimum height for ad cards
+      const gap = 16; // matches 1rem gap between cards
+      const availableHeight = Math.max(window.innerHeight - sidebarPadding, cardMinHeight);
+      const estimatedCount = Math.floor((availableHeight + gap) / (cardMinHeight + gap));
+      const nextCount = Math.min(MAX_SLOTS, Math.max(MIN_SLOTS, estimatedCount));
+      setAdSlotCount(nextCount);
+    };
+
+    updateAdSlots();
+    window.addEventListener("resize", updateAdSlots);
+    return () => {
+      window.removeEventListener("resize", updateAdSlots);
+    };
+  }, []);
+
+  useEffect(() => {
+    updateSidebarHeight();
+  }, [updateSidebarHeight, game?.bannerUrl, isFetching, isFullscreen]);
 
   useEffect(() => {
     if (!decodedGameId) {
@@ -206,14 +305,19 @@ export default function GameDetailPage() {
           description: raw?.description ?? null,
           developer: raw?.developer ?? null,
           releaseDate: raw?.releaseDate ?? null,
-          genre: raw?.genre ?? null,
           bannerUrl,
           playUrl,
-          rating: typeof raw?.rating === "number" ? raw.rating : null,
-          downloads: typeof raw?.downloads === "string" ? raw.downloads : null,
+          totalPlayers: typeof raw?.total_players === "number" ? raw.total_players : null,
+          averagePlayTime: typeof raw?.average_play_time === "number" ? raw.average_play_time : null,
         };
 
         setGame(normalized);
+        
+        // Fetch game versions and tags after setting the game
+        if (normalized.id > 0) {
+          fetchGameVersions(normalized.id);
+          fetchGameTags(normalized.id);
+        }
       } catch (error: any) {
         if (error?.name === "AbortError") {
           return;
@@ -232,7 +336,7 @@ export default function GameDetailPage() {
     return () => {
       controller.abort();
     };
-  }, [decodedGameId, showNotification]);
+  }, [decodedGameId, showNotification, fetchGameVersions, fetchGameTags]);
 
   const sendPlayDuration = useCallback((elapsedMs: number) => {
     const activeSession = playSessionRef.current;
@@ -312,10 +416,40 @@ export default function GameDetailPage() {
   }, [game?.developer]);
 
   const screenshotSources = useMemo(() => buildScreenshotSet(game?.bannerUrl ?? null), [game?.bannerUrl]);
-  const ratingValue = useMemo(() => (game?.rating && game.rating > 0 ? game.rating : 4.5), [game?.rating]);
-  const ratingDisplay = useMemo(() => ratingValue.toFixed(1), [ratingValue]);
-  const downloadsDisplay = useMemo(() => game?.downloads ?? "Coming Soon", [game?.downloads]);
-  const genreDisplay = useMemo(() => game?.genre ?? "Unspecified", [game?.genre]);
+  const adSlots = useMemo(() => Array.from({ length: adSlotCount }, (_, index) => index + 1), [adSlotCount]);
+
+  const totalPlayersDisplay = useMemo(() => {
+    const count = game?.totalPlayers ?? 0;
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    } else if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K`;
+    } else {
+      return count.toString();
+    }
+  }, [game?.totalPlayers]);
+  
+  const avgPlayTimeDisplay = useMemo(() => {
+    const time = game?.averagePlayTime ?? 0;
+    if (time <= 0) return "No Data";
+    const hours = Math.floor(time / 60);
+    const minutes = Math.floor(time % 60);
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  }, [game?.averagePlayTime]);
+
+  const tagsDisplay = useMemo(() => {
+    if (tagsLoading) return "Loading...";
+    if (gameTags.length === 0) return "No tags";
+    return gameTags.join(", ");
+  }, [gameTags, tagsLoading]);
+
+  const handleBannerLoad = useCallback(() => {
+    updateSidebarHeight();
+  }, [updateSidebarHeight]);
 
   const handleSearch = useCallback(() => {
     showNotification("Search functionality coming soon", "info");
@@ -486,7 +620,7 @@ export default function GameDetailPage() {
     }
   }, [showNotification]);
 
-  const handlePlay = useCallback(() => {
+  const handlePlay = useCallback(async () => {
     finalizePlaySessionRef.current?.();
 
     if (game?.playUrl) {
@@ -494,11 +628,21 @@ export default function GameDetailPage() {
 
       if (/^[a-zA-Z]+:\/\//.test(destination)) {
         window.open(destination, "_blank", "noopener,noreferrer");
+        showNotification(`Launching ${game.title}`, "success");
       } else {
-        router.push(destination);
+        // Check if the game file exists before navigating
+        const fileExists = await checkGameFileExists(destination);
+        
+        if (fileExists) {
+          router.push(destination);
+          showNotification(`Launching ${game.title}`, "success");
+        } else {
+          // Redirect to fallback page with game ID
+          const gameId = extractGameIdFromUrl(destination) || game.id.toString();
+          router.push(`/game-fallback?gameId=${gameId}`);
+          showNotification("Game file not found, showing fallback experience", "info");
+        }
       }
-
-      showNotification(`Launching ${game.title}`, "success");
     } else {
       showNotification("Playable build coming soon", "info");
     }
@@ -627,8 +771,14 @@ export default function GameDetailPage() {
                         src={game.bannerUrl}
                         alt={game.title}
                         className="game-banner-image"
+                        onLoad={handleBannerLoad}
                         onError={(event) => {
-                          (event.target as HTMLImageElement).src = "/images/placeholder.svg";
+                          const image = event.target as HTMLImageElement;
+                          if (!image.src.includes("/images/placeholder.svg")) {
+                            image.src = "/images/placeholder.svg";
+                          } else {
+                            handleBannerLoad();
+                          }
                         }}
                       />
                     </div>
@@ -686,21 +836,20 @@ export default function GameDetailPage() {
 
                   <div className="game-stats">
                     <div className="stat-item">
-                      <span className="stat-label">Rating</span>
-                      {renderStars(ratingValue)}
-                      <span className="stat-value">{ratingDisplay}</span>
+                      <span className="stat-label">Total Players</span>
+                      <span className="stat-value">{totalPlayersDisplay}</span>
                     </div>
                     <div className="stat-item">
-                      <span className="stat-label">Downloads</span>
-                      <span className="stat-value">{downloadsDisplay}</span>
+                      <span className="stat-label">Average Play Time</span>
+                      <span className="stat-value">{avgPlayTimeDisplay}</span>
                     </div>
                     <div className="stat-item">
                       <span className="stat-label">Release Date</span>
                       <span className="stat-value">{releaseDateDisplay}</span>
                     </div>
                     <div className="stat-item">
-                      <span className="stat-label">Genre</span>
-                      <span className="stat-value">{genreDisplay}</span>
+                      <span className="stat-label">Tags</span>
+                      <span className="stat-value">{tagsDisplay}</span>
                     </div>
                   </div>
 
@@ -733,17 +882,48 @@ export default function GameDetailPage() {
             ) : null}
           </div>
 
-          <aside className="ad-sidebar">
-            <div className="ad-space">
-              <p>
-                SPACE
-                <br />
-                FOR
-                <br />
-                ADVERTISING
-              </p>
-            </div>
-          </aside>
+          <div className="game-detail-side">
+            <aside
+              className="versions-sidebar"
+              style={versionsHeight ? { height: versionsHeight, maxHeight: versionsHeight } : undefined}
+            >
+              <div className="versions-section">
+                <h3>Game Versions</h3>
+                {versionsLoading ? (
+                  <div className="versions-loading">Loading versions...</div>
+                ) : gameVersions.length > 0 ? (
+                  <div className="versions-list">
+                    {gameVersions.map((version, index) => (
+                      <div key={index} className="version-item">
+                        <div className="version-header">
+                          <span className="version-number">v{version.version}</span>
+                          <span className="version-date">
+                            {new Date(version.approvedDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {version.description && (
+                          <p className="version-description">{version.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="no-versions">No versions available</div>
+                )}
+              </div>
+            </aside>
+
+            <section className="ads-sidebar">
+              <h3>Advertisements</h3>
+              <div className="ads-sidebar-grid">
+                {adSlots.map((slotNumber) => (
+                  <div key={slotNumber} className="ads-sidebar-card">
+                    Ad Space {slotNumber}
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
         </div>
       </main>
 

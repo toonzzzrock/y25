@@ -58,6 +58,7 @@ export default function ThreadsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isPostingReply, setIsPostingReply] = useState(false);
   const [replyTarget, setReplyTarget] = useState<{ commentId: number; username: string | null } | null>(null);
+  const [userAssets, setUserAssets] = useState<Record<string, string | null>>({});
   const replyInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const showNotification = useCallback((message: string, type: string = "info") => {
@@ -136,6 +137,70 @@ export default function ThreadsPage() {
       controller.abort();
     };
   }, [decodedThreadName]);
+
+  useEffect(() => {
+    if (!thread) {
+      return;
+    }
+
+    const usernameSet = new Set<string>();
+    if (thread.creatorUsername) {
+      usernameSet.add(thread.creatorUsername);
+    }
+
+    thread.comments?.forEach((comment) => {
+      if (comment.username) {
+        usernameSet.add(comment.username);
+      }
+    });
+
+    const pending = Array.from(usernameSet).filter((name) => !(name in userAssets));
+    if (pending.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const results = await Promise.all(
+          pending.map(async (name) => {
+            try {
+              const response = await fetch(`/api/users/assets/${encodeURIComponent(name)}`);
+              if (!response.ok) {
+                return [name, null] as const;
+              }
+              const data = await response.json();
+              return [name, data?.avatarUrl ?? null] as const;
+            } catch (error) {
+              console.warn('Failed to load avatar for', name, error);
+              return [name, null] as const;
+            }
+          })
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setUserAssets((previous) => {
+          const next = { ...previous };
+          results.forEach(([name, avatar]) => {
+            next[name] = avatar;
+          });
+          return next;
+        });
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('User asset fetch failed:', error);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [thread, userAssets]);
 
   const handleReply = useCallback(async () => {
     const trimmed = replyText.trim();
@@ -220,6 +285,12 @@ export default function ThreadsPage() {
   }, []);
 
   const threadCreatedAt = useMemo(() => formatDateTime(thread?.createdAt ?? null), [formatDateTime, thread?.createdAt]);
+  const threadCreatorAvatar = useMemo(() => {
+    if (!thread?.creatorUsername) {
+      return '/images/placeholder.svg';
+    }
+    return userAssets[thread.creatorUsername] ?? '/images/placeholder.svg';
+  }, [thread?.creatorUsername, userAssets]);
   const commentLookup = useMemo(() => {
     const map = new Map<number, ThreadComment>();
     thread?.comments.forEach((comment) => {
@@ -286,10 +357,19 @@ export default function ThreadsPage() {
     const nodeClass = depth === 0 ? 'comment-node root' : 'comment-node';
     const indentation = depth === 0 ? undefined : { marginLeft: depth * 22 };
 
+    const avatarSrc = current.username ? userAssets[current.username] ?? '/images/placeholder.svg' : '/images/placeholder.svg';
+
     return (
       <div key={key} className={nodeClass} style={indentation}>
         <article className={`thread-item small${depth > 0 ? ' child' : ''}`}>
-          <img className="avatar" src="/images/placeholder.svg" alt={current.username || 'Community member'} />
+          <img
+            className="avatar"
+            src={avatarSrc}
+            alt={current.username || 'Community member'}
+            onError={(event) => {
+              (event.target as HTMLImageElement).src = '/images/placeholder.svg';
+            }}
+          />
           <div className="thread-body">
             <div className="thread-meta" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -429,7 +509,14 @@ export default function ThreadsPage() {
 
                 <div className="threads-list">
                   <article className="thread-item">
-                    <img className="avatar" src="/images/placeholder.svg" alt={thread.creatorUsername || 'Thread author'} />
+                    <img
+                      className="avatar"
+                      src={threadCreatorAvatar}
+                      alt={thread.creatorUsername || 'Thread author'}
+                      onError={(event) => {
+                        (event.target as HTMLImageElement).src = '/images/placeholder.svg';
+                      }}
+                    />
                     <div className="thread-body">
                       <div className="thread-meta">
                         <strong className="username">{thread.creatorUsername || 'Unknown user'}</strong>

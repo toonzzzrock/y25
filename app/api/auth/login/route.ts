@@ -7,13 +7,57 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { verifyPassword } from '@/lib/auth';
+import { randomBytes, createHash } from 'crypto';
+
+function buildDeviceFingerprint(request: NextRequest): string {
+  const userAgent = request.headers.get('user-agent') ?? 'unknown-agent';
+  const brands = request.headers.get('sec-ch-ua') ?? '';
+  const platform = request.headers.get('sec-ch-ua-platform') ?? '';
+  const mobile = request.headers.get('sec-ch-ua-mobile') ?? '';
+  const language = request.headers.get('accept-language') ?? '';
+  const ipChain = request.headers.get('x-forwarded-for') ?? '';
+
+  const rawFingerprint = [userAgent, brands, platform, mobile, language, ipChain]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join('|');
+
+  if (!rawFingerprint) {
+    return 'unknown-device';
+  }
+
+  const hash = createHash('sha256').update(rawFingerprint).digest('hex');
+  const descriptor = platform || (userAgent.split('(')[1]?.split(')')[0] ?? userAgent.split(';')[0] ?? 'unknown');
+  const summarized = `${descriptor}#${hash.slice(0, 16)}`;
+  return summarized.slice(0, 255);
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { username, password } = body;
 
+    const obfuscateIdentifier = (value: string | undefined | null): string => {
+      if (!value) {
+        return 'unknown';
+      }
+      const trimmed = value.trim();
+      if (trimmed.length <= 3) {
+        return `${trimmed}-len${trimmed.length}`;
+      }
+      return `${trimmed.slice(0, 3)}***-len${trimmed.length}`;
+    };
+
+    const attemptLabel = obfuscateIdentifier(username);
+    console.info('[api/auth/login] Incoming login attempt.', {
+      identifier: attemptLabel,
+      userAgent: request.headers.get('user-agent') ?? 'unknown',
+    });
+
     if (!username || !password) {
+      console.warn('[api/auth/login] Missing credentials.', {
+        identifier: attemptLabel,
+      });
       return NextResponse.json(
         { error: 'Username or email and password required' },
         { status: 400 }
@@ -29,6 +73,9 @@ export async function POST(request: NextRequest) {
       );
 
       if ((users as any[]).length === 0) {
+        console.warn('[api/auth/login] Identifier not found.', {
+          identifier: attemptLabel,
+        });
         return NextResponse.json(
           { error: 'Invalid username, email or password' },
           { status: 401 }
@@ -72,6 +119,9 @@ export async function POST(request: NextRequest) {
       const isValid = verifyPassword(password, salt, user.password_encrypted);
 
       if (!isValid) {
+        console.warn('[api/auth/login] Password verification failed.', {
+          identifier: attemptLabel,
+        });
         return NextResponse.json(
           { error: 'Invalid username, email or password' },
           { status: 401 }
@@ -85,6 +135,19 @@ export async function POST(request: NextRequest) {
 
       const isPublisher = Array.isArray(publisherRows) && publisherRows.length > 0;
       const role: 'publisher' | 'user' = isPublisher ? 'publisher' : 'user';
+      const deviceFingerprint = buildDeviceFingerprint(request);
+
+      try {
+        await connection.query('DELETE FROM session WHERE username = ?', [user.username]);
+        await connection.query(
+          `INSERT INTO session (username, last_login_time, device)
+           VALUES (?, NOW(), ?)` as string,
+          [user.username, deviceFingerprint]
+        );
+      } catch (error) {
+        console.error('Failed to upsert session record:', error);
+        throw new Error('Unable to record session information');
+      }
 
       // Create session token (simple approach - in production use JWT or secure session)
       const sessionToken = Buffer.from(
@@ -92,7 +155,8 @@ export async function POST(request: NextRequest) {
           username: user.username,
           email: user.email,
           role,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          device: deviceFingerprint,
         })
       ).toString('base64');
 
@@ -119,8 +183,10 @@ export async function POST(request: NextRequest) {
       connection.release();
     }
   } catch (error: any) {
-    console.error('Login error:', error.message || error);
-    console.error('Stack:', error.stack);
+    console.error('[api/auth/login] Unexpected error.', {
+      error: error?.message || error,
+      stack: error?.stack,
+    });
     
     // Check if it's a database connection error
     if (error.code === 'ECONNREFUSED' || error.errno === -111) {

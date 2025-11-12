@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useProtectedRoute } from "@/lib/use-protected-route";
 import { useAuth } from "@/lib/auth-context";
 import Header from "@/app/components/Header";
+import UploadModal from "@/app/components/UploadModal";
 import "./publisher.css";
 
 type NotificationVariant = "success" | "error" | "info";
@@ -20,33 +21,28 @@ type PublisherSummary = {
   accountName: string | null;
 };
 
-type PublishedGame = {
+type GameStatus = 'Approve' | 'Reject' | 'Pending';
+type UpdateStatus = 'Approve' | 'Reject' | 'Pending';
+
+type Game = {
   id: number;
   title: string;
   description: string | null;
   bannerUrl: string | null;
   releaseDate: string | null;
+  gameStatus: GameStatus;
+  updateStatus: UpdateStatus | null;
+  patchNumber: number | null;
   metrics: {
-    players: number | null;
-    rating: number | null;
-    comments: number | null;
-    revenue: number | null;
+    total_players: number | null;
+    average_playtime: number | null;
   };
-};
-
-type SubmissionStatus = "waiting" | "approved" | "rejected";
-
-type Submission = {
-  id: number;
-  title: string;
-  status: SubmissionStatus;
-  updatedAt: string | null;
 };
 
 type DashboardData = {
   publisher: PublisherSummary | null;
-  publishedGames: PublishedGame[];
-  submissions: Submission[];
+  games: Game[];
+  totalGames: number;
 };
 
 type NotificationState = {
@@ -64,11 +60,7 @@ type ReportEntry = {
   reportedAt: string;
 };
 
-const STATUS_LABEL: Record<SubmissionStatus, string> = {
-  waiting: "Waiting",
-  approved: "Approved",
-  rejected: "Rejected",
-};
+
 
 function PlayersIcon() {
   return (
@@ -78,26 +70,10 @@ function PlayersIcon() {
   );
 }
 
-function RatingIcon() {
+function PlaytimeIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 17.27L18.18 21 16.54 13.97 22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z" />
-    </svg>
-  );
-}
-
-function CommentIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
-    </svg>
-  );
-}
-
-function RevenueIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 2C8.13 2 5 5.13 5 9h2c0-2.76 2.24-5 5-5s5 2.24 5 5c0 2.21-1.45 4.08-3.45 4.73l-.55.18V21h-2v-6.09c-2.89-.86-5-3.54-5-6.91H5c0 3.87 2.69 7.16 6.26 7.86l.74.13V23h2v-6.9c3.45-.89 6-4.02 6-7.97 0-4.42-3.58-8-8-8z" />
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7V7z" />
     </svg>
   );
 }
@@ -160,6 +136,25 @@ function formatCurrency(value: number | null | undefined): string {
   })}`;
 }
 
+function formatPlaytime(minutes: number | null | undefined): string {
+  if (minutes === null || minutes === undefined || Number.isNaN(minutes)) {
+    return "—";
+  }
+
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (remainingMinutes === 0) {
+    return `${hours}h`;
+  }
+
+  return `${hours}h ${remainingMinutes}m`;
+}
+
 function formatUpdatedAt(value: string | null | undefined): string {
   if (!value) {
     return "Awaiting review";
@@ -176,27 +171,7 @@ function formatUpdatedAt(value: string | null | undefined): string {
   }
 }
 
-function statusClassName(status: SubmissionStatus): string {
-  switch (status) {
-    case "approved":
-      return "publisher-status-pill publisher-status-approved";
-    case "rejected":
-      return "publisher-status-pill publisher-status-rejected";
-    default:
-      return "publisher-status-pill publisher-status-waiting";
-  }
-}
 
-function statusIcon(status: SubmissionStatus) {
-  switch (status) {
-    case "approved":
-      return <ApprovedIcon />;
-    case "rejected":
-      return <RejectedIcon />;
-    default:
-      return <WaitingIcon />;
-  }
-}
 
 const resolvePublisherGameImage = (rawId: number | string | null | undefined) => {
   if (rawId === null || rawId === undefined) {
@@ -208,10 +183,52 @@ const resolvePublisherGameImage = (rawId: number | string | null | undefined) =>
     return "/images/placeholder.svg";
   }
 
-  return `/data/game/${numericId}/game_profile.svg`;
+  return `/api/games/${numericId}/profile`;
 };
 
-const mapApiGameToPublished = (game: any, fallbackIndex: number = 0): PublishedGame => {
+const normalizeGameBannerUrl = (game: any, fallbackId: number): string => {
+  const candidates: Array<string | null | undefined> = [
+    game?.bannerUrl,
+    game?.banner_url,
+    game?.banner,
+    game?.coverUrl,
+    game?.cover_url,
+    game?.imageUrl,
+    game?.image_url,
+    game?.link_to_file,
+    game?.thumbnail,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string") {
+      continue;
+    }
+
+    const trimmed = candidate.trim();
+    if (!trimmed || trimmed.includes("placeholder")) {
+      continue;
+    }
+
+    // Skip common non-image files (HTML, JS, etc.)
+    if (/\.(html|htm|js|css|json|txt)$/i.test(trimmed)) {
+      continue;
+    }
+
+    if (/^(https?:)?\/\//.test(trimmed)) {
+      return trimmed;
+    }
+
+    if (trimmed.startsWith("/")) {
+      return trimmed;
+    }
+
+    return `/${trimmed.replace(/^\/+/u, "")}`;
+  }
+
+  return resolvePublisherGameImage(fallbackId);
+};
+
+const mapApiGameToPublished = (game: any, fallbackIndex: number = 0): Game => {
   const rawId = game?.id ?? game?.game_id ?? fallbackIndex + 1;
   const numericId = Number(rawId);
   const safeId = Number.isFinite(numericId) && numericId > 0 ? numericId : fallbackIndex + 1;
@@ -221,49 +238,37 @@ const mapApiGameToPublished = (game: any, fallbackIndex: number = 0): PublishedG
     id: safeId,
     title: game?.title ?? game?.game_name ?? `Game ${safeId}`,
     description: game?.description ?? game?.detail ?? null,
-    bannerUrl:
-      typeof game?.image_url === "string" && game.image_url.trim().length > 0
-        ? game.image_url
-        : resolvePublisherGameImage(safeId),
+    bannerUrl: normalizeGameBannerUrl(game, safeId),
     releaseDate: rawRelease,
+    gameStatus: game?.gameStatus ?? game?.game_status ?? 'Pending',
+    updateStatus: game?.updateStatus ?? game?.update_status ?? null,
+    patchNumber: game?.patchNumber ?? game?.patch_number ?? null,
     metrics: {
-      players:
-        typeof game?.metrics?.players === "number"
-          ? game.metrics.players
-          : typeof game?.player_count === "number"
-          ? game.player_count
+      total_players:
+        typeof game?.metrics?.total_players === "number"
+          ? game.metrics.total_players
+          : typeof game?.total_players === "number"
+          ? game.total_players
           : null,
-      rating:
-        typeof game?.metrics?.rating === "number"
-          ? game.metrics.rating
-          : typeof game?.average_rating === "number"
-          ? game.average_rating
-          : null,
-      comments:
-        typeof game?.metrics?.comments === "number"
-          ? game.metrics.comments
-          : typeof game?.comment_count === "number"
-          ? game.comment_count
-          : null,
-      revenue:
-        typeof game?.metrics?.revenue === "number"
-          ? game.metrics.revenue
-          : typeof game?.total_revenue === "number"
-          ? game.total_revenue
+      average_playtime:
+        typeof game?.metrics?.average_playtime === "number"
+          ? game.metrics.average_playtime
+          : typeof game?.average_playtime === "number"
+          ? game.average_playtime
           : null,
     },
   };
 };
 
-const mergePublishedGameLists = (current: PublishedGame[], incoming: PublishedGame[]): PublishedGame[] => {
+const mergeGameLists = (current: Game[], incoming: Game[]): Game[] => {
   if (!Array.isArray(incoming) || incoming.length === 0) {
     return current;
   }
 
-  const currentMap = new Map<number, PublishedGame>();
+  const currentMap = new Map<number, Game>();
   current.forEach((game) => currentMap.set(game.id, game));
 
-  const merged: PublishedGame[] = [];
+  const merged: Game[] = [];
 
   incoming.forEach((game) => {
     const existing = currentMap.get(game.id);
@@ -272,10 +277,8 @@ const mergePublishedGameLists = (current: PublishedGame[], incoming: PublishedGa
         ...existing,
         ...game,
         metrics: {
-          players: game.metrics.players ?? existing.metrics.players ?? null,
-          rating: game.metrics.rating ?? existing.metrics.rating ?? null,
-          comments: game.metrics.comments ?? existing.metrics.comments ?? null,
-          revenue: game.metrics.revenue ?? existing.metrics.revenue ?? null,
+          total_players: game.metrics.total_players ?? existing.metrics.total_players ?? null,
+          average_playtime: game.metrics.average_playtime ?? existing.metrics.average_playtime ?? null,
         },
       });
       currentMap.delete(game.id);
@@ -298,11 +301,14 @@ export default function PublisherPage() {
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notification, setNotification] = useState<NotificationState | null>(null);
-  const [publisherGames, setPublisherGames] = useState<PublishedGame[]>([]);
+  const [publisherGames, setPublisherGames] = useState<Game[]>([]);
   const [reports, setReports] = useState<ReportEntry[]>([]);
   const [isLoadingReports, setIsLoadingReports] = useState(false);
   const [reportsError, setReportsError] = useState<string | null>(null);
   const [selectedGameFilter, setSelectedGameFilter] = useState<string>("all");
+  const [selectedUpdateFilter, setSelectedUpdateFilter] = useState<string>("all");
+  const [selectedReportFilter, setSelectedReportFilter] = useState<string>("all");
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const notificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showNotification = useCallback((message: string, type: NotificationVariant = "info") => {
@@ -368,73 +374,13 @@ export default function PublisherPage() {
         if (isMounted) {
           const normalized: DashboardData = {
             publisher: data?.publisher ?? null,
-            publishedGames: Array.isArray(data?.publishedGames)
-              ? (data.publishedGames as any[]).map((game, index) => ({
-                  id: Number.isFinite(Number(game?.id ?? game?.game_id))
-                    ? Number(game?.id ?? game?.game_id)
-                    : index + 1,
-                  title: game?.title ?? game?.game_name ?? "Untitled Game",
-                  description: game?.description ?? game?.detail ?? null,
-                  bannerUrl: game?.bannerUrl ?? game?.link_to_file ?? null,
-                  releaseDate: game?.releaseDate ?? game?.release_date ?? null,
-                  metrics: {
-                    players:
-                      typeof game?.metrics?.players === "number"
-                        ? game.metrics.players
-                        : typeof game?.player_count === "number"
-                        ? game.player_count
-                        : null,
-                    rating:
-                      typeof game?.metrics?.rating === "number"
-                        ? game.metrics.rating
-                        : typeof game?.average_rating === "number"
-                        ? game.average_rating
-                        : null,
-                    comments:
-                      typeof game?.metrics?.comments === "number"
-                        ? game.metrics.comments
-                        : typeof game?.comment_count === "number"
-                        ? game.comment_count
-                        : null,
-                    revenue:
-                      typeof game?.metrics?.revenue === "number"
-                        ? game.metrics.revenue
-                        : typeof game?.total_revenue === "number"
-                        ? game.total_revenue
-                        : null,
-                  },
-                }))
+            games: Array.isArray(data?.games)
+              ? (data.games as any[]).map((game, index) => mapApiGameToPublished(game, index))
               : [],
-            submissions: Array.isArray(data?.submissions)
-              ? (data.submissions as any[]).map((submission, index) => ({
-                  id:
-                    typeof submission?.id === "number"
-                      ? submission.id
-                      : Number.isFinite(Number(submission?.id))
-                      ? Number(submission.id)
-                      : index + 1,
-                  title: submission?.title ?? submission?.game_name ?? "Untitled Game",
-                  status: ((): SubmissionStatus => {
-                    const raw = String(submission?.status ?? "waiting").toLowerCase();
-                    if (raw.includes("approve")) {
-                      return "approved";
-                    }
-                    if (raw.includes("reject")) {
-                      return "rejected";
-                    }
-                    return "waiting";
-                  })(),
-                  updatedAt:
-                    submission?.updatedAt ??
-                    submission?.updated_at ??
-                    submission?.createdAt ??
-                    submission?.created_at ??
-                    null,
-                }))
-              : [],
+            totalGames: data?.totalGames ?? 0,
           };
           setDashboard(normalized);
-          setPublisherGames(normalized.publishedGames);
+          setPublisherGames(normalized.games);
         }
       } catch (fetchError: any) {
         if (fetchError?.name === "AbortError") {
@@ -489,7 +435,7 @@ export default function PublisherPage() {
           ? (data.games as any[]).map((game, index) => mapApiGameToPublished(game, index))
           : [];
 
-        setPublisherGames((previous) => mergePublishedGameLists(previous, normalized));
+        setPublisherGames((previous) => mergeGameLists(previous, normalized));
       } catch (fetchError: any) {
         if (fetchError?.name === "AbortError") {
           return;
@@ -521,8 +467,8 @@ export default function PublisherPage() {
 
       try {
         const params = new URLSearchParams({ limit: "100" });
-        if (selectedGameFilter !== "all") {
-          params.set("gameId", selectedGameFilter);
+        if (selectedReportFilter !== "all") {
+          params.set("gameId", selectedReportFilter);
         }
 
         const response = await fetch(`/api/publisher/reports?${params.toString()}`, {
@@ -575,19 +521,90 @@ export default function PublisherPage() {
       isMounted = false;
       controller.abort();
     };
-  }, [authLoading, selectedGameFilter, user?.username]);
+  }, [authLoading, selectedReportFilter, user?.username]);
 
   const handleUploadClick = useCallback(() => {
-    showNotification("Game upload workflow coming soon!", "info");
-  }, [showNotification]);
+    setIsUploadModalOpen(true);
+  }, []);
+
+  const handleUploadSuccess = useCallback(() => {
+    // Refresh dashboard after successful upload
+    window.location.reload();
+  }, []);
 
   const handleGameAction = useCallback(
-    (action: "edit" | "delete", title: string) => {
-      const verb = action === "edit" ? "Editing" : "Deleting";
-      showNotification(`${verb} "${title}" is not available yet.`, "info");
+    async (action: "edit" | "delete", gameId: number, title: string) => {
+      if (action === "edit") {
+        showNotification(`Editing "${title}" is not available yet.`, "info");
+        return;
+      }
+
+      if (action === "delete") {
+        // Show confirmation dialog
+        const confirmed = window.confirm(
+          `Are you sure you want to delete "${title}"?\n\nThis action cannot be undone and will permanently remove the game and all related data.`
+        );
+
+        if (!confirmed) {
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/games/delete', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ gameId }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to delete game');
+          }
+
+          showNotification(data.message || `Game "${title}" deleted successfully`, "success");
+          
+          // Update the state to remove the deleted game
+          setPublisherGames((prevGames) => prevGames.filter((game) => game.id !== gameId));
+          setDashboard((prevDashboard) => {
+            if (!prevDashboard) return null;
+            return {
+              ...prevDashboard,
+              games: prevDashboard.games.filter((game: Game) => game.id !== gameId),
+              totalGames: prevDashboard.totalGames - 1,
+            };
+          });
+        } catch (error: any) {
+          console.error('Delete game error:', error);
+          showNotification(error.message || 'Failed to delete game', "error");
+        }
+      }
     },
     [showNotification]
   );
+
+  const filteredGames = useMemo(() => {
+    return publisherGames.filter((game) => {
+      // Filter by game status
+      if (selectedGameFilter !== "all" && game.gameStatus !== selectedGameFilter) {
+        return false;
+      }
+      
+      // Filter by update status
+      if (selectedUpdateFilter !== "all") {
+        if (selectedUpdateFilter === "none" && game.updateStatus !== null) {
+          return false;
+        }
+        if (selectedUpdateFilter !== "none" && game.updateStatus !== selectedUpdateFilter) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [publisherGames, selectedGameFilter, selectedUpdateFilter]);
 
   const formatReleaseDate = useCallback((value: string | null | undefined) => {
     if (!value) {
@@ -619,7 +636,6 @@ export default function PublisherPage() {
   }, [dashboard?.publisher, user?.username]);
 
   const publishedGames = publisherGames;
-  const submissions = dashboard?.submissions ?? [];
 
   const reportFilterOptions = useMemo(() => {
     const unique = new Map<number, string>();
@@ -637,15 +653,15 @@ export default function PublisherPage() {
   }, [publishedGames, reports]);
 
   useEffect(() => {
-    if (selectedGameFilter === "all") {
+    if (selectedReportFilter === "all") {
       return;
     }
 
-    const exists = reportFilterOptions.some((option) => String(option.id) === selectedGameFilter);
+    const exists = reportFilterOptions.some((option) => String(option.id) === selectedReportFilter);
     if (!exists) {
-      setSelectedGameFilter("all");
+      setSelectedReportFilter("all");
     }
-  }, [reportFilterOptions, selectedGameFilter]);
+  }, [reportFilterOptions, selectedReportFilter]);
 
   const formatReportTime = useCallback((value: string) => {
     try {
@@ -714,44 +730,91 @@ export default function PublisherPage() {
               </div>
 
               <div>
-                <div className="publisher-label">Published</div>
-                {publishedGames.length > 0 ? (
+                <div className="publisher-filters">
+                  <div className="filter-group">
+                    <label htmlFor="game-status-filter">Game Status:</label>
+                    <select 
+                      id="game-status-filter"
+                      value={selectedGameFilter} 
+                      onChange={(e) => setSelectedGameFilter(e.target.value)}
+                      className="publisher-filter-select"
+                    >
+                      <option value="all">All Games</option>
+                      <option value="Approve">Approved</option>
+                      <option value="Reject">Rejected</option>
+                      <option value="Pending">Pending</option>
+                    </select>
+                  </div>
+                  <div className="filter-group">
+                    <label htmlFor="update-status-filter">Update Status:</label>
+                    <select 
+                      id="update-status-filter"
+                      value={selectedUpdateFilter} 
+                      onChange={(e) => setSelectedUpdateFilter(e.target.value)}
+                      className="publisher-filter-select"
+                    >
+                      <option value="all">All Updates</option>
+                      <option value="Approve">Update Approved</option>
+                      <option value="Reject">Update Rejected</option>
+                      <option value="Pending">Update Pending</option>
+                      <option value="none">No Updates</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="publisher-label">
+                  Games ({filteredGames.length} of {publisherGames.length})
+                </div>
+                {filteredGames.length > 0 ? (
                   <div className="publisher-games-grid">
-                    {publishedGames.map((game) => {
+                    {filteredGames.map((game) => {
+                      const fallbackBanner = resolvePublisherGameImage(game.id);
+                      const bannerSrc =
+                        typeof game.bannerUrl === "string" && game.bannerUrl.trim().length > 0
+                          ? game.bannerUrl
+                          : fallbackBanner;
                       const statBlocks = [
                         {
-                          label: "Players",
-                          value: formatCompactNumber(game.metrics.players),
+                          label: "Total Players",
+                          value: formatCompactNumber(game.metrics.total_players),
                           icon: <PlayersIcon />,
                         },
                         {
-                          label: "Rating",
-                          value:
-                            game.metrics.rating !== null && game.metrics.rating !== undefined
-                              ? `${formatRating(game.metrics.rating)}/10`
-                              : "—",
-                          icon: <RatingIcon />,
-                        },
-                        {
-                          label: "Comments",
-                          value: formatCompactNumber(game.metrics.comments),
-                          icon: <CommentIcon />,
-                        },
-                        {
-                          label: "Revenue",
-                          value: formatCurrency(game.metrics.revenue),
-                          icon: <RevenueIcon />,
+                          label: "Avg Playtime",
+                          value: formatPlaytime(game.metrics.average_playtime),
+                          icon: <PlaytimeIcon />,
                         },
                       ];
 
                       return (
                         <article key={`${game.id}-${game.title}`} className="publisher-game-card">
+                          <div className="publisher-game-status-badges">
+                            <span className={`status-badge status-${game.gameStatus.toLowerCase()}`}>
+                              Game: {game.gameStatus}
+                            </span>
+                            {game.updateStatus && (
+                              <span className={`status-badge status-${game.updateStatus.toLowerCase()}`}>
+                                Update: {game.updateStatus}
+                              </span>
+                            )}
+                            {game.patchNumber !== null && (
+                              <span className="patch-badge">
+                                v{game.patchNumber}
+                              </span>
+                            )}
+                          </div>
                           <img
-                            src={game.bannerUrl || "/images/placeholder.svg"}
+                            src={bannerSrc}
                             alt={game.title}
                             className="publisher-game-banner"
                             onError={(event) => {
-                              (event.target as HTMLImageElement).src = "/images/placeholder.svg";
+                              const target = event.target as HTMLImageElement;
+                              if (target.dataset.fallbackApplied === "true") {
+                                target.onerror = null;
+                                return;
+                              }
+                              target.dataset.fallbackApplied = "true";
+                              target.src = fallbackBanner;
                             }}
                           />
                           <div className="publisher-game-body">
@@ -780,14 +843,14 @@ export default function PublisherPage() {
                               <button
                                 type="button"
                                 className="publisher-action-link"
-                                onClick={() => handleGameAction("edit", game.title)}
+                                onClick={() => handleGameAction("edit", game.id, game.title)}
                               >
                                 EDIT
                               </button>
                               <button
                                 type="button"
                                 className="publisher-action-link"
-                                onClick={() => handleGameAction("delete", game.title)}
+                                onClick={() => handleGameAction("delete", game.id, game.title)}
                               >
                                 DELETE
                               </button>
@@ -797,44 +860,13 @@ export default function PublisherPage() {
                       );
                     })}
                   </div>
+                ) : publisherGames.length > 0 ? (
+                  <div className="publisher-empty-state">
+                    No games match the selected filters.
+                  </div>
                 ) : (
                   <div className="publisher-empty-state">
                     You have not published any games yet. Upload one to get started!
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="publisher-section">
-              <div className="publisher-section-header">
-                <h2 className="publisher-section-title" style={{ fontSize: "1.5rem" }}>
-                  Submission Queue
-                </h2>
-              </div>
-
-              <div>
-                <div className="publisher-label">In process</div>
-                {submissions.length > 0 ? (
-                  <div className="publisher-submissions-list">
-                    {submissions.map((submission) => (
-                      <div key={`${submission.id}-${submission.title}`} className="publisher-submission-card">
-                        <div>
-                          <p className="publisher-submission-title">{submission.title}</p>
-                          <div className="publisher-submission-meta">
-                            <span>{formatUpdatedAt(submission.updatedAt)}</span>
-                            <span>Submitted by {publisherName}</span>
-                          </div>
-                        </div>
-                        <span className={statusClassName(submission.status)}>
-                          {statusIcon(submission.status)}
-                          {STATUS_LABEL[submission.status]}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="publisher-empty-state">
-                    No submissions in review. Upload a new game to start the approval process.
                   </div>
                 )}
               </div>
@@ -847,8 +879,8 @@ export default function PublisherPage() {
                 <h2 className="publisher-reports-title">Game Reports</h2>
                 <select
                   className="publisher-report-filter"
-                  value={selectedGameFilter}
-                  onChange={(event) => setSelectedGameFilter(event.target.value)}
+                  value={selectedReportFilter}
+                  onChange={(event) => setSelectedReportFilter(event.target.value)}
                 >
                   <option value="all">All Games</option>
                   {reportFilterOptions.map((option) => (
@@ -888,7 +920,7 @@ export default function PublisherPage() {
                         <button
                           type="button"
                           className="publisher-report-filter-link"
-                          onClick={() => setSelectedGameFilter(String(report.gameId))}
+                          onClick={() => setSelectedReportFilter(String(report.gameId))}
                         >
                           View all for this game
                         </button>
@@ -907,6 +939,13 @@ export default function PublisherPage() {
           {notification.message}
         </div>
       )}
+
+      <UploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onSuccess={handleUploadSuccess}
+        showNotification={showNotification}
+      />
     </div>
   );
 }

@@ -56,7 +56,7 @@ export async function GET(
                   g.release_date, t.tag_name as genre
            FROM game g
            INNER JOIN tag t ON t.game_id = g.game_id
-           WHERE t.tag_name = ?
+           WHERE t.tag_name = ? AND g.status = 'Approve'
            ORDER BY g.release_date DESC
            LIMIT ? OFFSET ?`,
           [tagValue, limit, offset]
@@ -66,8 +66,9 @@ export async function GET(
 
         const [countRows] = await connection.query(
           `SELECT COUNT(*) as total
-           FROM tag
-           WHERE tag_name = ?`,
+           FROM tag t
+           INNER JOIN game g ON t.game_id = g.game_id
+           WHERE t.tag_name = ? AND g.status = 'Approve'`,
           [tagValue]
         );
 
@@ -89,7 +90,7 @@ export async function GET(
                     publisher_username as developer, link_to_file as image_url,
                     release_date, genre as genre
              FROM game
-             WHERE genre = ?
+             WHERE genre = ? AND status = 'Approve'
              ORDER BY release_date DESC
              LIMIT ? OFFSET ?`,
             [tagValue, limit, offset]
@@ -98,7 +99,7 @@ export async function GET(
           games = rows as any[];
 
           const [countRows] = await connection.query(
-            `SELECT COUNT(*) as total FROM game WHERE genre = ?`,
+            `SELECT COUNT(*) as total FROM game WHERE genre = ? AND status = 'Approve'`,
             [tagValue]
           );
 
@@ -118,7 +119,7 @@ export async function GET(
                     publisher_username as developer, link_to_file as image_url,
                     release_date, ? as genre
              FROM game
-             WHERE LOWER(game_name) LIKE ? OR LOWER(detail) LIKE ?
+             WHERE (LOWER(game_name) LIKE ? OR LOWER(detail) LIKE ?) AND status = 'Approve'
              ORDER BY release_date DESC
              LIMIT ? OFFSET ?`,
             [tagValue, `%${tagValue.toLowerCase()}%`, `%${tagValue.toLowerCase()}%`, limit, offset]
@@ -129,7 +130,7 @@ export async function GET(
           const [countRows] = await connection.query(
             `SELECT COUNT(*) as total
              FROM game
-             WHERE LOWER(game_name) LIKE ? OR LOWER(detail) LIKE ?`,
+             WHERE (LOWER(game_name) LIKE ? OR LOWER(detail) LIKE ?) AND status = 'Approve'`,
             [`%${tagValue.toLowerCase()}%`, `%${tagValue.toLowerCase()}%`]
           );
 

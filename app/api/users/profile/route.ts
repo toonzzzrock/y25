@@ -69,6 +69,47 @@ export async function GET(request: NextRequest) {
       const record = rows[0] as any;
       const assets = await resolveUserAssets(record.username);
 
+      const [playRows] = await connection.query(
+        `SELECT
+            p.game_id AS gameId,
+            g.game_name AS gameName,
+            COALESCE(TIME_TO_SEC(p.accumulate_play_time), 0) AS playSeconds
+         FROM play p
+         LEFT JOIN game g ON g.game_id = p.game_id
+         WHERE p.username = ?
+         ORDER BY playSeconds DESC, p.game_id ASC
+         LIMIT 5`,
+        [record.username]
+      );
+
+      const [totalPlayRows] = await connection.query(
+        `SELECT COALESCE(SUM(TIME_TO_SEC(accumulate_play_time)), 0) AS totalSeconds
+         FROM play
+         WHERE username = ?`,
+        [record.username]
+      );
+
+      const totalSecondsRaw = Array.isArray(totalPlayRows) && totalPlayRows.length > 0
+        ? (totalPlayRows[0] as any)?.totalSeconds
+        : 0;
+
+      const totalSeconds = Number(totalSecondsRaw ?? 0);
+
+      const topGames = Array.isArray(playRows)
+        ? (playRows as any[]).map((row) => {
+            const rawGameId = Number(row.gameId ?? row.game_id ?? 0);
+            const cleanGameId = Number.isFinite(rawGameId) && rawGameId > 0 ? rawGameId : 0;
+            const rawSeconds = Number(row.playSeconds ?? row.play_seconds ?? 0);
+            const cleanSeconds = Number.isFinite(rawSeconds) && rawSeconds > 0 ? rawSeconds : 0;
+
+            return {
+              gameId: cleanGameId,
+              gameName: typeof row.gameName === 'string' ? row.gameName : row.game_name ?? null,
+              playSeconds: cleanSeconds,
+            };
+          })
+        : [];
+
       return NextResponse.json(
         {
           profile: {
@@ -79,6 +120,10 @@ export async function GET(request: NextRequest) {
             createdAt: record.createdAt ?? null,
             avatarUrl: assets.avatarUrl,
             description: assets.description,
+          },
+          playStats: {
+            totalSeconds: Number.isFinite(totalSeconds) && totalSeconds >= 0 ? totalSeconds : 0,
+            topGames,
           },
         },
         { status: 200 }

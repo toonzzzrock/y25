@@ -22,6 +22,17 @@ interface ProfileFormState {
   sex: string;
 }
 
+interface PlaytimeEntry {
+  gameId: number;
+  gameName: string | null;
+  playSeconds: number;
+}
+
+interface PlaytimeSummary {
+  totalSeconds: number;
+  topGames: PlaytimeEntry[];
+}
+
 export default function ProfilePage() {
   const { isLoading } = useProtectedRoute();
   const { user, logout, checkSession } = useAuth();
@@ -35,8 +46,9 @@ export default function ProfilePage() {
   const [descriptionDraft, setDescriptionDraft] = useState('');
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isSavingAppearance, setIsSavingAppearance] = useState(false);
+  const [playStats, setPlayStats] = useState<PlaytimeSummary | null>(null);
   const imagePreviewUrlRef = useRef<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const updateImagePreview = useCallback((url: string | null, isBlob = false) => {
     if (imagePreviewUrlRef.current) {
@@ -99,11 +111,132 @@ export default function ProfilePage() {
     return userProfile?.sex || 'Not provided';
   }, [userProfile?.sex]);
 
-  const descriptionChanged = descriptionDraft !== (userProfile?.description ?? '');
-  const hasImageChange = Boolean(selectedImage);
-  const appearanceDirty = descriptionChanged || hasImageChange;
+  const formatPlayDuration = useCallback((seconds: number | null | undefined) => {
+    const numeric = typeof seconds === 'number' && Number.isFinite(seconds) ? Math.floor(seconds) : 0;
+    if (numeric <= 0) {
+      return '0m';
+    }
+
+    const hours = Math.floor(numeric / 3600);
+    const minutes = Math.floor((numeric % 3600) / 60);
+    const remainingSeconds = numeric % 60;
+
+    const parts: string[] = [];
+    if (hours > 0) {
+      parts.push(`${hours}h`);
+    }
+    if (minutes > 0) {
+      parts.push(`${minutes}m`);
+    }
+    if (parts.length === 0 && remainingSeconds > 0) {
+      parts.push(`${remainingSeconds}s`);
+    }
+
+    return parts.join(' ');
+  }, []);
+
+  const formattedTopPlayGames = useMemo(() => {
+    if (!playStats) {
+      return [] as Array<PlaytimeEntry & { displayName: string }>;
+    }
+
+    return playStats.topGames.map((entry) => {
+      const rawName = typeof entry.gameName === 'string' ? entry.gameName.trim() : '';
+      const displayName = rawName.length > 0
+        ? rawName
+        : entry.gameId > 0
+        ? `Game #${entry.gameId}`
+        : 'Unknown game';
+
+      return {
+        ...entry,
+        displayName,
+      };
+    });
+  }, [playStats]);
+
+  const totalPlaytimeLabel = useMemo(() => {
+    return formatPlayDuration(playStats?.totalSeconds ?? 0);
+  }, [formatPlayDuration, playStats?.totalSeconds]);
+
+  const hasPlayActivity = useMemo(() => {
+    if (!playStats) {
+      return false;
+    }
+    return playStats.topGames.some((entry) => entry.playSeconds > 0);
+  }, [playStats]);
 
   useEffect(() => {
+
+            {playStats && (
+              <div
+                style={{
+                  background: '#241411',
+                  borderRadius: '12px',
+                  padding: '1.5rem',
+                  border: '1px solid rgba(255, 122, 43, 0.25)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1.35rem',
+                }}
+              >
+                <div>
+                  <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'rgba(255, 184, 139, 0.8)' }}>Lifetime playtime</span>
+                  <div style={{ fontSize: '1.75rem', color: '#fff', fontWeight: 700 }}>{totalPlaytimeLabel}</div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                  <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'rgba(255, 184, 139, 0.8)' }}>Top games by playtime</span>
+                  {formattedTopPlayGames.length > 0 && hasPlayActivity ? (
+                    formattedTopPlayGames.map((entry, index) => (
+                      <div
+                        key={`${entry.gameId || 'game'}-${index}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '1rem',
+                          padding: '0.85rem 1rem',
+                          background: 'rgba(12, 6, 5, 0.55)',
+                          borderRadius: '10px',
+                          border: '1px solid rgba(255, 122, 43, 0.15)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+                          <span
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              background: 'linear-gradient(135deg, #ff7a2b, #ff4500)',
+                              color: '#120806',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 700,
+                              fontSize: '0.95rem',
+                            }}
+                          >
+                            {index + 1}
+                          </span>
+                          <div>
+                            <div style={{ color: '#fff', fontWeight: 600 }}>{entry.displayName}</div>
+                            {entry.gameId > 0 && (
+                              <div style={{ color: 'rgba(255, 184, 139, 0.7)', fontSize: '0.75rem' }}>Game ID {entry.gameId}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ color: '#ffb88b', fontWeight: 600 }}>{formatPlayDuration(entry.playSeconds)}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <p style={{ margin: 0, color: 'rgba(255, 184, 139, 0.7)' }}>
+                      Playtime tracking has not been recorded for this account yet.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
     if (isLoading) {
       return;
     }
@@ -112,6 +245,7 @@ export default function ProfilePage() {
 
     const loadProfile = async () => {
       setLoading(true);
+      setPlayStats(null);
       try {
         const response = await fetch('/api/users/profile', {
           signal: controller.signal,
@@ -126,6 +260,39 @@ export default function ProfilePage() {
             avatarUrl: profileData.avatarUrl ?? null,
             description: profileData.description ?? '',
           });
+          const nextPlayStats: PlaytimeSummary = (() => {
+            const rawStats = data.playStats;
+            const totalSecondsRaw = typeof rawStats?.totalSeconds === 'number'
+              ? rawStats.totalSeconds
+              : Number(rawStats?.totalSeconds ?? 0);
+            const topGamesRaw = Array.isArray(rawStats?.topGames) ? rawStats.topGames : [];
+
+            const sanitizedTopGames: PlaytimeEntry[] = topGamesRaw.map((entry: any) => {
+              const rawGameId = Number(entry?.gameId ?? entry?.game_id ?? 0);
+              const rawSeconds = Number(entry?.playSeconds ?? entry?.play_seconds ?? 0);
+
+              return {
+                gameId: Number.isFinite(rawGameId) && rawGameId > 0 ? rawGameId : 0,
+                gameName:
+                  typeof entry?.gameName === 'string'
+                    ? entry.gameName
+                    : typeof entry?.game_name === 'string'
+                    ? entry.game_name
+                    : null,
+                playSeconds: Number.isFinite(rawSeconds) && rawSeconds > 0 ? rawSeconds : 0,
+              };
+            });
+
+            const sanitizedTotalSeconds = Number.isFinite(totalSecondsRaw) && totalSecondsRaw > 0
+              ? totalSecondsRaw
+              : 0;
+
+            return {
+              totalSeconds: sanitizedTotalSeconds,
+              topGames: sanitizedTopGames,
+            };
+          })();
+          setPlayStats(nextPlayStats);
         } else if (user) {
           setUserProfile({
             username: user.username,
@@ -133,8 +300,10 @@ export default function ProfilePage() {
             avatarUrl: null,
             description: '',
           });
+          setPlayStats({ totalSeconds: 0, topGames: [] });
         } else {
           setNotification({ message: data.error || 'Failed to load profile', type: 'error' });
+          setPlayStats({ totalSeconds: 0, topGames: [] });
         }
       } catch (error: any) {
         if (error?.name === 'AbortError') {
@@ -148,8 +317,12 @@ export default function ProfilePage() {
             avatarUrl: null,
             description: '',
           });
+          setPlayStats({ totalSeconds: 0, topGames: [] });
         }
         setNotification({ message: 'Failed to load profile', type: 'error' });
+        if (!user) {
+          setPlayStats({ totalSeconds: 0, topGames: [] });
+        }
       } finally {
         setLoading(false);
       }
@@ -180,6 +353,14 @@ export default function ProfilePage() {
       return;
     }
 
+    if (file.size > 5 * 1024 * 1024) {
+      setNotification({ message: 'Profile image is too large (limit 5MB)', type: 'error' });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
     setSelectedImage(file);
     const previewUrl = URL.createObjectURL(file);
     updateImagePreview(previewUrl, true);
@@ -187,79 +368,17 @@ export default function ProfilePage() {
 
   const clearSelectedImage = () => {
     setSelectedImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     updateImagePreview(userProfile?.avatarUrl ?? null);
   };
 
-  const resetAppearanceChanges = () => {
-    setDescriptionDraft(userProfile?.description ?? '');
-    clearSelectedImage();
-  };
-
-  const handleAppearanceSave = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!userProfile) {
-      setNotification({ message: 'Profile not loaded yet', type: 'error' });
+  const handleImageClick = () => {
+    if (!isEditing) {
       return;
     }
-
-    const descriptionChanged = descriptionDraft !== (userProfile.description ?? '');
-    const hasImageChange = Boolean(selectedImage);
-
-    if (!descriptionChanged && !hasImageChange) {
-      setNotification({ message: 'No appearance changes to save', type: 'info' });
-      return;
-    }
-
-    const formData = new FormData();
-
-    if (hasImageChange && selectedImage) {
-      formData.append('profileImage', selectedImage);
-    }
-
-    if (descriptionChanged) {
-      formData.append('description', descriptionDraft);
-    }
-
-    setIsSavingAppearance(true);
-
-    try {
-      const response = await fetch('/api/users/profile/content', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.error || 'Failed to update profile appearance');
-      }
-
-      const nextAvatar = data?.avatarUrl ?? userProfile.avatarUrl ?? null;
-      const nextDescription = data?.description ?? userProfile.description ?? '';
-
-      setUserProfile((previous) => {
-        if (!previous) {
-          return previous;
-        }
-        return {
-          ...previous,
-          avatarUrl: nextAvatar,
-          description: nextDescription,
-        };
-      });
-
-      updateImagePreview(nextAvatar ?? null);
-      setSelectedImage(null);
-      setDescriptionDraft(nextDescription);
-      setNotification({ message: 'Profile appearance updated', type: 'success' });
-    } catch (error: any) {
-      console.error('Profile appearance update error:', error);
-      setNotification({ message: error?.message || 'Failed to update profile appearance', type: 'error' });
-    } finally {
-      setIsSavingAppearance(false);
-    }
+    fileInputRef.current?.click();
   };
 
   const avatarLetter = userProfile?.username?.charAt(0)?.toUpperCase() || '?';
@@ -274,12 +393,24 @@ export default function ProfilePage() {
       dateOfBirth: userProfile.dateOfBirth ? String(userProfile.dateOfBirth).slice(0, 10) : '',
       sex: userProfile.sex || '',
     });
+    setDescriptionDraft(userProfile.description ?? '');
+    setSelectedImage(null);
+    updateImagePreview(userProfile.avatarUrl ?? null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     setIsEditing(true);
   };
 
   const cancelEditing = () => {
     setIsEditing(false);
     setFormState({ email: '', dateOfBirth: '', sex: '' });
+    setDescriptionDraft(userProfile?.description ?? '');
+    setSelectedImage(null);
+    updateImagePreview(userProfile?.avatarUrl ?? null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleFieldChange = (field: keyof ProfileFormState, value: string) => {
@@ -310,7 +441,10 @@ export default function ProfilePage() {
       payload.sex = formState.sex;
     }
 
-    if (Object.keys(payload).length === 0) {
+    const descriptionChanged = descriptionDraft !== (userProfile.description ?? '');
+    const hasImageChange = Boolean(selectedImage);
+
+    if (Object.keys(payload).length === 0 && !descriptionChanged && !hasImageChange) {
       setNotification({ message: 'No changes to save', type: 'info' });
       cancelEditing();
       return;
@@ -318,35 +452,91 @@ export default function ProfilePage() {
 
     setIsSaving(true);
     try {
-      const response = await fetch('/api/users/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
+      let latestProfile: UserProfile | null = userProfile;
 
-      const data = await response.json();
+      if (Object.keys(payload).length > 0) {
+        const response = await fetch('/api/users/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        });
 
-      if (!response.ok || !data?.profile) {
-        throw new Error(data?.error || 'Failed to update profile');
+        const data = await response.json();
+
+        if (!response.ok || !data?.profile) {
+          throw new Error(data?.error || 'Failed to update profile');
+        }
+
+        latestProfile = data.profile as UserProfile;
+        setUserProfile(latestProfile);
+
+        try {
+          await checkSession();
+        } catch (sessionError) {
+          console.warn('Session refresh after profile update failed:', sessionError);
+        }
       }
 
-      setUserProfile(data.profile as UserProfile);
+      if (descriptionChanged || hasImageChange) {
+        const formData = new FormData();
+        if (descriptionChanged) {
+          formData.append('description', descriptionDraft);
+        }
+        if (hasImageChange && selectedImage) {
+          formData.append('profileImage', selectedImage);
+        }
+
+        const response = await fetch('/api/users/profile/content', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'Failed to update profile appearance');
+        }
+
+        const nextAvatar = data?.avatarUrl ?? latestProfile?.avatarUrl ?? null;
+        const nextDescription = data?.description ?? latestProfile?.description ?? '';
+
+        setUserProfile((previous) => {
+          if (!previous) {
+            return previous;
+          }
+          return {
+            ...previous,
+            avatarUrl: nextAvatar,
+            description: nextDescription,
+          };
+        });
+
+        updateImagePreview(nextAvatar ?? null);
+        latestProfile = latestProfile
+          ? { ...latestProfile, avatarUrl: nextAvatar, description: nextDescription }
+          : latestProfile;
+      }
+
+      if (latestProfile) {
+        setFormState({
+          email: latestProfile.email || '',
+          dateOfBirth: latestProfile.dateOfBirth ? String(latestProfile.dateOfBirth).slice(0, 10) : '',
+          sex: latestProfile.sex || '',
+        });
+        setDescriptionDraft(latestProfile.description ?? '');
+        updateImagePreview(latestProfile.avatarUrl ?? null);
+      }
+
+      setSelectedImage(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       setNotification({ message: 'Profile updated successfully', type: 'success' });
       setIsEditing(false);
-      setFormState({
-        email: data.profile.email || '',
-        dateOfBirth: data.profile.dateOfBirth ? String(data.profile.dateOfBirth).slice(0, 10) : '',
-        sex: data.profile.sex || '',
-      });
-
-      try {
-        await checkSession();
-      } catch (sessionError) {
-        console.warn('Session refresh after profile update failed:', sessionError);
-      }
     } catch (error: any) {
       console.error('Profile update error:', error);
       setNotification({ message: error?.message || 'Failed to update profile', type: 'error' });
@@ -356,16 +546,6 @@ export default function ProfilePage() {
   };
 
   const dobInputValue = formState.dateOfBirth || '';
-  const infoCardStyle = {
-    background: 'rgba(12, 6, 5, 0.6)',
-    border: '1px solid rgba(255, 122, 43, 0.15)',
-    borderRadius: '10px',
-    padding: '1rem 1.25rem',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '0.35rem',
-  };
-
   if (isLoading || loading) {
     return (
       <div style={{
@@ -405,27 +585,80 @@ export default function ProfilePage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '3rem 1.5rem',
+          padding: '3.5rem clamp(1.5rem, 5vw, 4rem)',
           background: 'radial-gradient(circle at top, rgba(255, 122, 43, 0.25) 0%, rgba(12, 6, 5, 0.95) 55%, #050202 100%)',
         }}
       >
         <div
           style={{
             width: '100%',
-            maxWidth: '980px',
+            maxWidth: 'min(1500px, calc(100vw - 64px))',
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '2.5rem',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+            gap: '3rem',
             background: 'rgba(18, 10, 9, 0.92)',
             borderRadius: '18px',
-            padding: '2.75rem',
+            padding: '3rem clamp(1.75rem, 4vw, 3.5rem)',
             border: '1px solid rgba(255, 122, 43, 0.25)',
             boxShadow: '0 24px 55px rgba(0, 0, 0, 0.45)',
           }}
         >
-          <section style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '1rem' }}>
+          <section style={{ display: 'flex', flexDirection: 'column', gap: '2.25rem' }}>
+            <div
+              style={{
+                width: '100%',
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                gap: '1.1rem',
+                paddingTop: '0.25rem',
+              }}
+            >
+              {!isEditing && (
+                <button
+                  type="button"
+                  onClick={startEditing}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    background: 'linear-gradient(135deg, #ff7a2b, #ff4500)',
+                    border: 'none',
+                    color: '#fff',
+                    borderRadius: '999px',
+                    padding: '0.6rem 1.4rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: '0 10px 20px rgba(255, 90, 0, 0.28)',
+                    transition: 'transform 0.2s ease',
+                  }}
+                  onMouseEnter={(event) => {
+                    event.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(event) => {
+                    event.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  Edit profile
+                </button>
+              )}
+
               <div
+                onClick={handleImageClick}
+                onKeyDown={(event) => {
+                  if (!isEditing) {
+                    return;
+                  }
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleImageClick();
+                  }
+                }}
+                role={isEditing ? 'button' : undefined}
+                aria-label={isEditing ? 'Select new profile image' : undefined}
+                tabIndex={isEditing ? 0 : -1}
                 style={{
                   width: '140px',
                   height: '140px',
@@ -437,6 +670,8 @@ export default function ProfilePage() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   boxShadow: '0 12px 24px rgba(255, 90, 0, 0.35)',
+                  cursor: isEditing ? 'pointer' : 'default',
+                  position: 'relative',
                 }}
               >
                 {imagePreview ? (
@@ -444,16 +679,97 @@ export default function ProfilePage() {
                     src={imagePreview}
                     alt={`${userProfile?.username || 'Player'} avatar`}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(event) => {
+                      (event.target as HTMLImageElement).src = '/images/placeholder.svg';
+                    }}
                   />
                 ) : (
                   <span style={{ fontSize: '3.5rem', fontWeight: 700, color: '#0b0402' }}>{avatarLetter}</span>
                 )}
+                {isEditing && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      padding: '0.35rem 0.5rem',
+                      background: 'rgba(0, 0, 0, 0.6)',
+                      color: '#fff',
+                      fontSize: '0.75rem',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    Click to change
+                  </div>
+                )}
               </div>
-              <div>
+
+              <input
+                ref={fileInputRef}
+                id="profile-image-input"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleImageChange}
+                style={{ display: 'none' }}
+              />
+
+              {isEditing && selectedImage && (
+                <button
+                  type="button"
+                  onClick={clearSelectedImage}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid rgba(255, 122, 43, 0.35)',
+                    color: '#ffb88b',
+                    borderRadius: '999px',
+                    padding: '0.4rem 1rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                  }}
+                >
+                  Remove {selectedImage.name}
+                </button>
+              )}
+
+              {isEditing && (
+                <p style={{ margin: '0.25rem 0 0', color: 'rgba(255, 184, 139, 0.75)', fontSize: '0.75rem' }}>
+                  Accepts PNG, JPEG, or WEBP up to 5MB. Changes apply after you save.
+                </p>
+              )}
+
+              <div style={{ maxWidth: '420px', width: '100%' }}>
                 <h1 style={{ margin: '0 0 0.35rem 0', fontSize: '2.2rem', color: '#fff' }}>{userProfile?.username}</h1>
                 <p style={{ margin: 0, color: '#ffb88b', letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.85rem' }}>
                   Player Profile
                 </p>
+                {isEditing ? (
+                  <textarea
+                    value={descriptionDraft}
+                    onChange={(event) => setDescriptionDraft(event.target.value)}
+                    rows={4}
+                    style={{
+                      width: '100%',
+                      marginTop: '0.9rem',
+                      borderRadius: '10px',
+                      border: '1px solid rgba(255, 122, 43, 0.35)',
+                      background: '#140b08',
+                      padding: '0.9rem 1rem',
+                      color: '#fff',
+                      fontSize: '0.95rem',
+                      resize: 'vertical',
+                    }}
+                    maxLength={4000}
+                    placeholder="Tell other players about yourself, your favourite games, or achievements."
+                  />
+                ) : (
+                  <p style={{ marginTop: '0.9rem', color: '#fff', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                    {userProfile?.description && userProfile.description.trim().length > 0
+                      ? userProfile.description
+                      : 'This player has not added a description yet.'}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -476,146 +792,6 @@ export default function ProfilePage() {
                 <div style={{ fontSize: '1.15rem', color: '#fff', wordBreak: 'break-word' }}>{userProfile?.email || 'Not provided'}</div>
               </div>
             </div>
-
-            <div
-              style={{
-                background: '#241411',
-                borderRadius: '12px',
-                padding: '1.5rem',
-                border: '1px solid rgba(255, 122, 43, 0.25)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.75rem',
-              }}
-            >
-              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'rgba(255, 184, 139, 0.8)' }}>About me</span>
-              <div style={{ color: '#fff', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                {userProfile?.description && userProfile.description.trim().length > 0
-                  ? userProfile.description
-                  : 'This player has not added a description yet.'}
-              </div>
-            </div>
-
-            <form
-              onSubmit={handleAppearanceSave}
-              style={{
-                background: '#241411',
-                borderRadius: '12px',
-                padding: '1.5rem',
-                border: '1px solid rgba(255, 122, 43, 0.25)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1.2rem',
-              }}
-            >
-              <div>
-                <h2 style={{ margin: 0, color: '#fff', fontSize: '1.4rem' }}>Customize appearance</h2>
-                <p style={{ margin: '0.35rem 0 0', color: 'rgba(255, 184, 139, 0.8)', fontSize: '0.9rem' }}>
-                  Update your avatar and share a short bio with the community.
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label htmlFor="profile-image-input" style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: '#ffb88b' }}>
-                  Profile image
-                </label>
-                <input
-                  id="profile-image-input"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={handleImageChange}
-                  style={{
-                    borderRadius: '8px',
-                    border: '1px solid rgba(255, 122, 43, 0.35)',
-                    background: '#140b08',
-                    padding: '0.75rem 1rem',
-                    color: '#fff',
-                    fontSize: '0.95rem',
-                  }}
-                />
-                <span style={{ fontSize: '0.8rem', color: 'rgba(255, 184, 139, 0.7)' }}>
-                  PNG, JPEG, or WEBP up to 5MB.
-                </span>
-                {selectedImage && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', color: '#ffb88b', fontSize: '0.85rem' }}>
-                    <span>Selected: {selectedImage.name}</span>
-                    <button
-                      type="button"
-                      onClick={clearSelectedImage}
-                      style={{
-                        alignSelf: 'flex-start',
-                        background: 'transparent',
-                        border: '1px solid rgba(255, 122, 43, 0.35)',
-                        color: '#ffb88b',
-                        borderRadius: '999px',
-                        padding: '0.35rem 0.9rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Remove image
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', color: '#ffb88b', fontSize: '0.85rem', textTransform: 'uppercase' }}>
-                Profile description
-                <textarea
-                  value={descriptionDraft}
-                  onChange={(event) => setDescriptionDraft(event.target.value)}
-                  rows={5}
-                  style={{
-                    borderRadius: '8px',
-                    border: '1px solid rgba(255, 122, 43, 0.35)',
-                    background: '#140b08',
-                    padding: '0.9rem 1rem',
-                    color: '#fff',
-                    fontSize: '0.95rem',
-                    resize: 'vertical',
-                  }}
-                  placeholder="Tell other players about yourself, your favourite games, or achievements."
-                  maxLength={4000}
-                />
-              </label>
-
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={resetAppearanceChanges}
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid rgba(255, 122, 43, 0.35)',
-                    color: '#ffb88b',
-                    borderRadius: '999px',
-                    padding: '0.6rem 1.3rem',
-                    fontWeight: 600,
-                    cursor: appearanceDirty && !isSavingAppearance ? 'pointer' : 'not-allowed',
-                    opacity: appearanceDirty ? 1 : 0.4,
-                  }}
-                  disabled={!appearanceDirty || isSavingAppearance}
-                >
-                  Reset
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    background: appearanceDirty ? 'linear-gradient(135deg, #ff7a2b, #ff4500)' : 'rgba(255, 122, 43, 0.35)',
-                    border: 'none',
-                    color: '#fff',
-                    borderRadius: '999px',
-                    padding: '0.6rem 1.6rem',
-                    fontWeight: 600,
-                    cursor: appearanceDirty && !isSavingAppearance ? 'pointer' : 'not-allowed',
-                    minWidth: '140px',
-                    opacity: appearanceDirty ? 1 : 0.6,
-                  }}
-                  disabled={!appearanceDirty || isSavingAppearance}
-                >
-                  {isSavingAppearance ? 'Saving…' : 'Save appearance'}
-                </button>
-              </div>
-            </form>
 
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               {user?.role === 'publisher' && (
@@ -708,6 +884,7 @@ export default function ProfilePage() {
               display: 'flex',
               flexDirection: 'column',
               gap: '1.5rem',
+              justifyContent: 'center',
             }}
           >
             {isEditing ? (
@@ -715,11 +892,20 @@ export default function ProfilePage() {
                 <div>
                   <h2 style={{ margin: 0, color: '#fff', fontSize: '1.6rem' }}>Edit details</h2>
                   <p style={{ margin: '0.35rem 0 0 0', color: 'rgba(255, 184, 139, 0.8)', fontSize: '0.9rem' }}>
-                    Update your contact information so we can keep in touch.
+                    Update your contact information, personal fields, and avatar.
                   </p>
                 </div>
 
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', color: '#ffb88b', fontSize: '0.85rem', textTransform: 'uppercase' }}>
+                <label
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.4rem',
+                    color: '#ffb88b',
+                    fontSize: '0.85rem',
+                    textTransform: 'uppercase',
+                  }}
+                >
                   Email address
                   <input
                     type="email"
@@ -737,7 +923,16 @@ export default function ProfilePage() {
                   />
                 </label>
 
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', color: '#ffb88b', fontSize: '0.85rem', textTransform: 'uppercase' }}>
+                <label
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.4rem',
+                    color: '#ffb88b',
+                    fontSize: '0.85rem',
+                    textTransform: 'uppercase',
+                  }}
+                >
                   Date of birth
                   <input
                     type="date"
@@ -755,7 +950,16 @@ export default function ProfilePage() {
                   />
                 </label>
 
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', color: '#ffb88b', fontSize: '0.85rem', textTransform: 'uppercase' }}>
+                <label
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.4rem',
+                    color: '#ffb88b',
+                    fontSize: '0.85rem',
+                    textTransform: 'uppercase',
+                  }}
+                >
                   Gender
                   <select
                     value={formState.sex}
@@ -813,51 +1017,82 @@ export default function ProfilePage() {
                 </div>
               </form>
             ) : (
-              <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <div>
-                  <h2 style={{ margin: 0, color: '#fff', fontSize: '1.6rem' }}>Profile details</h2>
-                  <p style={{ margin: '0.35rem 0 0 0', color: 'rgba(255, 184, 139, 0.8)', fontSize: '0.9rem' }}>
-                    Review your saved information and make sure it stays current.
+                  <h2 style={{ margin: 0, color: '#fff', fontSize: '1.6rem' }}>Gameplay activity</h2>
+                  <p style={{ margin: '0.35rem 0 0 0', color: 'rgba(255, 184, 139, 0.8)', fontSize: '0.9rem', maxWidth: '480px' }}>
+                    Lifetime playtime and your most-played games are summarized below. Launch a few sessions to start building your stats.
                   </p>
                 </div>
 
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  <div style={infoCardStyle}>
-                    <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'rgba(255, 184, 139, 0.75)' }}>Username</span>
-                    <strong style={{ fontSize: '1.05rem', color: '#fff' }}>{userProfile?.username}</strong>
+                <div
+                  style={{
+                    background: '#1c0f0c',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255, 122, 43, 0.25)',
+                    padding: '1.75rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1.35rem',
+                  }}
+                >
+                  <div>
+                    <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'rgba(255, 184, 139, 0.8)' }}>Lifetime playtime</span>
+                    <div style={{ fontSize: '1.9rem', color: '#fff', fontWeight: 700 }}>{totalPlaytimeLabel}</div>
                   </div>
-                  <div style={infoCardStyle}>
-                    <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'rgba(255, 184, 139, 0.75)' }}>Email address</span>
-                    <strong style={{ fontSize: '1.05rem', color: '#fff', wordBreak: 'break-word' }}>{userProfile?.email || 'Not provided'}</strong>
-                  </div>
-                  <div style={infoCardStyle}>
-                    <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'rgba(255, 184, 139, 0.75)' }}>Date of birth</span>
-                    <strong style={{ fontSize: '1.05rem', color: '#fff' }}>{dateOfBirthLabel}</strong>
-                  </div>
-                  <div style={infoCardStyle}>
-                    <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'rgba(255, 184, 139, 0.75)' }}>Gender</span>
-                    <strong style={{ fontSize: '1.05rem', color: '#fff' }}>{genderLabel}</strong>
-                  </div>
-                </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button
-                    type="button"
-                    onClick={startEditing}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid rgba(255, 122, 43, 0.6)',
-                      color: '#ffb88b',
-                      borderRadius: '999px',
-                      padding: '0.6rem 1.6rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Edit profile
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                    <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'rgba(255, 184, 139, 0.8)' }}>Top games</span>
+                    {playStats && formattedTopPlayGames.length > 0 && hasPlayActivity ? (
+                      formattedTopPlayGames.map((entry, index) => (
+                        <div
+                          key={`${entry.gameId || 'game'}-${index}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '1rem',
+                            padding: '0.85rem 1rem',
+                            background: 'rgba(12, 6, 5, 0.55)',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(255, 122, 43, 0.15)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+                            <span
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #ff7a2b, #ff4500)',
+                                color: '#120806',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 700,
+                                fontSize: '0.95rem',
+                              }}
+                            >
+                              {index + 1}
+                            </span>
+                            <div>
+                              <div style={{ color: '#fff', fontWeight: 600 }}>{entry.displayName}</div>
+                              {entry.gameId > 0 && (
+                                <div style={{ color: 'rgba(255, 184, 139, 0.7)', fontSize: '0.75rem' }}>Game ID {entry.gameId}</div>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ color: '#ffb88b', fontWeight: 600 }}>{formatPlayDuration(entry.playSeconds)}</div>
+                        </div>
+                      ))
+                    ) : (
+                      <p style={{ margin: 0, color: 'rgba(255, 184, 139, 0.7)' }}>
+                        Playtime tracking has not been recorded for this account yet.
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </>
+              </div>
             )}
           </section>
         </div>

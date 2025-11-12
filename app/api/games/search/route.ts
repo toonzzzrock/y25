@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
            FROM game g
            ${joinClause}
            WHERE (g.game_name LIKE ? OR g.detail LIKE ? OR g.publisher_username LIKE ?)
+           AND g.status = 'Approve'
            ${tagFilterClause}
            ORDER BY g.release_date DESC
            LIMIT 20`,
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
                       publisher_username as developer, link_to_file as image_url,
                       release_date, genre as genre
                FROM game
-               WHERE genre = ?
+               WHERE genre = ? AND status = 'Approve'
                  AND (game_name LIKE ? OR detail LIKE ? OR publisher_username LIKE ?)
                ORDER BY release_date DESC
                LIMIT 20`,
@@ -93,6 +94,7 @@ export async function GET(request: NextRequest) {
                FROM game
                WHERE (game_name LIKE ? OR detail LIKE ? OR publisher_username LIKE ?)
                  AND (LOWER(game_name) LIKE ? OR LOWER(detail) LIKE ?)
+                 AND status = 'Approve'
                ORDER BY release_date DESC
                LIMIT 20`,
               [tagValue, ...likeParams, lowerTag, lowerTag]
@@ -106,7 +108,8 @@ export async function GET(request: NextRequest) {
                     publisher_username as developer, link_to_file as image_url,
                     release_date, NULL as genre
              FROM game
-             WHERE game_name LIKE ? OR detail LIKE ? OR publisher_username LIKE ?
+             WHERE (game_name LIKE ? OR detail LIKE ? OR publisher_username LIKE ?)
+               AND status = 'Approve'
              ORDER BY release_date DESC
              LIMIT 20`,
             likeParams

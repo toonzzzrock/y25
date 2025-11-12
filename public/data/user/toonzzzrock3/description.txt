@@ -1,1 +1,1 @@
-sample description text
+It looks like you've added functionality to handle image uploads more robustly, including size validation and error handling for image loading. The user experience is enhanced with clear instructions and feedback. Nice work! If you need any further assistance or have questions about additional features, feel free to ask!

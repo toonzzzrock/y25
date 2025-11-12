@@ -13,7 +13,7 @@ export default function SignupPage() {
     username: "",
     email: "",
     dateOfBirth: "",
-    sex: "Other",
+    sex: "",
     password: "",
     confirmPassword: "",
     terms: false,
@@ -134,7 +134,7 @@ export default function SignupPage() {
       newErrors.dateOfBirth = "You must be at least 13 years old";
     }
 
-    if (!values.sex) {
+    if (!values.sex || !['Male', 'Female', 'Other'].includes(values.sex)) {
       newErrors.sex = "Please select your gender";
     }
 
@@ -428,7 +428,6 @@ export default function SignupPage() {
                 <div className="form-group">
                   <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.35rem', fontSize: '0.9rem' }}>
                     <span style={{ color: '#000000ff' }}>Gender</span>
-                    {values.sex === 'Other' && <span style={{ color: '#ff6600', marginLeft: '0.25rem' }}>*</span>}
                   </label>
                   <select
                     className="form-input signup-input"
@@ -445,6 +444,7 @@ export default function SignupPage() {
                     }}
                     required
                   >
+                    <option value="" disabled>Select your gender</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
                     <option value="Other">Other</option>

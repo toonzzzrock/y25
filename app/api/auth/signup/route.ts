@@ -33,12 +33,14 @@ export async function POST(request: NextRequest) {
     };
 
     // Validation
-    if (!username || !email || !dateOfBirth || !sex || !password) {
+    if (!username || !email || !dateOfBirth || !password) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
+
+    const normalizedSex = sex || '';
 
     const normalizedUserType: 'user' | 'publisher' = userType === 'publisher' ? 'publisher' : 'user';
 
@@ -117,7 +119,7 @@ export async function POST(request: NextRequest) {
       await connection.query(
         `INSERT INTO User (username, password_encrypted, salt_random_value, email, DOB, sex, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [username, hashedPassword, salt.toString('hex'), email, dateOfBirth, sex, now]
+        [username, hashedPassword, salt.toString('hex'), email, dateOfBirth, normalizedSex, now]
       );
 
       // If user role is Publisher, add to publisher table

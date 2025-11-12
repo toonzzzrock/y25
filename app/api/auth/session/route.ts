@@ -7,10 +7,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  try {
-    const sessionToken = request.cookies.get('auth_session')?.value;
+  const rawSessionToken = request.cookies.get('auth_session')?.value;
+  const tokenPreview = rawSessionToken
+    ? `${rawSessionToken.slice(0, 8)}...(${rawSessionToken.length})`
+    : 'none';
 
-    if (!sessionToken) {
+  try {
+    if (!rawSessionToken) {
+      console.info('[api/auth/session] No session cookie present.');
       return NextResponse.json(
         { authenticated: false, user: null },
         { status: 200 }
@@ -20,7 +24,7 @@ export async function GET(request: NextRequest) {
     try {
       // Decode session token
       const sessionData = JSON.parse(
-        Buffer.from(sessionToken, 'base64').toString('utf-8')
+        Buffer.from(rawSessionToken, 'base64').toString('utf-8')
       );
 
       // Check if session is expired (7 days)
@@ -28,6 +32,10 @@ export async function GET(request: NextRequest) {
       const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
       if (sessionAge > maxAge) {
+        console.info('[api/auth/session] Session cookie expired.', {
+          token: tokenPreview,
+          sessionTimestamp: sessionData.timestamp,
+        });
         return NextResponse.json(
           { authenticated: false, user: null, expired: true },
           { status: 200 }
@@ -47,13 +55,21 @@ export async function GET(request: NextRequest) {
       );
     } catch (error) {
       // Invalid session token
+      console.warn('[api/auth/session] Failed to decode session token.', {
+        token: tokenPreview,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return NextResponse.json(
         { authenticated: false, user: null },
         { status: 200 }
       );
     }
   } catch (error: any) {
-    console.error('Session check error:', error);
+    console.error('[api/auth/session] Unexpected error handling request.', {
+      token: tokenPreview,
+      error: error?.message || error,
+      stack: error?.stack,
+    });
     return NextResponse.json(
       { authenticated: false, user: null },
       { status: 200 }

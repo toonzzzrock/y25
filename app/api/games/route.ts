@@ -22,6 +22,10 @@ export async function GET(request: NextRequest) {
       if (publisherUsername && publisherUsername.trim().length > 0) {
         whereClauses.push('publisher_username = ?');
         values.push(publisherUsername.trim());
+      } else {
+        // For normal users (not publishers), only show approved games
+        whereClauses.push('status = ?');
+        values.push('Approve');
       }
 
       const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -30,7 +34,7 @@ export async function GET(request: NextRequest) {
       const [games] = await connection.query(
         `SELECT game_id as id, game_name as title, detail as description,
                 publisher_username as developer, link_to_file as image_url,
-                release_date
+                release_date, total_players
          FROM game
          ${whereSql}
          ORDER BY release_date DESC, game_id DESC

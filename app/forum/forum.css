@@ -1,9 +1,9 @@
 /* Forum Page Styles */
 
 .forum-container {
-  max-width: 1100px;
+  max-width: min(1700px, calc(100vw - 32px));
   margin: 30px auto;
-  padding: 0 24px;
+  padding: 0 20px;
   box-sizing: border-box;
 }
 
@@ -22,33 +22,33 @@
 
 .community-grid {
   display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 26px;
 }
 
 .left-column {
   background: #1f1411;
-  padding: 18px;
+  padding: 22px;
   border-radius: 6px;
 }
 
 .hubs-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  margin-bottom: 18px;
+  gap: 22px;
+  margin-bottom: 22px;
 }
 
 .hub-card {
   background: #2a1a17;
-  padding: 12px;
+  padding: 16px;
   border-radius: 6px;
 }
 
 .hub-item {
   display: flex;
   gap: 10px;
-  align-items: center;
+  align-items: flex-start;
   padding: 8px 0;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -62,8 +62,9 @@
 .hub-item img {
   width: 40px;
   height: 40px;
-  border-radius: 4px;
+  border-radius: 50%;
   object-fit: cover;
+  flex-shrink: 0;
 }
 
 .hub-item strong {
@@ -263,15 +264,16 @@
   border-radius: 6px;
   display: flex;
   gap: 12px;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 10px;
 }
 
 .record-card img {
-  width: 64px;
-  height: 64px;
-  border-radius: 4px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
   object-fit: cover;
+  flex-shrink: 0;
 }
 
 .thread-game-link {

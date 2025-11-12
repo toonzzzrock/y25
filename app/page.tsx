@@ -130,11 +130,6 @@ export default function HomeLoginPage() {
               <span>{loginLoading ? "Logging in..." : "Login"}</span>
             </button>
           </form>
-          <div style={{ marginTop: "1rem" }}>
-            <Link href="/home" className="forgot-link" style={{ textDecoration: "underline" }}>
-              Continue to Home (demo)
-            </Link>
-          </div>
         </div>
       </main>
       {notification && (

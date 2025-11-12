@@ -16,7 +16,11 @@ export async function ensureUserAssetDirectory(username: string) {
 async function findAvatarFilename(dir: string) {
   try {
     const entries = await fs.readdir(dir);
-    return entries.find((file) => file.startsWith('user_profile.')) || null;
+    // First look for user_profile.* (current format)
+    let avatarFile = entries.find((file) => file.startsWith('user_profile.'));
+    if (avatarFile) return avatarFile;
+    // Fallback to avatar.* for backward compatibility
+    return entries.find((file) => file.startsWith('avatar.')) || null;
   } catch (error: any) {
     if (error?.code === 'ENOENT') {
       return null;
@@ -34,13 +38,8 @@ export async function resolveUserAssets(username: string) {
     const avatarFile = await findAvatarFilename(dir);
 
     if (avatarFile) {
-      try {
-        const stats = await fs.stat(path.join(dir, avatarFile));
-        const version = Math.floor(stats.mtimeMs).toString(36);
-        avatarUrl = `/data/user/${username}/${avatarFile}?v=${version}`;
-      } catch {
-        avatarUrl = `/data/user/${username}/${avatarFile}`;
-      }
+      // Use the new dynamic avatar API
+      avatarUrl = `/api/users/${username}/avatar`;
     }
 
     try {
@@ -60,7 +59,38 @@ export async function resolveUserAssets(username: string) {
     description = '';
   }
 
+  if (!avatarUrl) {
+    avatarUrl = generateFallbackAvatar(username);
+  }
+
   return { avatarUrl, description };
+}
+
+function generateFallbackAvatar(username: string) {
+  const cleanName = typeof username === 'string' && username.trim().length > 0 ? username.trim() : 'User';
+  const initials = cleanName
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || 'U';
+
+  const palette = ['#FF7A2B', '#3A78F2', '#2E8B57', '#8257E5', '#E53E3E'];
+  const color = palette[stringHash(cleanName) % palette.length];
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" rx="12" fill="${color}"/><text x="50%" y="54%" font-size="32" font-family="Arial, sans-serif" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initials}</text></svg>`;
+
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+function stringHash(value: string) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value.charCodeAt(index);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return Math.abs(hash);
 }
 
 export async function saveUserDescription(username: string, description: string) {
