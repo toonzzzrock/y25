@@ -8,7 +8,7 @@ export async function GET() {
   if (!adminSession) {
     return NextResponse.json(
       { authenticated: false },
-      { status: 401 }
+      { status: 200 }
     );
   }
 

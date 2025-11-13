@@ -8,6 +8,7 @@ type ManageCardItem = {
   primary: string;
   secondary?: string;
   tertiary?: string;
+  avatarUrl?: string;
 };
 
 type ManageCardProps = {
@@ -100,6 +101,17 @@ export function ManageCard({
         {filteredItems.length > 0 ? (
           filteredItems.map((item) => (
             <div key={item.id} className={styles.manageItem}>
+              {item.avatarUrl && (
+                <img
+                  src={item.avatarUrl}
+                  alt={item.primary}
+                  className={styles.manageAvatar}
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.style.display = "none";
+                  }}
+                />
+              )}
               <div className={styles.manageInfo}>
                 <span className={styles.itemPrimary}>{item.primary}</span>
                 {item.secondary ? (

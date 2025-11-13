@@ -248,6 +248,16 @@
   padding-bottom: 0;
 }
 
+.manageAvatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #2a2626;
+  border: 1px solid rgba(255, 122, 43, 0.06);
+  flex-shrink: 0;
+}
+
 .manageInfo {
   display: flex;
   flex-direction: column;
@@ -364,7 +374,7 @@
 .thumbImg {
   width: 92px;
   height: 92px;
-  background: #2a2626;
+  object-fit: cover;
   border-radius: 6px;
   border: 1px solid rgba(255, 122, 43, 0.06);
 }

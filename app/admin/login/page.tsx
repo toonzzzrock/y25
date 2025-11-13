@@ -14,9 +14,15 @@ export default function AdminLoginPage() {
   useEffect(() => {
     // Check if already logged in
     const checkSession = async () => {
-      const response = await fetch("/api/admin/session");
-      if (response.ok) {
-        router.push("/admin");
+      try {
+        const response = await fetch("/api/admin/session");
+        const data = await response.json();
+        if (data.authenticated) {
+          router.push("/admin");
+        }
+      } catch (error) {
+        // Session check failed, user is not logged in
+        console.log("Session check failed:", error);
       }
     };
     checkSession();
@@ -27,6 +33,8 @@ export default function AdminLoginPage() {
     setError("");
     setLoading(true);
 
+    console.log("[LOGIN PAGE] Submitting login for username:", username);
+
     try {
       const response = await fetch("/api/admin/login", {
         method: "POST",
@@ -34,16 +42,23 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ username, password }),
       });
 
+      console.log("[LOGIN PAGE] Response status:", response.status);
+
       const data = await response.json();
 
+      console.log("[LOGIN PAGE] Response data:", data);
+
       if (!response.ok) {
+        console.log("[LOGIN PAGE] Login failed with error:", data.error);
         setError(data.error || "Login failed");
         return;
       }
 
       // Login successful
+      console.log("[LOGIN PAGE] Login successful, redirecting to admin");
       router.push("/admin");
     } catch (err) {
+      console.error("[LOGIN PAGE] Error:", err);
       setError("An error occurred. Please try again.");
     } finally {
       setLoading(false);

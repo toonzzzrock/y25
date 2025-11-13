@@ -13,6 +13,7 @@ import { formatDate } from "./utils/formatters";
 import { AdminLogoutButton } from "./components/AdminLogoutButton";
 
 type PopularGame = {
+  id: number;
   name: string;
   totalPlayers: number;
 };
@@ -118,7 +119,7 @@ async function getSiteAnalytics(): Promise<DashboardData["analytics"]> {
    const incomeRow = incomeRows[0] as RowDataPacket & { averagePlayTime?: number };
 
     const [popularRows] = await pool.query<RowDataPacket[]>(
-  `SELECT game_name AS name, total_players AS totalPlayers
+  `SELECT game_id AS id, game_name AS name, total_players AS totalPlayers
    FROM \`game\`
        WHERE status IN ('Approve', 'Approved', 'Published')
        ORDER BY total_players DESC, game_name ASC
@@ -169,6 +170,7 @@ async function getSiteAnalytics(): Promise<DashboardData["analytics"]> {
     });
 
     const popularGames: PopularGame[] = popularRows.map((row) => ({
+      id: Number(row.id ?? 0),
       name: String(row.name ?? "Unknown"),
       totalPlayers: Number(row.totalPlayers ?? 0),
     }));
@@ -363,8 +365,8 @@ export default async function AdminDashboardPage() {
                 <ol className={styles.popularList}>
                   {data.analytics.popularGames.length > 0 ? (
                     data.analytics.popularGames.map((game) => (
-                      <li key={game.name}>
-                        {game.name} · {numberFormatter.format(game.totalPlayers)} players
+                      <li key={game.id}>
+                        #{game.id} {game.name} · {numberFormatter.format(game.totalPlayers)} players
                       </li>
                     ))
                   ) : (
@@ -394,6 +396,7 @@ export default async function AdminDashboardPage() {
                 primary: user.username,
                 secondary: user.email,
                 tertiary: `Joined ${formatDate(user.createdAt)}`,
+                avatarUrl: `/api/users/${encodeURIComponent(user.username)}/avatar`,
               }))}
               apiBase="/api/users"
             />
@@ -409,6 +412,7 @@ export default async function AdminDashboardPage() {
                 tertiary: `${publisher.publishedGames} published game${
                   publisher.publishedGames === 1 ? "" : "s"
                 }`,
+                avatarUrl: `/api/users/${encodeURIComponent(publisher.username)}/avatar`,
               }))}
               apiBase="/api/publishers"
             />

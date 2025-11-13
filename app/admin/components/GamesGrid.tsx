@@ -123,7 +123,15 @@ export function GamesGrid({ games, emptyMessage }: GamesGridProps) {
             const isBusy = busyIds.has(game.id);
             return (
               <div key={game.id} className={styles.thumb}>
-                <div className={styles.thumbImg} />
+                <img
+                  src={`/api/games/${game.id}/profile`}
+                  alt={game.name}
+                  className={styles.thumbImg}
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.style.display = "none";
+                  }}
+                />
                 <span className={styles.thumbId}>ID: {game.id}</span>
                 <span className={styles.thumbName}>{game.name}</span>
                 <span className={styles.thumbMeta}>
