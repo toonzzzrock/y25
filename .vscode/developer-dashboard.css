@@ -1,0 +1,559 @@
+/* Basic Reset & Body Styles */
+body {
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    background-color: #060404; /* Dark background from the mockup */
+    color: #e6e0db;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Header */
+.dev-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 40px;
+    background: linear-gradient(180deg, #000, rgba(0,0,0,0.6));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.logo-y25 {
+    color: #ff6a00; /* Orange color */
+    font-weight: 800;
+    font-size: 34px;
+}
+
+.dev-label {
+    color: #00ff00; /* Bright green color for DEVELOPER */
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: 1px;
+}
+
+/* Main Content Area */
+.dev-main {
+    max-width: 1400px; /* Adjust as needed */
+    margin: 30px auto;
+    padding: 0 20px;
+}
+
+.section-heading {
+    color: #ff7a2b; /* Orange heading color */
+    font-size: 22px;
+    margin: 8px 0 20px;
+    font-weight: 800;
+}
+
+/* System Status Section */
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* Four columns */
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.status-card {
+    background-color: #1a1410; /* Darker card background */
+    padding: 20px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.large-text-card {
+    min-height: 100px; /* Ensure consistent height for text cards */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.card-label {
+    color: #ddd;
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.card-value {
+    color: #fff;
+    font-size: 38px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.highlight-green {
+    color: #00ff00; /* Bright green for Uptime */
+}
+
+.icon-flash {
+    color: #ffdd00; /* Yellow for lightning icon */
+    font-size: 30px;
+}
+
+.icon-server {
+    color: #00aaff; /* Blue for server icon */
+    font-size: 28px;
+}
+
+.unit {
+    font-size: 0.6em; /* Smaller for GB unit */
+    opacity: 0.8;
+}
+
+/* Chart Placeholders */
+.chart-card {
+    grid-column: span 2; /* Charts span two columns */
+    min-height: 200px;
+}
+
+.chart-placeholder {
+    background-color: #0b0b0b; /* Even darker background for charts */
+    border-radius: 4px;
+    height: 150px; /* Fixed height for the chart area */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #444; /* Placeholder text color */
+    font-size: 14px;
+    overflow: hidden; /* Hide any overflow if mock chart is complex */
+}
+
+/* For a real implementation, you'd integrate a charting library here (e.g., Chart.js, D3.js) */
+.cpu-chart::before {
+    content: "CPU / Memory Chart (mock)"; /* Placeholder text */
+}
+.api-chart::before {
+    content: "API Usage Chart (mock)"; /* Placeholder text */
+}
+
+
+/* Jobs, Errors, Version Control Section */
+.jobs-errors-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1.5fr 1fr; /* Adjust column widths as per mockup */
+    gap: 20px;
+}
+
+.card {
+    background-color: #1a1410;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+/* Con Jobs Table */
+.con-jobs-card table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.con-jobs-card th, .con-jobs-card td {
+    padding: 10px 0;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 15px;
+}
+
+.con-jobs-card th {
+    color: #ff7a2b; /* Orange for table headers */
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 14px;
+}
+
+.con-jobs-card td {
+    color: #ddd;
+}
+
+.status-icon {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 14px;
+    color: #060404;
+}
+
+.status-icon.success {
+    background-color: #00ff00; /* Bright green checkmark */
+}
+
+.status-icon.error {
+    background-color: #ff0000; /* Red cross */
+}
+
+
+/* Latest Errors Card */
+.latest-errors-card .error-message {
+    background-color: #0b0b0b;
+    padding: 10px 12px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #f7a7a7; /* Light red for error messages */
+    border-left: 3px solid #ff4444; /* Red accent bar */
+}
+
+.reset-cache-btn {
+    background-color: #ff6a00; /* Orange button */
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 700;
+    margin-top: 20px;
+    transition: background-color 0.2s ease;
+}
+
+.reset-cache-btn:hover {
+    background-color: #e05e00;
+}
+
+/* Version Control Card */
+.version-item {
+    background-color: #0b0b0b;
+    padding: 10px 12px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #add8e6; /* Light blue for version items */
+    border-left: 3px solid #00aaff; /* Blue accent bar */
+}
+
+.webhook-logs-btn {
+    background-color: #00aaff; /* Blue button */
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 700;
+    margin-top: 20px;
+    transition: background-color 0.2s ease;
+}
+
+.webhook-logs-btn:hover {
+    background-color: #0088cc;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1200px) {
+    .status-grid {
+        grid-template-columns: repeat(2, 1fr); /* 2 columns on smaller screens */
+    }
+    .chart-card {
+        grid-column: span 2; /* Charts still span full width in 2-column layout */
+    }
+    .jobs-errors-grid {
+        grid-template-columns: 1fr; /* Stack columns on smaller screens */
+    }
+}
+
+@media (max-width: 768px) {
+    .dev-header {
+        padding: 15px 20px;
+    }
+    .logo-y25 {
+        font-size: 28px;
+    }
+    .dev-label {
+        font-size: 18px;
+    }
+    .dev-main {
+        padding: 0 15px;
+    }
+    .section-heading {
+        font-size: 20px;
+    }
+    .status-grid {
+        grid-template-columns: 1fr; /* Single column on very small screens */
+    }
+    .chart-card {
+        grid-column: span 1; /* Adjust charts to single column */
+    }
+    .card-value {
+        font-size: 32px;
+    }
+    .con-jobs-card th, .con-jobs-card td {
+        font-size: 13px;
+    }
+}
+
+/* Simple mock chart styling (for visual representation without actual data) */
+.cpu-chart::before, .api-chart::before {
+    content: ""; /* Clear content to draw simple lines/bars */
+    background-image: linear-gradient(to right, #007bff 20%, transparent 20%),
+                      linear-gradient(to top, #28a745 50%, transparent 50%);
+    background-size: 10px 100%, 100% 10px;
+    background-repeat: repeat-x, repeat-y;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    opacity: 0.1;
+}
+
+.api-chart {
+    position: relative;
+    /* This will mimic the bar chart with simple divs */
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 5px;
+    align-items: flex-end;
+    padding: 10px;
+}
+.api-chart::before { /* Remove the placeholder text */
+    content: none;
+}
+.api-chart div {
+    background-color: #007bff; /* Base bar color */
+    height: var(--bar-height, 50%); /* Dynamic height for bars */
+    border-radius: 2px;
+}
+.api-chart .error-bar {
+    background-color: #dc3545; /* Error bar color */
+}
+
+/* Mock chart data (you'd replace this with real data and a charting library) */
+/* CPU/Memory (simple line graph approximation) */
+.cpu-chart {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><path fill="none" stroke="%2300aaff" stroke-width="2" d="M0,75 C25,60 50,85 75,70 C100,65 125,75 150,60 C175,55 200,70 225,50 C250,45 275,60 300,50 C325,40 350,55 375,40 C400,35 425,50 450,40 C475,30 500,45 525,30 C550,25 575,40 600,30" transform="scale(0.25)"/></svg>');
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    padding-top: 25px; /* Space for labels */
+    padding-bottom: 20px;
+    padding-left: 20px;
+    padding-right: 20px;
+    display: block; /* Override flex */
+}
+.cpu-chart::before { /* Labels for time */
+    content: "18:00            00:00            0:30             11:00            15:00";
+    position: absolute;
+    bottom: 5px;
+    left: 20px;
+    right: 20px;
+    color: #555;
+    font-size: 10px;
+    display: flex;
+    justify-content: space-between;
+}
+.cpu-chart::after { /* Labels for usage */
+    content: "9             6             3             0";
+    position: absolute;
+    top: 25px;
+    left: 5px;
+    bottom: 20px;
+    width: 15px;
+    color: #555;
+    font-size: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+.chart-card .card-label { /* Adjust label position for charts */
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 10;
+}
+.chart-card {
+    position: relative; /* For absolute positioning of labels */
+    overflow: hidden; /* Hide the default content from ::before */
+}
+
+
+/* Re-doing the API chart to be more accurate to mockup */
+.api-chart {
+    display: flex; /* Use flexbox for bars */
+    align-items: flex-end; /* Bars start from bottom */
+    justify-content: space-between;
+    padding: 15px; /* Padding inside the chart area */
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+}
+
+.api-chart::before { /* Y-axis labels and grid */
+    content: "8\A6\A4\A2\A0"; /* Numbers for Y-axis (8, 6, 4, 2, 0) with line breaks */
+    white-space: pre;
+    position: absolute;
+    left: 5px;
+    top: 15px;
+    font-size: 10px;
+    color: #555;
+    height: calc(100% - 30px);
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: space-between;
+}
+
+.api-chart::after { /* X-axis labels */
+    content: "18:00  00:00  06:00  11:00  15:00";
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 30px);
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #555;
+}
+
+.api-chart .bar-group {
+    display: flex;
+    gap: 3px; /* Space between bars in a group */
+    height: 100%; /* Take full height of parent to scale bars */
+    align-items: flex-end;
+}
+
+.api-chart .bar {
+    width: 10px; /* Width of individual bar */
+    background-color: #ff7a2b; /* Requests (orange) */
+    border-radius: 2px 2px 0 0;
+    transition: height 0.3s ease;
+}
+
+.api-chart .error-bar {
+    background-color: #00aaff; /* Error rate (blue) */
+}
+
+/* Mock bar heights - in a real app, these would be dynamic */
+/* For API Usage:
+    Requests: 6, 4, 7, 5, 6
+    Error rate: 3, 2, 4, 3, 2
+*/
+.api-chart .bar:nth-child(1) { height: 75%; } /* Corresponds to 6 requests */
+.api-chart .error-bar:nth-child(2) { height: 37.5%; } /* Corresponds to 3 errors */
+
+.api-chart .bar:nth-child(3) { height: 50%; } /* 4 requests */
+.api-chart .error-bar:nth-child(4) { height: 25%; } /* 2 errors */
+
+.api-chart .bar:nth-child(5) { height: 87.5%; } /* 7 requests */
+.api-chart .error-bar:nth-child(6) { height: 50%; } /* 4 errors */
+
+.api-chart .bar:nth-child(7) { height: 62.5%; } /* 5 requests */
+.api-chart .error-bar:nth-child(8) { height: 37.5%; } /* 3 errors */
+
+.api-chart .bar:nth-child(9) { height: 75%; } /* 6 requests */
+.api-chart .error-bar:nth-child(10) { height: 25%; } /* 2 errors */
+
+
+/* Legend for API Chart */
+.api-chart::before {
+    content: ""; /* Reset the Y-axis label content for a cleaner approach */
+}
+.api-chart .card-label {
+    top: 20px;
+    left: 20px;
+    position: absolute;
+}
+.api-chart .legend {
+    position: absolute;
+    bottom: 2px;
+    right: 15px;
+    display: flex;
+    gap: 10px;
+    font-size: 10px;
+    color: #ddd;
+}
+.api-chart .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+.api-chart .legend-color {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+}
+.api-chart .legend-requests { background-color: #ff7a2b; }
+.api-chart .legend-errors { background-color: #00aaff; }
+
+/* The actual bar elements for the API Chart */
+.api-chart-container {
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+    padding-bottom: 30px; /* Space for x-axis labels */
+    position: relative;
+    box-sizing: border-box;
+}
+
+.api-chart-bars {
+    display: flex;
+    gap: 15px; /* Spacing between time points */
+    height: 100%;
+    align-items: flex-end;
+    width: 100%;
+    justify-content: space-around;
+}
+
+.api-chart-bar-group {
+    display: flex;
+    gap: 4px; /* Space between bars in a group */
+    align-items: flex-end;
+    height: 100%;
+}
+
+.api-bar {
+    width: 12px; /* Width of each individual bar */
+    background-color: var(--bar-color);
+    border-radius: 3px 3px 0 0;
+    transition: height 0.3s ease;
+}
+
+/* X-axis labels */
+.api-chart-xaxis-labels {
+    position: absolute;
+    bottom: 5px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #555;
+}
+
+/* Y-axis labels */
+.api-chart-yaxis-labels {
+    position: absolute;
+    top: 20px;
+    left: 5px;
+    bottom: 30px;
+    width: 15px;
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: space-between;
+    align-items: flex-end;
+    font-size: 10px;
+    color: #555;
+}
+
+/* Specific bar heights */
+.api-chart-bar-group:nth-child(1) .api-bar:nth-child(1) { height: 75%; background-color: #ff7a2b; } /* 6 requests */
+.api-chart-bar-group:nth-child(1) .api-bar:nth-child(2) { height: 37.5%; background-color: #00aaff; } /* 3 errors */
+
+.api-chart-bar-group:nth-child(2) .api-bar:nth-child(1) { height: 50%; background-color: #ff7a2b; } /* 4 requests */
+.api-chart-bar-group:nth-child(2) .api-bar:nth-child(2) { height: 25%; background-color: #00aaff; } /* 2 errors */
+
+.api-chart-bar-group:nth-child(3) .api-bar:nth-child(1) { height: 87.5%; background-color: #ff7a2b; } /* 7 requests */
+.api-chart-bar-group:nth-child(3) .api-bar:nth-child(2) { height: 50%; background-color: #00aaff; } /* 4 errors */
+
+.api-chart-bar-group:nth-child(4) .api-bar:nth-child(1) { height: 62.5%; background-color: #ff7a2b; } /* 5 requests */
+.api-chart-bar-group:nth-child(4) .api-bar:nth-child(2) { height: 37.5%; background-color: #00aaff; } /* 3 errors */
+
+.api-chart-bar-group:nth-child(5) .api-bar:nth-child(1) { height: 75%; background-color: #ff7a2b; } /* 6 requests */
+.api-chart-bar-group:nth-child(5) .api-bar:nth-child(2) { height: 25%; background-color: #00aaff; } /* 2 errors */

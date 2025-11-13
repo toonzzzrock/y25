@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Developer Dashboard - Y25</title>
+  <link rel="stylesheet" href="developer-dashboard.css">
+</head>
+<body>
+  <header class="dev-header">
+    <div class="dev-left"><span class="logo-y25">Y25</span></div>
+    <div class="dev-right"><span class="dev-label">DEVELOPER</span></div>
+  </header>
+
+  <main class="dev-main">
+    <section class="system-status-section">
+      <h2 class="section-heading">SYSTEM STATUS</h2>
+      <div class="status-grid">
+        <div class="status-card large-text-card">
+          <span class="card-label">Uptime</span>
+          <span class="card-value highlight-green">99.9%</span>
+        </div>
+        <div class="status-card large-text-card">
+          <span class="card-label">Avg Server Load</span>
+          <span class="card-value"><span class="icon-flash">⚡</span> 0.82</span>
+        </div>
+        <div class="status-card chart-card">
+          <span class="card-label">CPU / Memory Usage</span>
+          <div class="chart-placeholder cpu-chart"></div>
+        </div>
+        <div class="status-card chart-card">
+          <span class="card-label">API Usage</span>
+          <div class="chart-placeholder api-chart"></div>
+        </div>
+        <div class="status-card large-text-card">
+          <span class="card-label">DB Size</span>
+          <span class="card-value">12.3 <span class="unit">GB</span></span>
+        </div>
+        <div class="status-card large-text-card">
+          <span class="card-label">API Requests</span>
+          <span class="card-value"><span class="icon-server">💻</span> 2,100</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="jobs-errors-version-section">
+      <div class="jobs-errors-grid">
+        <div class="card con-jobs-card">
+          <h2 class="section-heading">Con Jobs</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Job</th>
+                <th>Last Run</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>check_upload_job</td>
+                <td>2m ago</td>
+                <td><span class="status-icon success">✓</span></td>
+              </tr>
+              <tr>
+                <td>clean_temp_files</td>
+                <td>error</td>
+                <td><span class="status-icon error">✕</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card latest-errors-card">
+          <h2 class="section-heading">Latest Errors</h2>
+          <p class="error-message">NullRef@uploadHandler.js.120</p>
+          <p class="error-message">Timeout@DB query {user}</p>
+          <button class="reset-cache-btn">Reset Cache</button>
+        </div>
+
+        <div class="card version-control-card">
+          <h2 class="section-heading">Version Control</h2>
+          <p class="version-item">v1.0.12 deployed {ffx upload}</p>
+          <p class="version-item">v1.0.11 deployed {API patch}</p>
+          <button class="webhook-logs-btn">Webhook Logs</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
