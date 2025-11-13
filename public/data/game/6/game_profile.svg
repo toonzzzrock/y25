@@ -1,0 +1,49 @@
+<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
+  <!-- Castle Defense game -->
+  <defs>
+    <linearGradient id="castleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ADD8E6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#B0E0E6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="150" fill="url(#castleGradient)"/>
+  
+  <!-- Main tower -->
+  <rect x="80" y="40" width="40" height="70" fill="#8B4513"/>
+  
+  <!-- Tower crenellations -->
+  <rect x="80" y="35" width="6" height="8" fill="#8B4513"/>
+  <rect x="92" y="35" width="6" height="8" fill="#8B4513"/>
+  <rect x="104" y="35" width="6" height="8" fill="#8B4513"/>
+  <rect x="114" y="35" width="6" height="8" fill="#8B4513"/>
+  
+  <!-- Flag on tower -->
+  <rect x="98" y="30" width="2" height="10" fill="#696969"/>
+  <polygon points="100,30 100,35 105,32" fill="#FF0000"/>
+  
+  <!-- Side towers left -->
+  <rect x="30" y="65" width="20" height="45" fill="#A0522D"/>
+  <rect x="30" y="60" width="4" height="8" fill="#A0522D"/>
+  <rect x="40" y="60" width="4" height="8" fill="#A0522D"/>
+  
+  <!-- Side towers right -->
+  <rect x="150" y="65" width="20" height="45" fill="#A0522D"/>
+  <rect x="150" y="60" width="4" height="8" fill="#A0522D"/>
+  <rect x="160" y="60" width="4" height="8" fill="#A0522D"/>
+  
+  <!-- Castle gate -->
+  <rect x="85" y="95" width="30" height="20" fill="#654321"/>
+  <circle cx="95" cy="105" r="2" fill="#FFD700"/>
+  <circle cx="105" cy="105" r="2" fill="#FFD700"/>
+  
+  <!-- Arrow slits -->
+  <rect x="88" y="50" width="2" height="8" fill="#000000"/>
+  <rect x="108" y="50" width="2" height="8" fill="#000000"/>
+  
+  <!-- Defense arrows -->
+  <polygon points="40,50 45,45 42,55" fill="#FFD700"/>
+  <polygon points="160,55 165,50 162,60" fill="#FFD700"/>
+  
+  <!-- Ground -->
+  <rect x="0" y="110" width="200" height="40" fill="#8B7355"/>
+</svg>

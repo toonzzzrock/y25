@@ -1,0 +1,73 @@
+<svg viewBox="0 0 1200 600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Sky gradient background -->
+  <defs>
+    <linearGradient id="skyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b7fb8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d4b5e8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="1200" height="600" fill="url(#skyGradient)"/>
+  
+  <!-- Balloons -->
+  <circle cx="200" cy="120" r="20" fill="#7a9cb5" opacity="0.6"/>
+  <circle cx="900" cy="200" r="25" fill="#8fa9c2" opacity="0.5"/>
+  
+  <!-- Mountains (background) -->
+  <polygon points="0,400 200,250 400,380 600,300 800,400 1000,320 1200,450 1200,600 0,600" fill="#6b8fa6" opacity="0.7"/>
+  
+  <!-- Mountains (mid) -->
+  <polygon points="0,420 150,280 300,400 500,330 700,420 900,350 1100,450 1200,480 1200,600 0,600" fill="#7a9bb5"/>
+  
+  <!-- Ground -->
+  <rect y="480" width="1200" height="120" fill="#b8956a"/>
+  
+  <!-- Cactus left -->
+  <rect x="700" y="450" width="25" height="100" fill="#4a6b3f"/>
+  <circle cx="680" cy="480" r="15" fill="#4a6b3f"/>
+  <circle cx="730" cy="470" r="15" fill="#4a6b3f"/>
+  
+  <!-- Cactus right -->
+  <rect x="950" y="430" width="20" height="120" fill="#4a6b3f"/>
+  <circle cx="930" cy="460" r="12" fill="#4a6b3f"/>
+  <circle cx="975" cy="450" r="12" fill="#4a6b3f"/>
+  
+  <!-- Rocks/buildings -->
+  <g opacity="0.8">
+    <rect x="350" y="350" width="80" height="130" fill="#8b6939" rx="5"/>
+    <polygon points="350,350 390,300 430,350" fill="#a0794d"/>
+    <rect x="360" y="365" width="15" height="20" fill="#2d1810"/>
+    <rect x="395" y="375" width="15" height="20" fill="#2d1810"/>
+    
+    <polygon points="550,400 600,350 650,400" fill="#9d7e4f"/>
+  </g>
+  
+  <!-- Game title -->
+  <text x="600" y="120" font-size="90" font-weight="900" font-family="Arial, sans-serif" fill="#5a4a3a" text-anchor="middle" letter-spacing="8">ALTO'S</text>
+  <text x="600" y="200" font-size="90" font-weight="900" font-family="Arial, sans-serif" fill="#5a4a3a" text-anchor="middle" letter-spacing="8">ODYSSEY</text>
+  
+  <!-- Zen Mode indicator -->
+  <text x="1100" y="50" font-size="24" font-family="Arial, sans-serif" fill="#5a4a3a">Zen Mode ☀</text>
+  
+  <!-- Menu buttons (right side) -->
+  <g opacity="0.9">
+    <!-- Play button -->
+    <rect x="550" y="340" width="200" height="50" fill="#1a1a1a" rx="4"/>
+    <polygon points="570,345 570,385 600,365" fill="white"/>
+    <text x="620" y="372" font-size="28" font-family="Arial, sans-serif" fill="white" font-weight="600">Play</text>
+    
+    <!-- Workshop button -->
+    <rect x="550" y="410" width="200" height="50" fill="#6b5a4a" rx="4"/>
+    <circle cx="572" cy="440" r="6" fill="white"/>
+    <text x="620" y="442" font-size="28" font-family="Arial, sans-serif" fill="white" font-weight="600">Workshop</text>
+    
+    <!-- Menu button -->
+    <rect x="550" y="480" width="200" height="50" fill="#8b7568" rx="4"/>
+    <text x="565" y="515" font-size="32" font-family="Arial, sans-serif" fill="white" font-weight="bold">⚙</text>
+    <text x="620" y="512" font-size="28" font-family="Arial, sans-serif" fill="white" font-weight="600">Menu</text>
+    
+    <!-- Game Select button -->
+    <rect x="550" y="550" width="200" height="40" fill="#a0956a" rx="4" opacity="0.7"/>
+    <text x="620" y="577" font-size="20" font-family="Arial, sans-serif" fill="#8b8b7a" font-weight="600">Game Select</text>
+  </g>
+</svg>

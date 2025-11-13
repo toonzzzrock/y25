@@ -1,0 +1,50 @@
+<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
+  <!-- Forest/Nature game -->
+  <defs>
+    <linearGradient id="forestGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#87CEEB;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F0F8FF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="150" fill="url(#forestGradient)"/>
+  
+  <!-- Tree 1 -->
+  <rect x="20" y="70" width="8" height="40" fill="#8B4513"/>
+  <polygon points="24,40 10,65 38,65" fill="#228B22"/>
+  <polygon points="24,55 12,75 36,75" fill="#32CD32"/>
+  
+  <!-- Tree 2 -->
+  <rect x="60" y="65" width="8" height="45" fill="#654321"/>
+  <polygon points="64,35 48,62 80,62" fill="#228B22"/>
+  <polygon points="64,52 50,78 78,78" fill="#32CD32"/>
+  
+  <!-- Tree 3 -->
+  <rect x="110" y="68" width="8" height="42" fill="#8B4513"/>
+  <polygon points="114,38 98,65 130,65" fill="#228B22"/>
+  <polygon points="114,56 102,80 126,80" fill="#32CD32"/>
+  
+  <!-- Mushroom -->
+  <circle cx="45" cy="105" r="5" fill="#FF69B4"/>
+  <rect x="43" y="105" width="4" height="8" fill="#F5DEB3"/>
+  <circle cx="47" cy="105" r="5" fill="#FF69B4"/>
+  
+  <!-- Flowers -->
+  <circle cx="85" cy="115" r="2" fill="#FFD700"/>
+  <circle cx="80" cy="112" r="1" fill="#FF1493"/>
+  <circle cx="85" cy="112" r="1" fill="#FF1493"/>
+  <circle cx="90" cy="112" r="1" fill="#FF1493"/>
+  
+  <circle cx="140" cy="120" r="2" fill="#FF0000"/>
+  <circle cx="135" cy="117" r="1" fill="#FFD700"/>
+  <circle cx="140" cy="117" r="1" fill="#FFD700"/>
+  <circle cx="145" cy="117" r="1" fill="#FFD700"/>
+  
+  <!-- Rocks -->
+  <ellipse cx="30" cy="120" rx="6" ry="4" fill="#696969"/>
+  <ellipse cx="155" cy="125" rx="7" ry="5" fill="#808080"/>
+  
+  <!-- Butterfly -->
+  <ellipse cx="75" cy="35" rx="3" ry="4" fill="#FF69B4"/>
+  <ellipse cx="83" cy="35" rx="3" ry="4" fill="#FF69B4"/>
+  <line x1="79" y1="30" x2="79" y2="40" stroke="#000000" stroke-width="1"/>
+</svg>
