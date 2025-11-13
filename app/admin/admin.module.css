@@ -1,0 +1,484 @@
+.page {
+  min-height: 100vh;
+  background: #060404;
+  color: #e6e0db;
+  font-family: Arial, Helvetica, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.adminHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 40px;
+  background: linear-gradient(180deg, #000, rgba(0, 0, 0, 0.6));
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  color: #ff6a00;
+  font-weight: 800;
+  font-size: 34px;
+}
+
+.siteTitle {
+  margin-left: 12px;
+  font-size: 22px;
+  color: #ddd;
+  font-weight: 700;
+  font-style: italic;
+}
+
+.adminLabel {
+  color: #19e6ff;
+  font-weight: 800;
+  font-size: 22px;
+}
+
+.main {
+  width: 100%;
+  margin: 30px auto;
+  padding: 0 20px 60px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.sectionHeading {
+  color: #ff7a2b;
+  font-size: 22px;
+  margin: 8px 0 12px;
+  font-weight: 800;
+}
+
+.analyticsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 480px;
+  gap: 20px;
+}
+
+.chartCard,
+.statsCard {
+  background: #1a1410;
+  padding: 18px;
+  border-radius: 6px;
+}
+
+.chartTitle {
+  color: #fff;
+  font-weight: 800;
+  margin: 0 0 10px;
+}
+
+.chartPlaceholder {
+  min-height: 220px;
+  background: #0b0b0b;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 16px 20px 12px;
+  gap: 16px;
+}
+
+.chartImg {
+  width: 100%;
+  height: 100%;
+.chartSvg {
+  width: 100%;
+  height: 100%;
+}
+
+.chartLegend {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  color: #bdb0ab;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+}
+
+.legendSignups {
+  background: linear-gradient(135deg, #2ec4ff, #1b6b8a);
+}
+
+.legendPlayers {
+  background: #ff7a2b;
+}
+
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.statsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.statRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.statLabel {
+  color: #ddd;
+}
+
+.statValue {
+  color: #fff;
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.highlight {
+  color: #ff7a2b;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.popularList {
+  margin: 0 0 0 18px;
+  color: #ff8a33;
+  font-size: 22px;
+}
+
+.managementGrid {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.manageCard {
+  background: #1a1410;
+  padding: 18px;
+  border-radius: 6px;
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.manageTitle {
+  color: #fff;
+  margin: 0 0 8px;
+}
+
+.userSearch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.searchInput {
+  background: #0b0b0b;
+  border: 0;
+  padding: 8px 10px;
+  color: #ddd;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.manageList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.manageItem {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 122, 43, 0.08);
+}
+
+.manageItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.manageInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.itemPrimary {
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemSecondary {
+  color: #bdb0ab;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.manageActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #bdb0ab;
+  justify-content: flex-end;
+}
+
+.btnBan {
+  background: #e42e3d;
+  color: #fff;
+  border: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.btnBan:hover {
+  filter: brightness(0.95);
+}
+
+.manageEmpty {
+  color: #bdb0ab;
+  font-size: 13px;
+  padding: 12px 0;
+}
+
+.viewMoreBtn {
+  background: transparent;
+  color: #ff7a2b;
+  border: 1px solid rgba(255, 122, 43, 0.18);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  margin-top: 15px;
+  align-self: flex-start;
+}
+
+.viewMoreBtn:hover {
+  background: rgba(255, 122, 43, 0.06);
+}
+
+.manageGamesRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.gameSearch {
+  background: #0b0b0b;
+  border: 0;
+  padding: 10px;
+  color: #ddd;
+  border-radius: 4px;
+  flex: 1 1 220px;
+  min-width: 200px;
+  max-width: 320px;
+}
+
+.gamesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px;
+  padding: 16px;
+  background: #141212;
+  border-radius: 6px;
+  min-height: 120px;
+  align-content: flex-start;
+}
+
+.thumb {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 8px;
+  background: #1a1410;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 122, 43, 0.05);
+  min-height: 190px;
+}
+
+.thumbImg {
+  width: 92px;
+  height: 92px;
+  background: #2a2626;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 122, 43, 0.06);
+}
+
+.thumbId {
+  color: #bdb0ab;
+  font-size: 12px;
+}
+
+.thumbName {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbMeta {
+  color: #bdb0ab;
+  font-size: 12px;
+  text-align: center;
+}
+
+.thumbActions {
+  margin-top: auto;
+  display: flex;
+  width: 100%;
+}
+
+.thumbButton {
+  width: 100%;
+  justify-content: center;
+  display: inline-flex;
+}
+
+.pendingRow {
+  display: flex;
+  gap: 18px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.pendingCard {
+  background: #1a1410;
+  padding: 16px;
+  border-radius: 6px;
+  flex: 1 1 240px;
+  min-width: 220px;
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid rgba(255, 122, 43, 0.08);
+}
+
+.pendingCardSmall {
+  width: 180px;
+}
+
+.pendingTitle {
+  color: #fff;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.pendingThumb {
+  width: 64px;
+  height: 64px;
+  background: #2a2626;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 122, 43, 0.06);
+}
+
+.pendingPublisher {
+  color: #bdb0ab;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.pendingStatus {
+  color: #ff7a2b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pendingDate {
+  color: #bdb0ab;
+  font-size: 12px;
+}
+
+.pendingActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.approve {
+  background: #18c27b;
+  color: #fff;
+  border: 0;
+  padding: 8px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.reject {
+  background: #e04b58;
+  color: #fff;
+  border: 0;
+  padding: 8px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.pendingEmpty {
+  color: #bdb0ab;
+  font-size: 13px;
+}
+
+.errorText {
+  color: #ff6a5e;
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+@media (max-width: 900px) {
+  .analyticsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pendingRow {
+    flex-wrap: wrap;
+  }
+}
