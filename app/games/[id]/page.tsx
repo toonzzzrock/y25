@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Header from "@/app/components/Header";
 import { useProtectedRoute } from "@/lib/use-protected-route";
 import { checkGameFileExists, extractGameIdFromUrl } from "@/lib/game-utils";
+import { getAllReportTopics, isValidReportTopic, ReportTopic } from "@/lib/data/reportTopics";
 import "../../game-detail.css";
 
 type NotificationState = {
@@ -112,7 +113,8 @@ export default function GameDetailPage() {
   const [notification, setNotification] = useState<NotificationState | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
-  const [reportTopic, setReportTopic] = useState<"Lag" | "Disconnect" | "Bug" | "">("");
+  const reportTopics = useMemo(() => getAllReportTopics(), []);
+  const [reportTopic, setReportTopic] = useState<ReportTopic["id"] | "">("");
   const [reportDetail, setReportDetail] = useState("");
   const [game, setGame] = useState<GameDetailState | null>(null);
   const [gameVersions, setGameVersions] = useState<GameVersion[]>([]);
@@ -503,7 +505,7 @@ export default function GameDetailPage() {
       return;
     }
 
-    if (!reportTopic) {
+    if (!reportTopic || !isValidReportTopic(reportTopic)) {
       showNotification("Please choose a report topic", "info");
       return;
     }
@@ -533,14 +535,15 @@ export default function GameDetailPage() {
       }
 
       showNotification("Report submitted successfully", "success");
-      closeReport();
+      setReportTopic("");
+      setReportDetail("");
     } catch (error: any) {
       console.error("Report submit error:", error);
       showNotification(error?.message || "Failed to submit report", "error");
     } finally {
       setIsSubmittingReport(false);
     }
-  }, [closeReport, game, reportDetail, reportTopic, showNotification]);
+  }, [game, reportDetail, reportTopic, showNotification]);
 
   const handleFullscreen = useCallback(async () => {
   const renderReportModal = () => {
@@ -573,12 +576,17 @@ export default function GameDetailPage() {
               id="report-topic"
               className="report-select"
               value={reportTopic}
-              onChange={(event) => setReportTopic(event.target.value as "Lag" | "Disconnect" | "Bug" | "")}
+              onChange={(event) => {
+                const value = event.target.value;
+                setReportTopic(value ? (value as ReportTopic['id']) : "");
+              }}
             >
               <option value="">Select an issue</option>
-              <option value="Lag">Lag</option>
-              <option value="Disconnect">Disconnect</option>
-              <option value="Bug">Bug</option>
+              {reportTopics.map((topic) => (
+                <option key={topic.id} value={topic.id}>
+                  {topic.label}
+                </option>
+              ))}
             </select>
 
             <label className="report-label" htmlFor="report-detail">
@@ -726,12 +734,17 @@ export default function GameDetailPage() {
               id="report-topic"
               className="report-select"
               value={reportTopic}
-              onChange={(event) => setReportTopic(event.target.value as "Lag" | "Disconnect" | "Bug" | "")}
+              onChange={(event) => {
+                const value = event.target.value;
+                setReportTopic(value ? (value as ReportTopic['id']) : "");
+              }}
             >
               <option value="">Select an issue</option>
-              <option value="Lag">Lag</option>
-              <option value="Disconnect">Disconnect</option>
-              <option value="Bug">Bug</option>
+              {reportTopics.map((topic) => (
+                <option key={topic.id} value={topic.id}>
+                  {topic.label}
+                </option>
+              ))}
             </select>
 
             <label className="report-label" htmlFor="report-detail">
@@ -762,7 +775,7 @@ export default function GameDetailPage() {
         </div>
       </div>
     );
-  }, [closeReport, isReportOpen, isSubmittingReport, reportDetail, reportTopic, submitReport]);
+  }, [closeReport, isReportOpen, isSubmittingReport, reportDetail, reportTopic, reportTopics, submitReport]);
 
   if (isLoading) {
     return (
@@ -993,7 +1006,7 @@ export default function GameDetailPage() {
                 : "#ff7a2b",
             boxShadow: "0 8px 20px rgba(0, 0, 0, 0.25)",
             fontWeight: 600,
-            zIndex: 20,
+            zIndex: 400,
           }}
         >
           {notification.message}

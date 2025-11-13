@@ -841,7 +841,7 @@ export default function HomePage() {
                       </svg>
                     </button>
                   </div>
-                  <div className="game-grid trending-grid">
+                  <div className="game-grid all-games-grid trending-grid">
                     {trendingGames.map((game, index) => renderTrendingGameCard(game, index))}
                   </div>
                 </section>
@@ -854,7 +854,7 @@ export default function HomePage() {
                       </svg>
                     </button>
                   </div>
-                  <div className="game-grid newgame-grid">
+                  <div className="game-grid all-games-grid newgame-grid">
                     {newGames.map((game, index) => renderDynamicGameCard(game, index))}
                   </div>
                 </section>

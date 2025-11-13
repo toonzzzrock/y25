@@ -321,7 +321,15 @@ export default function GamesListPage() {
                 </div>
               ) : games.length > 0 ? (
                 <>
-                  <div className={`game-grid ${type === 'trending' ? 'trending-grid' : type === 'new' ? 'newgame-grid' : 'all-games-grid'}`}>
+                  <div
+                    className={
+                      type === 'trending'
+                        ? 'game-grid all-games-grid trending-grid'
+                        : type === 'new'
+                          ? 'game-grid all-games-grid newgame-grid'
+                          : 'game-grid all-games-grid'
+                    }
+                  >
                     {games.map((game, index) => renderGameCard(game, index))}
                   </div>
                   
