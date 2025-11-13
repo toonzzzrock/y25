@@ -44,12 +44,26 @@ async function getCpuCores(): Promise<number> {
 // Calculate uptime in hours from /proc/uptime
 async function getUptimeHours(): Promise<number> {
   try {
-    const { stdout } = await execAsync("cat /proc/uptime | awk '{print $1}'");
-    const uptimeSeconds = parseFloat(stdout.trim());
+    // Read /proc/uptime which contains: uptime_seconds idle_time_seconds
+    const { stdout } = await execAsync("cat /proc/uptime");
+    const uptimeStr = stdout.trim().split(' ')[0]; // Get first value (uptime in seconds)
+    
+    console.log(`[Uptime] Raw /proc/uptime output: "${stdout.trim()}"`);
+    console.log(`[Uptime] Extracted uptime string: "${uptimeStr}"`);
+    
+    const uptimeSeconds = parseFloat(uptimeStr);
+    
+    // Validate the value
+    if (isNaN(uptimeSeconds) || uptimeSeconds < 0) {
+      console.error(`[Uptime] Invalid uptime value: ${uptimeSeconds} from "${uptimeStr}"`);
+      return 48; // Default to 48 hours
+    }
+    
     const hours = Math.round(uptimeSeconds / 3600);
-    return hours;
+    console.log(`[Uptime] System uptime: ${uptimeSeconds}s = ${hours} hours`);
+    return Math.max(1, hours); // Ensure at least 1 hour
   } catch (error) {
-    console.error("Failed to get uptime:", error);
+    console.error("[Uptime] Failed to get uptime:", error);
     return 48; // Default to 48 hours
   }
 }
@@ -147,30 +161,82 @@ async function getApiRequestCount(): Promise<{ get: number; post: number }> {
   }
 }
 
-// Get API requests for this hour from nginx logs
+// Get API requests for this hour (counts actual requests made to localhost:3000)
 async function getApiRequestsThisHour(): Promise<number> {
   try {
-    // Get current hour in the format used in nginx logs (e.g., "Nov/13/2025:14:")
+    const trackingFile = path.join(process.cwd(), "public", "api-requests-tracking.json");
     const now = new Date();
-    const monthStr = now.toLocaleString('en-US', { month: 'short' });
-    const day = String(now.getDate()).padStart(2, '0');
-    const year = now.getFullYear();
-    const hour = String(now.getHours()).padStart(2, '0');
+    const currentHour = now.getHours();
     
-    const timePattern = `${monthStr}/${day}/${year}:${hour}:`;
-    console.log(`[API Requests] Searching for requests matching time pattern: ${timePattern}`);
+    console.log(`[API Requests] Checking request tracking file for current hour: ${currentHour}`);
 
-    // Count requests from current hour in nginx access log
-    const { stdout } = await execAsync(
-      `grep "${timePattern}" /var/log/nginx/access.log 2>/dev/null | wc -l`
-    );
-    const count = parseInt(stdout.trim()) || 0;
-    console.log(`[API Requests] Found ${count} requests this hour`);
+    let requestData = {
+      history: Array(24).fill(0), // 24 hours
+      currentHour: currentHour,
+      lastUpdated: now.toISOString(),
+    };
+
+    // Try to read existing tracking data
+    try {
+      const fileContent = await fs.readFile(trackingFile, "utf-8");
+      const parsed = JSON.parse(fileContent);
+      if (Array.isArray(parsed.history)) {
+        requestData.history = parsed.history;
+        console.log(`[API Requests] Loaded existing request history: ${JSON.stringify(requestData.history)}`);
+      }
+    } catch {
+      console.log(`[API Requests] Starting fresh request tracking`);
+    }
+
+    // Get current hour request count
+    const currentHourCount = requestData.history[currentHour] || 0;
+    console.log(`[API Requests] Current hour (${currentHour}): ${currentHourCount} requests`);
     
-    return count;
+    return currentHourCount;
   } catch (error) {
-    console.error("Failed to get hourly API requests:", error);
+    console.error("[API Requests] Failed to get API request count:", error);
     return 0;
+  }
+}
+
+// Increment API request counter for current hour
+async function incrementApiRequestCount(): Promise<void> {
+  try {
+    const trackingFile = path.join(process.cwd(), "public", "api-requests-tracking.json");
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    let requestData = {
+      history: Array(24).fill(0), // 24 hours
+      currentHour: currentHour,
+      lastUpdated: now.toISOString(),
+    };
+
+    // Try to read existing tracking data
+    try {
+      const fileContent = await fs.readFile(trackingFile, "utf-8");
+      const parsed = JSON.parse(fileContent);
+      if (Array.isArray(parsed.history)) {
+        requestData.history = parsed.history;
+      }
+    } catch {
+      // File doesn't exist yet
+    }
+
+    // Increment current hour
+    requestData.history[currentHour] = (requestData.history[currentHour] || 0) + 1;
+    requestData.lastUpdated = now.toISOString();
+
+    // Save updated tracking data
+    await fs.writeFile(
+      trackingFile,
+      JSON.stringify(requestData, null, 2),
+      "utf-8"
+    );
+
+    console.log(`[API Requests] Incremented hour ${currentHour}. Current count: ${requestData.history[currentHour]}`);
+  } catch (error) {
+    console.error("[API Requests] Failed to increment request count:", error);
   }
 }
 
@@ -339,19 +405,27 @@ async function trackAndGetApiUsage(): Promise<number[]> {
       const parsed = JSON.parse(fileContent);
       if (Array.isArray(parsed.history)) {
         usageData = parsed.history;
+        console.log(`[API Usage] Loaded existing history from file: ${JSON.stringify(usageData)}`);
       }
     } catch {
       // File doesn't exist or is invalid, start fresh
       usageData = Array(24).fill(0);
+      console.log("[API Usage] Starting with fresh 24-hour array");
     }
 
-    // Get current hour API requests
+    // Get current hour API requests (counts localhost GET/POST only)
     const currentHourRequests = await getApiRequestsThisHour();
     const now = new Date();
     const currentHour = now.getHours();
 
-    // Update current hour with actual data
+    console.log(`[API Usage] Current hour: ${currentHour}, Current hour localhost GET/POST requests: ${currentHourRequests}`);
+    console.log(`[API Usage] Before update - Hour ${currentHour}: ${usageData[currentHour]}`);
+
+    // Update current hour with actual localhost GET/POST request data
     usageData[currentHour] = currentHourRequests;
+
+    console.log(`[API Usage] After update - Hour ${currentHour}: ${usageData[currentHour]}`);
+    console.log(`[API Usage] Full 24h localhost GET/POST data: ${JSON.stringify(usageData)}`);
 
     // Save tracking data
     try {
@@ -385,6 +459,9 @@ function generateApiUsageHistory(): number[] {
 
 export async function GET() {
   try {
+    // Increment API request counter for this hour
+    await incrementApiRequestCount();
+    
     // Fetch all system stats in parallel
     const [uptime, avgLoad, dbSize, apiRequestsThisHour, cpuMemory, apiUsageHistory, cpuCores, cpuMemoryHistory] = await Promise.all([
       getUptimeHours(),
