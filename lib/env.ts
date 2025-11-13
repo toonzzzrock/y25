@@ -50,11 +50,18 @@ function validateEnv() {
     (key) => !serverEnv[key]
   );
 
-  if (missingVars.length > 0) {
+  // Only validate in production - in development, use defaults
+  if (missingVars.length > 0 && process.env.NODE_ENV === 'production') {
     throw new Error(
       `Missing required environment variables: ${missingVars.join(', ')}\n` +
       'Please check your .env.local file and ensure all required variables are set.'
     );
+  }
+
+  // Log warning in development if env vars are missing
+  if (missingVars.length > 0) {
+    console.warn(`[ENV] ⚠️  Missing environment variables in development: ${missingVars.join(', ')}`);
+    console.warn('[ENV] Using fallback values - database features may not work properly');
   }
 }
 
