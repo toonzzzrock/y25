@@ -83,18 +83,28 @@ export async function GET(request: NextRequest) {
 
     const [gamesRows] = await connection.query(
       `SELECT 
-         g.game_id, 
-         g.game_name, 
-         g.detail, 
-         g.link_to_file, 
+         g.game_id,
+         g.game_name,
+         g.detail,
+         g.link_to_file,
          g.release_date,
-         g.status as game_status,
+         g.status AS game_status,
          g.total_players,
          g.average_play_time,
-         guh.patch_number,
-         guh.is_approve as update_status
+         latest.patch_number,
+         latest.is_approve AS update_status
        FROM game g
-       LEFT JOIN game_update_history guh ON g.game_id = guh.game_id 
+       LEFT JOIN (
+         SELECT game_id,
+                patch_number,
+                is_approve,
+                ROW_NUMBER() OVER (
+                  PARTITION BY game_id
+                  ORDER BY COALESCE(approve_time, update_time) DESC, update_id DESC
+                ) AS row_rank
+         FROM game_update_history
+       ) AS latest
+         ON latest.game_id = g.game_id AND latest.row_rank = 1
        WHERE g.publisher_username = ?
        ORDER BY g.release_date DESC, g.game_id DESC`,
       [session.username]

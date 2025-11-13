@@ -104,9 +104,9 @@ export async function POST(request: NextRequest) {
 
     // Insert game into database
     const [result] = await connection.query(
-      `INSERT INTO game (game_name, detail, link_to_file, total_players, average_play_time, publisher_username)
-       VALUES (?, ?, ?, 0, 0, ?)`,
-      [gameName, description || null, linkToFilePath || 'index.html', session.username]
+      `INSERT INTO game (game_name, detail, total_players, average_play_time, publisher_username)
+       VALUES (?, ?, 0, 0, ?)`,
+      [gameName, description || null, session.username]
     ) as any;
 
     const gameId = result.insertId;

@@ -55,6 +55,7 @@ export async function GET(request: NextRequest, context: GameRouteContext) {
                 publisher_username AS developer,
                 link_to_file AS playUrl,
                 release_date AS releaseDate,
+                status,
                 total_players,
                 average_play_time
          FROM game
@@ -72,7 +73,20 @@ export async function GET(request: NextRequest, context: GameRouteContext) {
         );
       }
 
-      let resolvedPlayUrl: string | null = typeof gameRow.playUrl === 'string' ? gameRow.playUrl : null;
+      const rawStatus = typeof gameRow.status === 'string' ? gameRow.status.trim().toLowerCase() : null;
+      const isApproved = rawStatus === 'approve';
+
+      if (!isApproved) {
+        return NextResponse.json(
+          { error: 'Game not available', game: null },
+          { status: 404 }
+        );
+      }
+
+      let resolvedPlayUrl: string | null =
+        typeof gameRow.playUrl === 'string' && gameRow.playUrl.trim().length > 0
+          ? gameRow.playUrl.trim()
+          : null;
 
       const [updateRows] = await connection.query(
         `SELECT link_to_new_file AS link
@@ -89,6 +103,13 @@ export async function GET(request: NextRequest, context: GameRouteContext) {
         if (typeof latestLink === 'string' && latestLink.trim().length > 0) {
           resolvedPlayUrl = latestLink.trim();
         }
+      }
+
+      if (!resolvedPlayUrl) {
+        return NextResponse.json(
+          { error: 'Game not available', game: null },
+          { status: 404 }
+        );
       }
 
       const game = {

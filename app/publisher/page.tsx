@@ -12,6 +12,7 @@ import { useProtectedRoute } from "@/lib/use-protected-route";
 import { useAuth } from "@/lib/auth-context";
 import Header from "@/app/components/Header";
 import UploadModal from "@/app/components/UploadModal";
+import EditGameModal from "@/app/components/EditGameModal";
 import "./publisher.css";
 
 type NotificationVariant = "success" | "error" | "info";
@@ -292,6 +293,25 @@ const mergeGameLists = (current: Game[], incoming: Game[]): Game[] => {
   return merged;
 };
 
+const dedupeGamesById = (games: Game[]): Game[] => {
+  if (!Array.isArray(games) || games.length <= 1) {
+    return games;
+  }
+
+  const seen = new Set<number>();
+  const unique: Game[] = [];
+
+  for (const game of games) {
+    if (seen.has(game.id)) {
+      continue;
+    }
+    seen.add(game.id);
+    unique.push(game);
+  }
+
+  return unique;
+};
+
 export default function PublisherPage() {
   const { isLoading: isRouteLoading } = useProtectedRoute();
   const { user, loading: authLoading } = useAuth();
@@ -309,6 +329,8 @@ export default function PublisherPage() {
   const [selectedUpdateFilter, setSelectedUpdateFilter] = useState<string>("all");
   const [selectedReportFilter, setSelectedReportFilter] = useState<string>("all");
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [gameBeingEdited, setGameBeingEdited] = useState<Game | null>(null);
   const notificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showNotification = useCallback((message: string, type: NotificationVariant = "info") => {
@@ -372,12 +394,15 @@ export default function PublisherPage() {
         }
 
         if (isMounted) {
+          const mappedGames = Array.isArray(data?.games)
+            ? (data.games as any[]).map((game, index) => mapApiGameToPublished(game, index))
+            : [];
+          const dedupedGames = dedupeGamesById(mappedGames);
+
           const normalized: DashboardData = {
             publisher: data?.publisher ?? null,
-            games: Array.isArray(data?.games)
-              ? (data.games as any[]).map((game, index) => mapApiGameToPublished(game, index))
-              : [],
-            totalGames: data?.totalGames ?? 0,
+            games: dedupedGames,
+            totalGames: typeof data?.totalGames === "number" ? data.totalGames : dedupedGames.length,
           };
           setDashboard(normalized);
           setPublisherGames(normalized.games);
@@ -435,7 +460,9 @@ export default function PublisherPage() {
           ? (data.games as any[]).map((game, index) => mapApiGameToPublished(game, index))
           : [];
 
-        setPublisherGames((previous) => mergeGameLists(previous, normalized));
+        const uniqueIncoming = dedupeGamesById(normalized);
+
+        setPublisherGames((previous) => mergeGameLists(previous, uniqueIncoming));
       } catch (fetchError: any) {
         if (fetchError?.name === "AbortError") {
           return;
@@ -532,10 +559,49 @@ export default function PublisherPage() {
     window.location.reload();
   }, []);
 
+  const handleEditSuccess = useCallback(
+    (updated: { id: number; title: string }) => {
+      setPublisherGames((previous) =>
+        previous.map((game) =>
+          game.id === updated.id
+            ? {
+                ...game,
+                title: updated.title,
+              }
+            : game
+        )
+      );
+
+      setDashboard((previous) => {
+        if (!previous) {
+          return previous;
+        }
+        return {
+          ...previous,
+          games: previous.games.map((game: Game) =>
+            game.id === updated.id
+              ? {
+                  ...game,
+                  title: updated.title,
+                }
+              : game
+          ),
+        };
+      });
+    },
+    []
+  );
+
   const handleGameAction = useCallback(
     async (action: "edit" | "delete", gameId: number, title: string) => {
       if (action === "edit") {
-        showNotification(`Editing "${title}" is not available yet.`, "info");
+        const targetGame = publisherGames.find((game) => game.id === gameId);
+        if (!targetGame) {
+          showNotification("Game not found", "error");
+          return;
+        }
+        setGameBeingEdited(targetGame);
+        setIsEditModalOpen(true);
         return;
       }
 
@@ -582,7 +648,7 @@ export default function PublisherPage() {
         }
       }
     },
-    [showNotification]
+    [publisherGames, showNotification]
   );
 
   const filteredGames = useMemo(() => {
@@ -621,19 +687,6 @@ export default function PublisherPage() {
       return "Release date TBA";
     }
   }, []);
-
-  const publisherName = useMemo(() => {
-    if (dashboard?.publisher?.accountName) {
-      return dashboard.publisher.accountName;
-    }
-    if (dashboard?.publisher?.username) {
-      return dashboard.publisher.username;
-    }
-    if (user?.username) {
-      return user.username;
-    }
-    return "Publisher";
-  }, [dashboard?.publisher, user?.username]);
 
   const publishedGames = publisherGames;
 
@@ -787,7 +840,7 @@ export default function PublisherPage() {
                       ];
 
                       return (
-                        <article key={`${game.id}-${game.title}`} className="publisher-game-card">
+                        <article key={String(game.id)} className="publisher-game-card">
                           <div className="publisher-game-status-badges">
                             <span className={`status-badge status-${game.gameStatus.toLowerCase()}`}>
                               Game: {game.gameStatus}
@@ -824,7 +877,6 @@ export default function PublisherPage() {
                             </p>
                             <div className="publisher-game-meta">
                               <span>{formatReleaseDate(game.releaseDate)}</span>
-                              <span>By {publisherName}</span>
                             </div>
                             <div className="publisher-game-stats">
                               {statBlocks.map((stat) => (
@@ -944,6 +996,27 @@ export default function PublisherPage() {
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         onSuccess={handleUploadSuccess}
+        showNotification={showNotification}
+      />
+
+      <EditGameModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setGameBeingEdited(null);
+        }}
+        onSuccess={(payload) => {
+          handleEditSuccess(payload);
+          setGameBeingEdited((previous) =>
+            previous && previous.id === payload.id
+              ? {
+                  ...previous,
+                  title: payload.title,
+                }
+              : previous
+          );
+        }}
+        game={gameBeingEdited}
         showNotification={showNotification}
       />
     </div>

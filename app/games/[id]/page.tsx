@@ -266,6 +266,19 @@ export default function GameDetailPage() {
         });
         const data = await response.json();
 
+        if (response.status === 404) {
+          playSessionRef.current.gameId = 0;
+          playSessionRef.current.start = 0;
+          playSessionRef.current.reported = true;
+          const fallbackParams = new URLSearchParams();
+          if (decodedGameId) {
+            fallbackParams.set("gameId", String(decodedGameId));
+          }
+          const fallbackUrl = `/game-fallback${fallbackParams.toString() ? `?${fallbackParams.toString()}` : ""}`;
+          router.replace(fallbackUrl);
+          return;
+        }
+
         if (!response.ok || !data?.game) {
           const message = data?.error || "Failed to load game";
           setGame(null);
@@ -311,6 +324,23 @@ export default function GameDetailPage() {
           averagePlayTime: typeof raw?.average_play_time === "number" ? raw.average_play_time : null,
         };
 
+        if (!normalized.playUrl) {
+          playSessionRef.current.gameId = 0;
+          playSessionRef.current.start = 0;
+          playSessionRef.current.reported = true;
+          const fallbackParams = new URLSearchParams();
+          const fallbackGameId = normalized.id || decodedGameId;
+          if (fallbackGameId) {
+            fallbackParams.set("gameId", String(fallbackGameId));
+          }
+          if (normalized.title) {
+            fallbackParams.set("gameName", normalized.title);
+          }
+          const fallbackUrl = `/game-fallback${fallbackParams.toString() ? `?${fallbackParams.toString()}` : ""}`;
+          router.replace(fallbackUrl);
+          return;
+        }
+
         setGame(normalized);
         
         // Fetch game versions and tags after setting the game
@@ -336,7 +366,7 @@ export default function GameDetailPage() {
     return () => {
       controller.abort();
     };
-  }, [decodedGameId, showNotification, fetchGameVersions, fetchGameTags]);
+  }, [decodedGameId, showNotification, fetchGameVersions, fetchGameTags, router]);
 
   const sendPlayDuration = useCallback((elapsedMs: number) => {
     const activeSession = playSessionRef.current;
@@ -621,32 +651,51 @@ export default function GameDetailPage() {
   }, [showNotification]);
 
   const handlePlay = useCallback(async () => {
-    finalizePlaySessionRef.current?.();
-
-    if (game?.playUrl) {
-      const destination = game.playUrl;
-
-      if (/^[a-zA-Z]+:\/\//.test(destination)) {
-        window.open(destination, "_blank", "noopener,noreferrer");
-        showNotification(`Launching ${game.title}`, "success");
-      } else {
-        // Check if the game file exists before navigating
-        const fileExists = await checkGameFileExists(destination);
-        
-        if (fileExists) {
-          router.push(destination);
-          showNotification(`Launching ${game.title}`, "success");
-        } else {
-          // Redirect to fallback page with game ID
-          const gameId = extractGameIdFromUrl(destination) || game.id.toString();
-          router.push(`/game-fallback?gameId=${gameId}`);
-          showNotification("Game file not found, showing fallback experience", "info");
-        }
-      }
-    } else {
+    if (!game?.playUrl) {
       showNotification("Playable build coming soon", "info");
+      return;
     }
-  }, [game, router, showNotification]);
+
+    const destination = game.playUrl;
+
+    const finalizeSession = () => {
+      finalizePlaySessionRef.current?.();
+    };
+
+    const redirectToFallback = () => {
+      playSessionRef.current.gameId = 0;
+      playSessionRef.current.start = 0;
+      playSessionRef.current.reported = true;
+
+      const params = new URLSearchParams();
+      const derivedId = extractGameIdFromUrl(destination) || game.id.toString();
+      if (derivedId) {
+        params.set("gameId", derivedId);
+      }
+      if (game.title) {
+        params.set("gameName", game.title);
+      }
+      router.push(`/game-fallback${params.toString() ? `?${params.toString()}` : ""}`);
+    };
+
+    if (/^[a-zA-Z]+:\/\//.test(destination)) {
+      finalizeSession();
+      window.open(destination, "_blank", "noopener,noreferrer");
+      showNotification(`Launching ${game.title}`, "success");
+      return;
+    }
+
+    const fileExists = await checkGameFileExists(destination);
+
+    if (fileExists) {
+      finalizeSession();
+      router.push(destination);
+      showNotification(`Launching ${game.title}`, "success");
+    } else {
+      redirectToFallback();
+      showNotification("Game file not found, showing fallback experience", "info");
+    }
+  }, [game, router, showNotification, checkGameFileExists]);
 
   const handleScreenshotClick = useCallback(
     (index: number) => {
