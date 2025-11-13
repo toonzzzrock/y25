@@ -17,6 +17,20 @@ export async function POST(
   }
 
   try {
+    // Delete related records in reverse order of dependencies
+    // reply table references User but has no ON DELETE CASCADE
+    await pool.query("DELETE FROM `reply` WHERE username = ?", [username]);
+    
+    // report table references User but has no ON DELETE CASCADE
+    await pool.query("DELETE FROM `report` WHERE username = ?", [username]);
+    
+    // create_relation table references User but has no ON DELETE CASCADE
+    await pool.query(
+      "DELETE FROM `create_relation` WHERE username = ?",
+      [username]
+    );
+
+    // Now delete the user itself
     const [result] = await pool.query<ResultSetHeader>(
       "DELETE FROM `User` WHERE username = ?",
       [username]

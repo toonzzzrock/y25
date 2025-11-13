@@ -20,6 +20,12 @@
   align-items: center;
 }
 
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .logo {
   color: #ff6a00;
   font-weight: 800;
@@ -38,6 +44,29 @@
   color: #19e6ff;
   font-weight: 800;
   font-size: 22px;
+}
+
+.adminUsername {
+  color: #bdb0ab;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.logoutButton {
+  background: #e42e3d;
+  color: #fff;
+  border: 0;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+
+.logoutButton:hover {
+  background: #f04050;
+  transform: translateY(-2px);
 }
 
 .main {
@@ -400,6 +429,13 @@
   width: 180px;
 }
 
+.pendingGameId {
+  color: #bdb0ab;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
 .pendingTitle {
   color: #fff;
   margin: 0;
@@ -436,30 +472,50 @@
 
 .pendingActions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   margin-top: 6px;
   width: 100%;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  justify-content: flex-start;
 }
 
 .approve {
   background: #18c27b;
   color: #fff;
   border: 0;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 16px;
   cursor: pointer;
   font-weight: 700;
+  font-size: 12px;
+  flex: 1 1 auto;
+  min-width: 70px;
 }
 
 .reject {
   background: #e04b58;
   color: #fff;
   border: 0;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 16px;
   cursor: pointer;
   font-weight: 700;
+  font-size: 12px;
+  flex: 1 1 auto;
+  min-width: 70px;
+}
+
+.ban {
+  background: #e42e3d;
+  color: #fff;
+  border: 0;
+  padding: 6px 10px;
+  border-radius: 16px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+  flex: 1 1 auto;
+  min-width: 50px;
 }
 
 .pendingEmpty {

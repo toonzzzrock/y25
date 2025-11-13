@@ -57,7 +57,11 @@ export function GamesGrid({ games, emptyMessage }: GamesGridProps) {
     });
   }, [localGames, normalisedIdQuery, normalisedNameQuery]);
 
-  async function handleStatusUpdate(gameId: number, nextStatus: string) {
+  async function handleStatusUpdate(gameId: number) {
+    const confirmed = window.confirm("Are you sure you want to ban this game?");
+    
+    if (!confirmed) return;
+
     setError(null);
     setBusyIds((prev) => {
       const next = new Set(prev);
@@ -66,28 +70,24 @@ export function GamesGrid({ games, emptyMessage }: GamesGridProps) {
     });
 
     try {
-      const response = await fetch(`/api/games/${gameId}/status`, {
-        method: "PATCH",
+      const response = await fetch(`/api/games/${gameId}/ban`, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ status: nextStatus }),
       });
 
       const payload = await response.json();
 
       if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error ?? "Failed to update game status");
+        throw new Error(payload?.error ?? "Failed to ban game");
       }
 
-      setLocalGames((prev) =>
-        prev.map((game) =>
-          game.id === gameId ? { ...game, status: nextStatus } : game
-        )
-      );
+      // Remove game from local state immediately
+      setLocalGames((prev) => prev.filter((game) => game.id !== gameId));
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to update game status";
+        error instanceof Error ? error.message : "Failed to ban game";
       setError(message);
     } finally {
       setBusyIds((prev) => {
@@ -136,7 +136,7 @@ export function GamesGrid({ games, emptyMessage }: GamesGridProps) {
                     type="button"
                     className={`${styles.btnBan} ${styles.thumbButton}`}
                     disabled={isBusy}
-                    onClick={() => handleStatusUpdate(game.id, "Reject")}
+                    onClick={() => handleStatusUpdate(game.id)}
                   >
                     {isBusy ? "Updating..." : "Ban game"}
                   </button>

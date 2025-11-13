@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import styles from "../admin.module.css";
 
 type ManageCardItem = {
@@ -31,25 +31,34 @@ export function ManageCard({
   items,
   onBan,
 }: ManageCardProps) {
+  const [localItems, setLocalItems] = useState(items);
   const [query, setQuery] = useState("");
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const normalisedQuery = normalise(query.trim());
 
+  useEffect(() => {
+    setLocalItems(items);
+  }, [items]);
+
   const filteredItems = useMemo(() => {
     if (!normalisedQuery) {
-      return items;
+      return localItems;
     }
 
-    return items.filter(({ primary, secondary, tertiary }) =>
+    return localItems.filter(({ primary, secondary, tertiary }) =>
       [primary, secondary, tertiary]
         .filter(Boolean)
         .some((text) => text && normalise(text).includes(normalisedQuery))
     );
-  }, [items, normalisedQuery]);
+  }, [localItems, normalisedQuery]);
 
   async function handleBan(itemId: string) {
     if (!onBan) return;
+
+    const confirmed = window.confirm("Are you sure you want to ban this item?");
+    
+    if (!confirmed) return;
 
     setError(null);
     setBusyIds((prev) => {
@@ -60,6 +69,8 @@ export function ManageCard({
 
     try {
       await onBan(itemId);
+      // Remove item from local state immediately after successful ban
+      setLocalItems((prev) => prev.filter((item) => item.id !== itemId));
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to ban item";

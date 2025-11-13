@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import type { RowDataPacket } from "mysql2";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { pool } from "@/lib/db";
 import styles from "./admin.module.css";
 import { ManageCard } from "./components/ManageCard";
@@ -8,6 +10,7 @@ import { SignupChart } from "./components/SignupChart";
 import { PendingGamesList } from "./components/PendingGamesList";
 import { ManageCardWrapper } from "./components/ManageCardWrapper";
 import { formatDate } from "./utils/formatters";
+import { AdminLogoutButton } from "./components/AdminLogoutButton";
 
 type PopularGame = {
   name: string;
@@ -309,6 +312,16 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminDashboardPage() {
+  // Check authentication
+  const cookieStore = await cookies();
+  const adminSession = cookieStore.get("admin_session");
+
+  if (!adminSession) {
+    redirect("/admin/login");
+  }
+
+  const adminUsername = adminSession.value;
+
   const data = await getDashboardData();
 
   return (
@@ -318,7 +331,11 @@ export default async function AdminDashboardPage() {
           <span className={styles.logo}>Y25</span>
           <span className={styles.siteTitle}>/ ONLINE GAME PLATFORM</span>
         </div>
-        <span className={styles.adminLabel}>ADMIN</span>
+        <div className={styles.headerRight}>
+          <span className={styles.adminUsername}>{adminUsername}</span>
+          <span className={styles.adminLabel}>ADMIN</span>
+          <AdminLogoutButton />
+        </div>
       </header>
 
       <main className={styles.main}>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import type { ResultSetHeader } from "mysql2";
 import { pool } from "@/lib/db";
 
@@ -37,6 +38,19 @@ export async function PATCH(
     return NextResponse.json({ success: false, error: "Invalid game id" }, { status: 400 });
   }
 
+  // Get admin username from session
+  const cookieStore = await cookies();
+  const adminSession = cookieStore.get("admin_session");
+  
+  if (!adminSession) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
+  const adminUsername = adminSession.value;
+
   let body: unknown;
   try {
     body = await request.json();
@@ -71,6 +85,21 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: "Game not found" }, { status: 404 });
     }
 
+    // Record in game_update_history
+    await pool.query(
+      `INSERT INTO \`game_update_history\` (patch_number, title, detail, link_to_new_file, is_approve, approve_time, approve_by, game_id)
+       VALUES (?, ?, ?, ?, ?, NOW(), ?, ?)`,
+      [
+        "admin-review",
+        `Game ${status === "Approve" ? "Approved" : "Rejected"}`,
+        `Admin review: ${status === "Approve" ? "Approved" : "Rejected"}`,
+        "",
+        status === "Approve" ? "Approve" : "Reject",
+        adminUsername,
+        id,
+      ]
+    );
+
     revalidatePath("/admin");
 
     return NextResponse.json({ success: true });
@@ -82,3 +111,4 @@ export async function PATCH(
     );
   }
 }
+

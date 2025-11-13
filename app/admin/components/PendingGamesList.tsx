@@ -26,6 +26,11 @@ export function PendingGamesList({ games }: PendingGamesListProps) {
   }, [games]);
 
   async function updateStatus(gameId: number, status: "Approved" | "Rejected") {
+    const action = status === "Approved" ? "approve" : "reject";
+    const confirmed = window.confirm(`Are you sure you want to ${action} this game?`);
+    
+    if (!confirmed) return;
+
     setError(null);
     setBusyIds((prev) => {
       const next = new Set(prev);
@@ -79,6 +84,7 @@ export function PendingGamesList({ games }: PendingGamesListProps) {
 
           return (
             <div key={game.id} className={styles.pendingCard}>
+              <span className={styles.pendingGameId}>ID: {game.id}</span>
               <h4 className={styles.pendingTitle}>{game.name}</h4>
               <div className={styles.pendingThumb} />
               <span className={styles.pendingPublisher}>{submittedBy}</span>
