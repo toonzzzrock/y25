@@ -9,6 +9,7 @@ import { GamesGrid } from "./components/GamesGrid";
 import { SignupChart } from "./components/SignupChart";
 import { PendingGamesList } from "./components/PendingGamesList";
 import { ManageCardWrapper } from "./components/ManageCardWrapper";
+import { SignupForm } from "./components/SignupForm";
 import { formatDate } from "./utils/formatters";
 import { AdminLogoutButton } from "./components/AdminLogoutButton";
 
@@ -368,7 +369,7 @@ export default async function AdminDashboardPage() {
                   {data.analytics.popularGames.length > 0 ? (
                     data.analytics.popularGames.map((game) => (
                       <li key={game.id}>
-                        #{game.id} {game.name} · {numberFormatter.format(game.totalPlayers)} players
+                        {game.name} (#{game.id}) · {numberFormatter.format(game.totalPlayers)} players
                       </li>
                     ))
                   ) : (
@@ -383,6 +384,16 @@ export default async function AdminDashboardPage() {
                 </span>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section>
+          <h2 className={styles.sectionHeading}>SIGNUP NEW USER</h2>
+          <div style={{ padding: '20px', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
+            <p style={{ marginBottom: '20px', color: '#ccc', fontSize: '14px' }}>
+              Create a new Developer or Admin account for the platform.
+            </p>
+            <SignupForm />
           </div>
         </section>
 
