@@ -1,0 +1,137 @@
+.page {
+  min-height: 100vh;
+  background: #060404;
+  color: #e6e0db;
+  font-family: Arial, Helvetica, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 40px;
+  background: linear-gradient(180deg, #000, rgba(0, 0, 0, 0.6));
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  color: #ff6a00;
+  font-weight: 800;
+  font-size: 34px;
+}
+
+.siteTitle {
+  margin-left: 12px;
+  font-size: 22px;
+  color: #ddd;
+  font-weight: 700;
+  font-style: italic;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+.container {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.title {
+  color: #ff7a2b;
+  font-size: 28px;
+  margin: 0;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: #1a1410;
+  padding: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 122, 43, 0.1);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  background: #0b0b0b;
+  border: 1px solid rgba(255, 122, 43, 0.2);
+  color: #fff;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #ff7a2b;
+  background: #141212;
+}
+
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.input::placeholder {
+  color: #bdb0ab;
+}
+
+.error {
+  color: #ff6a5e;
+  font-size: 13px;
+  margin: 0;
+  padding: 10px 12px;
+  background: rgba(255, 106, 94, 0.1);
+  border-radius: 4px;
+  border-left: 2px solid #ff6a5e;
+}
+
+.button {
+  padding: 14px 24px;
+  background: #ff7a2b;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.button:hover:not(:disabled) {
+  background: #ff8a3b;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 122, 43, 0.4);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
