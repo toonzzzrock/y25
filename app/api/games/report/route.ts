@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 import { reportTopicSet } from '@/lib/data/reportTopics';
 
 type SessionUser = {
@@ -60,24 +60,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Report detail is too long' }, { status: 400 });
   }
 
-  const connection = await pool.getConnection();
-
   try {
-    const [rows] = await connection.query('SELECT 1 FROM game WHERE game_id = ? LIMIT 1', [gameId]);
-    if (!Array.isArray(rows) || rows.length === 0) {
+    const validationRows = await callProcedure<any[]>('sp_check_game_exists', [gameId]);
+    if (!Array.isArray(validationRows) || validationRows.length === 0) {
       return NextResponse.json({ error: 'Game not found' }, { status: 404 });
     }
 
-    await connection.query(
-      'INSERT INTO report (username, game_id, report_topic, detail) VALUES (?, ?, ?, ?)',
-      [session.username, gameId, topic, detail]
-    );
+    await callProcedure('sp_create_game_report', [gameId, session.username, topic, detail]);
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
     console.error('Report insert error:', error);
     return NextResponse.json({ error: 'Failed to submit report' }, { status: 500 });
-  } finally {
-    connection.release();
   }
 }

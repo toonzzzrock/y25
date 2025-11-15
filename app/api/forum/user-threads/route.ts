@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 
 function getSessionUser(request: NextRequest): { username: string; email?: string | null } | null {
   const token = request.cookies.get('auth_session')?.value;
@@ -44,67 +44,16 @@ export async function GET(request: NextRequest) {
     const createdLimit = Math.min(Math.max(createdLimitRaw, 1), 25);
     const commentedLimit = Math.min(Math.max(commentedLimitRaw, 1), 25);
 
-    const connection = await pool.getConnection();
-    try {
-      const [createdRows] = await connection.query(
-        `SELECT f.thread_name, f.detail, f.created_at,
-                cr.username AS creator_username,
-                g.game_id, g.game_name,
-                COALESCE(reply_counts.reply_count, 0) AS reply_count
-         FROM create_relation cr
-         JOIN forum f ON f.thread_name = cr.thread_name
-         LEFT JOIN game g ON g.game_id = cr.game_id
-         LEFT JOIN (
-           SELECT thread_name, COUNT(*) AS reply_count
-           FROM reply
-           GROUP BY thread_name
-         ) AS reply_counts ON reply_counts.thread_name = f.thread_name
-         WHERE cr.username = ?
-         ORDER BY f.created_at DESC, f.thread_name DESC
-         LIMIT ?`,
-        [session.username, createdLimit]
-      );
+    const createdRows = await callProcedure<any[]>('sp_get_user_created_threads', [session.username]);
+    const commentedRows = await callProcedure<any[]>('sp_get_user_commented_threads', [session.username]);
 
-      const [commentedRows] = await connection.query(
-        `SELECT
-            f.thread_name,
-            f.detail,
-            f.created_at,
-            cr.username AS creator_username,
-            g.game_id,
-            g.game_name,
-            COALESCE(reply_counts.reply_count, 0) AS reply_count
-         FROM (
-           SELECT r.thread_name, MAX(c.created_at) AS last_commented_at
-           FROM reply r
-           JOIN comment c ON c.comment_id = r.comment_id
-           WHERE r.username = ?
-           GROUP BY r.thread_name
-           ORDER BY last_commented_at DESC
-           LIMIT ?
-         ) AS user_activity
-         JOIN forum f ON f.thread_name = user_activity.thread_name
-         LEFT JOIN create_relation cr ON cr.thread_name = f.thread_name
-         LEFT JOIN game g ON g.game_id = cr.game_id
-         LEFT JOIN (
-           SELECT thread_name, COUNT(*) AS reply_count
-           FROM reply
-           GROUP BY thread_name
-         ) AS reply_counts ON reply_counts.thread_name = f.thread_name
-         ORDER BY user_activity.last_commented_at DESC, f.thread_name DESC`,
-        [session.username, commentedLimit]
-      );
-
-      return NextResponse.json(
-        {
-          createdThreads: Array.isArray(createdRows) ? createdRows : [],
-          commentedThreads: Array.isArray(commentedRows) ? commentedRows : [],
-        },
-        { status: 200 }
-      );
-    } finally {
-      connection.release();
-    }
+    return NextResponse.json(
+      {
+        createdThreads: Array.isArray(createdRows) ? createdRows.slice(0, createdLimit) : [],
+        commentedThreads: Array.isArray(commentedRows) ? commentedRows.slice(0, commentedLimit) : [],
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
     console.error('User threads fetch error:', error);
     return NextResponse.json(

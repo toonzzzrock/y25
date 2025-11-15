@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,45 +12,20 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    const connection = await pool.getConnection();
-    
-    try {
-      // Get newest games sorted by release_date (descending)
-      const [games] = await connection.query(
-        `SELECT game_id as id, 
-                game_name as title, 
-                detail as description,
-                publisher_username as developer, 
-                link_to_file as image_url,
-                release_date,
-                total_players
-         FROM game
-         WHERE status = 'Approve'
-         ORDER BY release_date DESC, game_id DESC
-         LIMIT ? OFFSET ?`,
-        [limit, offset]
-      );
+    const games = await callProcedure<any[]>('sp_get_new_games', [limit, offset]);
+    const countResult = await callProcedure<any[]>('sp_count_new_games');
+    const total = Number(countResult?.[0]?.total ?? 0);
 
-      // Get total count for pagination
-      const [countResult] = await connection.query(
-        `SELECT COUNT(*) as total FROM game WHERE status = 'Approve'`
-      );
-
-      const total = (countResult as any)[0]?.total || 0;
-
-      return NextResponse.json(
-        { 
-          games: games || [],
-          total,
-          limit,
-          offset,
-          timestamp: new Date().toISOString()
-        },
-        { status: 200 }
-      );
-    } finally {
-      connection.release();
-    }
+    return NextResponse.json(
+      { 
+        games: Array.isArray(games) ? games : [],
+        total,
+        limit,
+        offset,
+        timestamp: new Date().toISOString()
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
     console.error('New games fetch error:', error);
     return NextResponse.json(

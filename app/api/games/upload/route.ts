@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { pool, callProcedure } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
@@ -54,8 +54,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let connection = null;
-
   try {
     const formData = await request.formData();
     
@@ -100,8 +98,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    connection = await pool.getConnection();
 
     // Check if user is a publisher (via proc)
     const pubExists: any[] = await callProcedure<any[]>('sp_publisher_exists', [session.username]);
@@ -176,7 +172,7 @@ export async function POST(request: NextRequest) {
     const finalLink = '/data/game/' + gameId + '/game_version/0/' + (sanitizedPath || 'index.html');
 
     // Update game link_to_file now that files exist
-    await pool.query('UPDATE game SET link_to_file = ? WHERE game_id = ?', [finalLink, gameId]);
+    await callProcedure('sp_update_game_link', [gameId, finalLink]);
 
     // Insert initial game update history record via procedure
     await callProcedure('sp_game_add_initial_update', [gameId, finalLink]);
@@ -195,9 +191,5 @@ export async function POST(request: NextRequest) {
       { error: 'Failed to upload game: ' + (error.message || 'Unknown error') },
       { status: 500 }
     );
-  } finally {
-    if (connection) {
-      connection.release();
-    }
   }
 }

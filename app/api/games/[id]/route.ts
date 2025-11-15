@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 
 type GameRouteContext =
   | { params: Promise<{ id: string }> }
@@ -46,84 +46,56 @@ export async function GET(request: NextRequest, context: GameRouteContext) {
       );
     }
 
-    const connection = await pool.getConnection();
-    try {
-      const [rows] = await connection.query(
-        `SELECT game_id AS id,
-                game_name AS title,
-                detail AS description,
-                publisher_username AS developer,
-                link_to_file AS playUrl,
-                release_date AS releaseDate,
-                status,
-                total_players,
-                average_play_time
-         FROM game
-         WHERE game_id = ?
-         LIMIT 1`,
-        [parsedId]
-      );
+    const rows = await callProcedure<any[]>('sp_get_game_detail', [parsedId]);
+    const gameRow = Array.isArray(rows) && rows.length > 0 ? (rows[0] as Record<string, any>) : null;
 
-      const gameRow = Array.isArray(rows) && rows.length > 0 ? (rows[0] as Record<string, any>) : null;
-
-      if (!gameRow) {
-        return NextResponse.json(
-          { error: 'Game not found', game: null },
-          { status: 404 }
-        );
-      }
-
-      const rawStatus = typeof gameRow.status === 'string' ? gameRow.status.trim().toLowerCase() : null;
-      const isApproved = rawStatus === 'approve';
-
-      if (!isApproved) {
-        return NextResponse.json(
-          { error: 'Game not available', game: null },
-          { status: 404 }
-        );
-      }
-
-      let resolvedPlayUrl: string | null =
-        typeof gameRow.playUrl === 'string' && gameRow.playUrl.trim().length > 0
-          ? gameRow.playUrl.trim()
-          : null;
-
-      const [updateRows] = await connection.query(
-        `SELECT link_to_new_file AS link
-         FROM game_update_history
-         WHERE game_id = ?
-           AND is_approve = TRUE
-         ORDER BY COALESCE(approve_time, update_time) DESC
-         LIMIT 1`,
-        [parsedId]
-      );
-
-      if (Array.isArray(updateRows) && updateRows.length > 0) {
-        const latestLink = (updateRows[0] as Record<string, any>)?.link;
-        if (typeof latestLink === 'string' && latestLink.trim().length > 0) {
-          resolvedPlayUrl = latestLink.trim();
-        }
-      }
-
-      if (!resolvedPlayUrl) {
-        return NextResponse.json(
-          { error: 'Game not available', game: null },
-          { status: 404 }
-        );
-      }
-
-      const game = {
-        ...gameRow,
-        playUrl: resolvedPlayUrl,
-      };
-
+    if (!gameRow) {
       return NextResponse.json(
-        { game },
-        { status: 200 }
+        { error: 'Game not found', game: null },
+        { status: 404 }
       );
-    } finally {
-      connection.release();
     }
+
+    const rawStatus = typeof gameRow.status === 'string' ? gameRow.status.trim().toLowerCase() : null;
+    const isApproved = rawStatus === 'approve';
+
+    if (!isApproved) {
+      return NextResponse.json(
+        { error: 'Game not available', game: null },
+        { status: 404 }
+      );
+    }
+
+    let resolvedPlayUrl: string | null =
+      typeof gameRow.playUrl === 'string' && gameRow.playUrl.trim().length > 0
+        ? gameRow.playUrl.trim()
+        : null;
+
+    const updateRows = await callProcedure<any[]>('sp_get_latest_game_update', [parsedId]);
+
+    if (Array.isArray(updateRows) && updateRows.length > 0) {
+      const latestLink = (updateRows[0] as Record<string, any>)?.link;
+      if (typeof latestLink === 'string' && latestLink.trim().length > 0) {
+        resolvedPlayUrl = latestLink.trim();
+      }
+    }
+
+    if (!resolvedPlayUrl) {
+      return NextResponse.json(
+        { error: 'Game not available', game: null },
+        { status: 404 }
+      );
+    }
+
+    const game = {
+      ...gameRow,
+      playUrl: resolvedPlayUrl,
+    };
+
+    return NextResponse.json(
+      { game },
+      { status: 200 }
+    );
   } catch (error: any) {
     console.error('Game detail fetch error:', error);
     return NextResponse.json(

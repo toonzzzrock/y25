@@ -14,9 +14,8 @@ const pool = mysql.createPool({
 });
 
 export async function getAllUsers(): Promise<any[]> {
-  const [rows] = await pool.query('SELECT * FROM `User`');
-  // rows is typed as any; return as array of records
-  return rows as any[];
+  // Reuse stored procedure to avoid direct table access
+  return callProcedure<any[]>('sp_search_users', ['%']);
 }
 
 export { pool };

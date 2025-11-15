@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,28 +20,15 @@ export async function GET(request: NextRequest) {
     }
 
     const limit = Math.min(parseInt(searchParams.get('limit') || '10', 10), 25);
+    const likePattern = `%${query}%`;
 
-    const connection = await pool.getConnection();
-    try {
-      const likeQuery = `%${query}%`;
+    const rows = await callProcedure<any[]>('sp_search_users', [likePattern]);
+    const limitedRows = Array.isArray(rows) ? rows.slice(0, limit) : [];
 
-      const [rows] = await connection.query(
-        `SELECT username, email, created_at
-         FROM \`User\`
-         WHERE username LIKE ?
-            OR email LIKE ?
-         ORDER BY created_at DESC
-         LIMIT ?`,
-        [likeQuery, likeQuery, limit]
-      );
-
-      return NextResponse.json(
-        { users: rows || [] },
-        { status: 200 }
-      );
-    } finally {
-      connection.release();
-    }
+    return NextResponse.json(
+      { users: limitedRows },
+      { status: 200 }
+    );
   } catch (error: any) {
     console.error('User search error:', error);
     return NextResponse.json(

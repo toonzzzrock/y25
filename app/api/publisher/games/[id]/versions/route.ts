@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { RowDataPacket } from 'mysql2/promise';
-import { pool } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 import { existsSync } from 'fs';
 import { mkdir, readdir, writeFile } from 'fs/promises';
 import path from 'path';
@@ -13,8 +12,9 @@ type SessionUser = {
   role?: string | null;
 };
 
-type GameOwnershipRow = RowDataPacket & {
+type GameOwnerRow = {
   game_id: number;
+  publisher_username: string;
 };
 
 function parseSession(request: NextRequest): SessionUser | null {
@@ -58,12 +58,13 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid game id' }, { status: 400 });
   }
 
-  const [rows] = await pool.query<GameOwnershipRow[]>(
-    'SELECT game_id FROM game WHERE game_id = ? AND publisher_username = ? LIMIT 1',
-    [gameId, session.username]
-  );
+  const ownerRows = await callProcedure<GameOwnerRow[]>('sp_get_game_owner', [gameId]);
+  const owner = Array.isArray(ownerRows) ? ownerRows[0] : null;
 
-  if (!Array.isArray(rows) || rows.length === 0) {
+  if (
+    !owner ||
+    owner.publisher_username !== session.username
+  ) {
     return NextResponse.json({ error: 'Game not found or access denied' }, { status: 404 });
   }
 

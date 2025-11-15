@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 import { validateEmail } from '@/lib/auth';
 import { resolveUserAssets } from '@/lib/user-assets';
 
@@ -49,88 +49,57 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const connection = await pool.getConnection();
-    try {
-      const [rows] = await connection.query(
-        `SELECT username, email, DOB AS dateOfBirth, sex, created_at AS createdAt
-         FROM User
-         WHERE username = ?
-         LIMIT 1`,
-        [session.username]
-      );
-
-      if (!Array.isArray(rows) || rows.length === 0) {
-        return NextResponse.json(
-          { error: 'User not found', profile: null },
-          { status: 404 }
-        );
-      }
-
-      const record = rows[0] as any;
-      const assets = await resolveUserAssets(record.username);
-
-      const [playRows] = await connection.query(
-        `SELECT
-            p.game_id AS gameId,
-            g.game_name AS gameName,
-            COALESCE(p.accumulate_play_time, 0) AS playSeconds
-         FROM play p
-         LEFT JOIN game g ON g.game_id = p.game_id
-         WHERE p.username = ?
-         ORDER BY playSeconds DESC, p.game_id ASC
-         LIMIT 5`,
-        [record.username]
-      );
-
-      const [totalPlayRows] = await connection.query(
-        `SELECT COALESCE(SUM(accumulate_play_time), 0) AS totalSeconds
-         FROM play
-         WHERE username = ?`,
-        [record.username]
-      );
-
-      const totalSecondsRaw = Array.isArray(totalPlayRows) && totalPlayRows.length > 0
-        ? (totalPlayRows[0] as any)?.totalSeconds
-        : 0;
-
-      const totalSeconds = Number(totalSecondsRaw ?? 0);
-
-      const topGames = Array.isArray(playRows)
-        ? (playRows as any[]).map((row) => {
-            const rawGameId = Number(row.gameId ?? row.game_id ?? 0);
-            const cleanGameId = Number.isFinite(rawGameId) && rawGameId > 0 ? rawGameId : 0;
-            const rawSeconds = Number(row.playSeconds ?? row.play_seconds ?? 0);
-            const cleanSeconds = Number.isFinite(rawSeconds) && rawSeconds > 0 ? rawSeconds : 0;
-
-            return {
-              gameId: cleanGameId,
-              gameName: typeof row.gameName === 'string' ? row.gameName : row.game_name ?? null,
-              playSeconds: cleanSeconds,
-            };
-          })
-        : [];
-
+    const profileRows = await callProcedure<any[]>('sp_get_user_profile', [session.username]);
+    if (!Array.isArray(profileRows) || profileRows.length === 0) {
       return NextResponse.json(
-        {
-          profile: {
-            username: record.username,
-            email: record.email,
-            dateOfBirth: record.dateOfBirth ?? null,
-            sex: record.sex ?? null,
-            createdAt: record.createdAt ?? null,
-            avatarUrl: assets.avatarUrl,
-            description: assets.description,
-          },
-          playStats: {
-            totalSeconds: Number.isFinite(totalSeconds) && totalSeconds >= 0 ? totalSeconds : 0,
-            topGames,
-          },
-        },
-        { status: 200 }
+        { error: 'User not found', profile: null },
+        { status: 404 }
       );
-    } finally {
-      connection.release();
     }
+
+    const record = profileRows[0] as any;
+    const assets = await resolveUserAssets(record.username);
+    const playRows = await callProcedure<any[]>('sp_get_user_playtime', [session.username]);
+    const totalRows = await callProcedure<any[]>('sp_get_user_total_playtime', [session.username]);
+
+    const totalSecondsRaw = Array.isArray(totalRows) && totalRows.length > 0
+      ? (totalRows[0] as any)?.totalSeconds
+      : 0;
+    const totalSeconds = Number(totalSecondsRaw ?? 0);
+
+    const topGames = Array.isArray(playRows)
+      ? playRows.map((row) => {
+          const rawGameId = Number(row.gameId ?? row.game_id ?? 0);
+          const cleanGameId = Number.isFinite(rawGameId) && rawGameId > 0 ? rawGameId : 0;
+          const rawSeconds = Number(row.playSeconds ?? row.play_seconds ?? 0);
+          const cleanSeconds = Number.isFinite(rawSeconds) && rawSeconds > 0 ? rawSeconds : 0;
+
+          return {
+            gameId: cleanGameId,
+            gameName: typeof row.gameName === 'string' ? row.gameName : row.game_name ?? null,
+            playSeconds: cleanSeconds,
+          };
+        })
+      : [];
+
+    return NextResponse.json(
+      {
+        profile: {
+          username: record.username,
+          email: record.email,
+          dateOfBirth: record.dateOfBirth ?? null,
+          sex: record.sex ?? null,
+          createdAt: record.createdAt ?? null,
+          avatarUrl: assets.avatarUrl,
+          description: assets.description,
+        },
+        playStats: {
+          totalSeconds: Number.isFinite(totalSeconds) && totalSeconds >= 0 ? totalSeconds : 0,
+          topGames,
+        },
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
     console.error('Profile fetch error:', error);
     return NextResponse.json(
@@ -156,36 +125,64 @@ export async function PUT(request: NextRequest) {
     const rawDateOfBirth: unknown = body?.dateOfBirth;
     const rawSex: unknown = body?.sex;
 
-    const updates: string[] = [];
-    const params: any[] = [];
+    const hasEmail = typeof rawEmail === 'string' && rawEmail.trim().length > 0;
+    const hasDob = typeof rawDateOfBirth === 'string' && rawDateOfBirth.trim().length > 0;
+    const hasSex = typeof rawSex === 'string' && rawSex.trim().length > 0;
 
-    if (typeof rawEmail === 'string' && rawEmail.trim().length > 0) {
-      const trimmedEmail = rawEmail.trim();
+    if (!hasEmail && !hasDob && !hasSex) {
+      return NextResponse.json(
+        { error: 'No profile changes provided', profile: null },
+        { status: 400 }
+      );
+    }
+
+    const profileRows = await callProcedure<any[]>('sp_get_user_profile', [session.username]);
+    if (!Array.isArray(profileRows) || profileRows.length === 0) {
+      return NextResponse.json(
+        { error: 'User not found', profile: null },
+        { status: 404 }
+      );
+    }
+
+    const existing = profileRows[0] as any;
+    let emailValue: string | null = existing.email ?? null;
+    let dobValue: string | null = existing.dateOfBirth ?? null;
+    let sexValue: string | null = existing.sex ?? null;
+
+    if (hasEmail) {
+      const trimmedEmail = (rawEmail as string).trim();
       if (!validateEmail(trimmedEmail)) {
         return NextResponse.json(
           { error: 'Invalid email address', profile: null },
           { status: 400 }
         );
       }
-      updates.push('email = ?');
-      params.push(trimmedEmail);
+
+      const emailCheck = await callProcedure<any[]>('sp_check_email_exists', [trimmedEmail, session.username]);
+      if (Array.isArray(emailCheck) && emailCheck.length > 0 && Number(emailCheck[0]?.count ?? 0) > 0) {
+        return NextResponse.json(
+          { error: 'Email already in use', profile: null },
+          { status: 409 }
+        );
+      }
+
+      emailValue = trimmedEmail;
     }
 
-    if (typeof rawDateOfBirth === 'string' && rawDateOfBirth.trim().length > 0) {
-      const parsedDate = new Date(rawDateOfBirth);
+    if (hasDob) {
+      const parsedDate = new Date(rawDateOfBirth as string);
       if (Number.isNaN(parsedDate.getTime())) {
         return NextResponse.json(
           { error: 'Invalid date of birth', profile: null },
           { status: 400 }
         );
       }
-      const iso = parsedDate.toISOString().slice(0, 10);
-      updates.push('DOB = ?');
-      params.push(iso);
+
+      dobValue = parsedDate.toISOString().slice(0, 10);
     }
 
-    if (typeof rawSex === 'string' && rawSex.trim().length > 0) {
-      const normalizedSex = rawSex.trim();
+    if (hasSex) {
+      const normalizedSex = (rawSex as string).trim();
       const allowed = ['Male', 'Female', 'Other'];
       if (!allowed.includes(normalizedSex)) {
         return NextResponse.json(
@@ -193,93 +190,54 @@ export async function PUT(request: NextRequest) {
           { status: 400 }
         );
       }
-      updates.push('sex = ?');
-      params.push(normalizedSex);
+
+      sexValue = normalizedSex;
     }
 
-    if (updates.length === 0) {
+    await callProcedure('sp_update_user_profile', [session.username, emailValue, dobValue, sexValue]);
+
+    const updatedRows = await callProcedure<any[]>('sp_get_user_profile', [session.username]);
+    if (!Array.isArray(updatedRows) || updatedRows.length === 0) {
       return NextResponse.json(
-        { error: 'No profile changes provided', profile: null },
-        { status: 400 }
+        { error: 'User not found after update', profile: null },
+        { status: 404 }
       );
     }
 
-    const connection = await pool.getConnection();
-    try {
-      if (updates.some((fragment) => fragment.startsWith('email'))) {
-        const [existing] = await connection.query(
-          'SELECT username FROM User WHERE email = ? AND username <> ? LIMIT 1',
-          [params[updates.indexOf('email = ?')], session.username]
-        );
+    const updatedRecord = updatedRows[0] as any;
+    const assets = await resolveUserAssets(updatedRecord.username);
+    const updatedEmail = updatedRecord.email as string | null;
 
-        if (Array.isArray(existing) && existing.length > 0) {
-          return NextResponse.json(
-            { error: 'Email already in use', profile: null },
-            { status: 409 }
-          );
-        }
-      }
-
-      await connection.query(
-        `UPDATE User
-         SET ${updates.join(', ')}
-         WHERE username = ?
-         LIMIT 1`,
-        [...params, session.username]
-      );
-
-      const [rows] = await connection.query(
-        `SELECT username, email, DOB AS dateOfBirth, sex, created_at AS createdAt
-         FROM User
-         WHERE username = ?
-         LIMIT 1`,
-        [session.username]
-      );
-
-      if (!Array.isArray(rows) || rows.length === 0) {
-        return NextResponse.json(
-          { error: 'User not found after update', profile: null },
-          { status: 404 }
-        );
-      }
-
-      const record = rows[0] as any;
-      const assets = await resolveUserAssets(record.username);
-      const updatedEmail = record.email as string | null;
-
-      const response = NextResponse.json(
-        {
-          profile: {
-            username: record.username,
-            email: updatedEmail,
-            dateOfBirth: record.dateOfBirth ?? null,
-            sex: record.sex ?? null,
-            createdAt: record.createdAt ?? null,
-            avatarUrl: assets.avatarUrl,
-            description: assets.description,
-          },
+    const response = NextResponse.json(
+      {
+        profile: {
+          username: updatedRecord.username,
+          email: updatedEmail,
+          dateOfBirth: updatedRecord.dateOfBirth ?? null,
+          sex: updatedRecord.sex ?? null,
+          createdAt: updatedRecord.createdAt ?? null,
+          avatarUrl: assets.avatarUrl,
+          description: assets.description,
         },
-        { status: 200 }
-      );
+      },
+      { status: 200 }
+    );
 
-      const sessionPayload = {
-        username: record.username,
-        email: updatedEmail,
-        role: session.role ?? null,
-        timestamp: Date.now(),
-      };
+    const sessionPayload = {
+      username: updatedRecord.username,
+      email: updatedEmail,
+      role: session.role ?? null,
+      timestamp: Date.now(),
+    };
 
-      response.cookies.set('auth_session', Buffer.from(JSON.stringify(sessionPayload), 'utf-8').toString('base64'), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60,
-      });
+    response.cookies.set('auth_session', Buffer.from(JSON.stringify(sessionPayload), 'utf-8').toString('base64'), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60,
+    });
 
-      return response;
-    } finally {
-      connection.release();
-    }
+    return response;
   } catch (error: any) {
     console.error('Profile update error:', error);
     return NextResponse.json(

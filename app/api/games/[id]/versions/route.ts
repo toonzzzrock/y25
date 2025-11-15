@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { RowDataPacket } from 'mysql2/promise';
-import { pool } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 
 interface GameVersion extends RowDataPacket {
   version: string;
@@ -22,35 +22,18 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid game ID' }, { status: 400 });
     }
 
-    const connection = await pool.getConnection();
+    // Fetch approved game versions for the specific game
+    const versions = await callProcedure<GameVersion>('sp_get_game_versions', [gameId]);
 
-    try {
-      // Fetch approved game versions for the specific game
-      const [versions] = await connection.execute<GameVersion[]>(
-        `SELECT 
-          patch_number as version, 
-          approve_time as approved_date, 
-          update_time as created_date, 
-          detail as description,
-          link_to_new_file as link_to_file_path
-        FROM game_update_history 
-        WHERE game_id = ? AND is_approve = 'Approve' 
-        ORDER BY approve_time DESC, update_time DESC`,
-        [gameId]
-      );
+    const formattedVersions = versions.map(version => ({
+      version: version.version,
+      approvedDate: version.approved_date,
+      createdDate: version.created_date,
+      description: version.description,
+      linkToFilePath: version.link_to_file_path
+    }));
 
-      const formattedVersions = versions.map(version => ({
-        version: version.version,
-        approvedDate: version.approved_date,
-        createdDate: version.created_date,
-        description: version.description,
-        linkToFilePath: version.link_to_file_path
-      }));
-
-      return NextResponse.json({ versions: formattedVersions });
-    } finally {
-      connection.release();
-    }
+    return NextResponse.json({ versions: formattedVersions });
   } catch (error) {
     console.error('Game versions fetch error:', error);
     return NextResponse.json(

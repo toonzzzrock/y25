@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { RowDataPacket } from 'mysql2/promise';
-import { pool } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 
 interface GameTag extends RowDataPacket {
   tag_name: string;
@@ -18,21 +18,11 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid game ID' }, { status: 400 });
     }
 
-    const connection = await pool.getConnection();
+    // Fetch tags for the specific game
+    const tags = await callProcedure<GameTag>('sp_get_game_tags', [gameId]);
+    const tagNames = tags.map(tag => tag.tag_name);
 
-    try {
-      // Fetch tags for the specific game
-      const [tags] = await connection.execute<GameTag[]>(
-        `SELECT tag_name FROM tag WHERE game_id = ? ORDER BY tag_name ASC`,
-        [gameId]
-      );
-
-      const tagNames = tags.map(tag => tag.tag_name);
-
-      return NextResponse.json({ tags: tagNames });
-    } finally {
-      connection.release();
-    }
+    return NextResponse.json({ tags: tagNames });
   } catch (error) {
     console.error('Game tags fetch error:', error);
     return NextResponse.json(

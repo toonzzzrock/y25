@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
-import { pool } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 
 type SessionUser = {
   username: string;
@@ -94,42 +93,30 @@ export async function PATCH(
     return NextResponse.json({ error: 'Update details are required' }, { status: 400 });
   }
 
-  let connection: PoolConnection | null = null;
-
   try {
-    connection = await pool.getConnection();
-
-    const [ownershipRows] = await connection.query<GameOwnershipRow[]>(
-      'SELECT game_id FROM game WHERE game_id = ? AND publisher_username = ? LIMIT 1',
-      [gameId, session.username]
-    );
-
+    const ownershipRows = await callProcedure<GameOwnershipRow[]>('sp_get_game_owner', [gameId]);
     if (!Array.isArray(ownershipRows) || ownershipRows.length === 0) {
       return NextResponse.json({ error: 'Game not found or access denied' }, { status: 404 });
     }
 
+    const owner = ownershipRows[0];
+    if (owner.publisher_username !== session.username) {
+      return NextResponse.json({ error: 'Game not found or access denied' }, { status: 404 });
+    }
+
     const linkToFile = `/data/game/${gameId}/game_version/${versionFolder}/${linkFileName}`;
+    const patchNumber = versionFolder;
+    const finalTitle = updateTitle || versionFolder;
+    const finalDetail = updateDescription || 'Update details pending';
 
-    await connection.beginTransaction();
-
-    await connection.query(
-      'UPDATE game SET game_name = ? WHERE game_id = ?',
-      [gameName, gameId]
-    );
-
-    await connection.query(
-      `INSERT INTO game_update_history (game_id, patch_number, title, detail, link_to_new_file)
-       VALUES (?, ?, ?, ?, ?)`,
-      [
-        gameId,
-        versionFolder,
-        updateTitle || versionFolder,
-        updateDescription || 'Update details pending',
-        linkToFile,
-      ]
-    );
-
-    await connection.commit();
+    await callProcedure('sp_publisher_submit_game_update', [
+      gameId,
+      gameName,
+      patchNumber,
+      finalTitle,
+      finalDetail,
+      linkToFile,
+    ]);
 
     return NextResponse.json(
       {
@@ -139,26 +126,19 @@ export async function PATCH(
           title: gameName,
         },
         update: {
-          patchNumber: versionFolder,
-          title: updateTitle || versionFolder,
-          detail: updateDescription || 'Update details pending',
+          patchNumber,
+          title: finalTitle,
+          detail: finalDetail,
           linkToFile,
         },
       },
       { status: 200 }
     );
   } catch (error: any) {
-    if (connection) {
-      await connection.rollback();
-    }
     console.error('Edit game error:', error);
     return NextResponse.json(
       { error: 'Failed to update game' },
       { status: 500 }
     );
-  } finally {
-    if (connection) {
-      connection.release();
-    }
   }
 }

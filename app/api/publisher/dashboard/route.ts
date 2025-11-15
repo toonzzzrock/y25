@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { PoolConnection } from 'mysql2/promise';
-import { pool } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 
 type SessionUser = {
   username: string;
@@ -61,15 +60,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  let connection: PoolConnection | null = null;
-
   try {
-    connection = await pool.getConnection();
-
-    const [publisherRows] = await connection.query(
-      'SELECT username, account_name FROM publisher WHERE username = ? LIMIT 1',
-      [session.username]
-    );
+    const publisherRows = await callProcedure<any[]>('sp_get_publisher_info', [session.username]);
 
     if (!Array.isArray(publisherRows) || publisherRows.length === 0) {
       return NextResponse.json(
@@ -78,33 +70,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const publisherRecord = publisherRows[0] as any;
+    const publisherRecord = Array.isArray(publisherRows) && publisherRows.length > 0 ? publisherRows[0] : null;
     const accountName: string | null = publisherRecord?.account_name ?? null;
 
-    const [gamesRows] = await connection.query(
-      `SELECT 
-         g.game_id,
-         g.game_name,
-         g.detail,
-         g.link_to_file,
-         g.release_date,
-         g.status AS game_status,
-         g.total_players,
-         g.average_play_time,
-         guh.patch_number,
-         guh.is_approve AS update_status
-       FROM game g
-       LEFT JOIN game_update_history guh ON guh.update_id = (
-         SELECT guh2.update_id
-         FROM game_update_history guh2
-         WHERE guh2.game_id = g.game_id
-         ORDER BY COALESCE(guh2.approve_time, guh2.update_time) DESC, guh2.update_id DESC
-         LIMIT 1
-       )
-       WHERE g.publisher_username = ?
-       ORDER BY g.release_date DESC, g.game_id DESC`,
-      [session.username]
-    );
+    const gamesRows = await callProcedure<any[]>('sp_get_publisher_games', [session.username]);
 
     const games: GameRecord[] = Array.isArray(gamesRows)
       ? (gamesRows as any[]).map((row) => ({
@@ -140,9 +109,5 @@ export async function GET(request: NextRequest) {
       { error: 'Failed to load publisher dashboard', publisher: null, games: [], totalGames: 0 },
       { status: 500 }
     );
-  } finally {
-    if (connection) {
-      connection.release();
-    }
   }
 }

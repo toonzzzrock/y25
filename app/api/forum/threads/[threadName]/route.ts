@@ -5,8 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import type { ResultSetHeader } from 'mysql2';
-import { pool } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 
 type ThreadRouteContext =
   | { params: Promise<{ threadName: string }> }
@@ -63,8 +62,6 @@ export async function POST(request: NextRequest, context: ThreadRouteContext) {
     );
   }
 
-  let connection;
-
   try {
     const body = await request.json();
     const rawCommentText: unknown = body?.commentText;
@@ -91,17 +88,8 @@ export async function POST(request: NextRequest, context: ThreadRouteContext) {
         ? Number(replyToCommentIdRaw) || null
         : null;
 
-    connection = await pool.getConnection();
-
-    await connection.beginTransaction();
-
-    const [threadRows] = await connection.query(
-      'SELECT thread_name FROM forum WHERE thread_name = ? LIMIT 1',
-      [decodedName]
-    );
-
+    const threadRows = await callProcedure<any[]>('sp_check_thread_exists', [decodedName]);
     if (!Array.isArray(threadRows) || threadRows.length === 0) {
-      await connection.rollback();
       return NextResponse.json(
         { error: 'Thread not found' },
         { status: 404 }
@@ -109,13 +97,8 @@ export async function POST(request: NextRequest, context: ThreadRouteContext) {
     }
 
     if (replyToCommentId !== null) {
-      const [replyTarget] = await connection.query(
-        'SELECT comment_id FROM reply WHERE comment_id = ? AND thread_name = ? LIMIT 1',
-        [replyToCommentId, decodedName]
-      );
-
+      const replyTarget = await callProcedure<any[]>('sp_check_reply_to_comment', [decodedName, replyToCommentId]);
       if (!Array.isArray(replyTarget) || replyTarget.length === 0) {
-        await connection.rollback();
         return NextResponse.json(
           { error: 'Reply target not found' },
           { status: 404 }
@@ -123,32 +106,18 @@ export async function POST(request: NextRequest, context: ThreadRouteContext) {
       }
     }
 
-    const [commentResult] = await connection.query<ResultSetHeader>(
-      'INSERT INTO comment (comment_text, created_at) VALUES (?, NOW())',
-      [commentText]
-    );
+    const insertedComment = await callProcedure<any[]>('sp_create_comment', [commentText]);
+    const commentId = Number(insertedComment?.[0]?.comment_id ?? insertedComment?.[0]?.last_insert_id ?? 0);
+    if (!Number.isFinite(commentId) || commentId <= 0) {
+      throw new Error('Invalid comment id returned');
+    }
 
-    const commentId = commentResult.insertId;
+    await callProcedure('sp_create_reply', [decodedName, session.username, commentId, replyToCommentId]);
 
-    await connection.query(
-      'INSERT INTO reply (comment_id, reply_to_comment_id, thread_name, username) VALUES (?, ?, ?, ?)',
-      [commentId, replyToCommentId, decodedName, session.username]
-    );
-
-    const [insertedRows] = await connection.query(
-      `SELECT r.comment_id, r.reply_to_comment_id, r.username,
-              CAST(c.comment_text AS CHAR) AS comment_text,
-              c.created_at
-       FROM reply r
-       JOIN comment c ON c.comment_id = r.comment_id
-       WHERE r.comment_id = ?
-       LIMIT 1`,
-      [commentId]
-    );
-
-    await connection.commit();
-
-    const inserted = Array.isArray(insertedRows) && insertedRows.length > 0 ? (insertedRows as any)[0] : null;
+    const replies = await callProcedure<any[]>('sp_get_thread_replies', [decodedName]);
+    const inserted = Array.isArray(replies)
+      ? replies.find((row) => Number(row.comment_id ?? row.commentId ?? 0) === commentId)
+      : null;
 
     const createdAtValue = inserted?.created_at
       ? new Date(inserted.created_at).toISOString()
@@ -167,23 +136,11 @@ export async function POST(request: NextRequest, context: ThreadRouteContext) {
       { status: 201 }
     );
   } catch (error: any) {
-    if (connection) {
-      try {
-        await connection.rollback();
-      } catch (rollbackError) {
-        console.error('Rollback error:', rollbackError);
-      }
-    }
-
     console.error('Thread reply creation error:', error);
     return NextResponse.json(
       { error: 'Failed to post reply' },
       { status: 500 }
     );
-  } finally {
-    if (connection) {
-      connection.release();
-    }
   }
 }
 
@@ -201,60 +158,41 @@ export async function GET(
       );
     }
 
-    const connection = await pool.getConnection();
-    try {
-      const [rows] = await connection.query(
-        `SELECT f.thread_name, f.detail, f.created_at AS thread_created_at,
-                cr.username AS creator_username,
-                g.game_id, g.game_name,
-                r.comment_id, r.reply_to_comment_id, r.username AS commenter_username,
-                CAST(c.comment_text AS CHAR) AS comment_text,
-                c.created_at AS comment_created_at
-         FROM forum f
-         LEFT JOIN create_relation cr ON cr.thread_name = f.thread_name
-         LEFT JOIN game g ON g.game_id = cr.game_id
-         LEFT JOIN reply r ON r.thread_name = f.thread_name
-         LEFT JOIN comment c ON c.comment_id = r.comment_id
-         WHERE f.thread_name = ?
-         ORDER BY c.created_at ASC`,
-        [decodedName]
+    const threadRows = await callProcedure<any[]>('sp_get_thread_details', [decodedName]);
+    if (!Array.isArray(threadRows) || threadRows.length === 0) {
+      return NextResponse.json(
+        { error: 'Thread not found', thread: null },
+        { status: 404 }
       );
+    }
 
-      if (!Array.isArray(rows) || rows.length === 0) {
-        return NextResponse.json(
-          { error: 'Thread not found', thread: null },
-          { status: 404 }
-        );
-      }
+    const replyRows = await callProcedure<any[]>('sp_get_thread_replies', [decodedName]);
+    const threadRecord = threadRows[0] as any;
 
-      const baseRow = rows[0] as any;
-      const comments = (rows as any[])
-        .filter((row) => row.comment_id !== null)
-        .map((row) => ({
+    const comments = Array.isArray(replyRows)
+      ? replyRows.map((row) => ({
           commentId: row.comment_id,
           replyToCommentId: row.reply_to_comment_id,
-          username: row.commenter_username,
+          username: row.username,
           commentText: row.comment_text,
-          createdAt: row.comment_created_at,
-        }));
+          createdAt: row.created_at,
+        }))
+      : [];
 
-      return NextResponse.json(
-        {
-          thread: {
-            threadName: baseRow.thread_name,
-            detail: baseRow.detail,
-            createdAt: baseRow.thread_created_at,
-            creatorUsername: baseRow.creator_username,
-            gameId: baseRow.game_id,
-            gameName: baseRow.game_name,
-            comments,
-          },
+    return NextResponse.json(
+      {
+        thread: {
+          threadName: threadRecord.thread_name,
+          detail: threadRecord.detail,
+          createdAt: threadRecord.created_at,
+          creatorUsername: threadRecord.creator_username ?? null,
+          gameId: threadRecord.game_id ?? null,
+          gameName: threadRecord.game_name ?? null,
+          comments,
         },
-        { status: 200 }
-      );
-    } finally {
-      connection.release();
-    }
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
     console.error('Forum thread detail error:', error);
     return NextResponse.json(
