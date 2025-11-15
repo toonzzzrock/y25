@@ -79,11 +79,13 @@ const monthLabelFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
 });
 
-function formatAveragePlayTime(minutes: number): string {
-  if (!minutes || minutes < 0) {
+function formatAveragePlayTime(seconds: number): string {
+  if (!seconds || seconds < 0) {
     return "0 mins";
   }
 
+  const minutes = seconds / 60;
+  
   if (minutes >= 60) {
     const hours = minutes / 60;
     return `${minutesFormatter.format(hours)} hrs`;
