@@ -1,15 +1,5 @@
--- Main SQL file
-
-------------------------------------------------
----- CREATE DATABASE
-------------------------------------------------
-
 CREATE database IF NOT EXISTS Y25_DB;
 USE Y25_DB;
-
-------------------------------------------------
----- CREATE TABLE
-------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS User (
     username VARCHAR(20) NOT NULL,
@@ -60,11 +50,12 @@ CREATE TABLE IF NOT EXISTS game (
     detail VARCHAR(255),
     link_to_file VARCHAR(255) NOT NULL,
     release_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status enum("Published", "Decline", "Pending"),
-    live_players INT DEFAULT 0,
+    status enum("Approve", "Reject", "Pending") DEFAULT "Pending",
+    total_players INT DEFAULT 0,
+    average_play_time FLOAT DEFAULT 0,
     publisher_username VARCHAR(20) NOT NULL,
     constraint PK_Game PRIMARY KEY (game_id),
-    constraint FK_Game_Publisher FOREIGN KEY (publisher_username) REFERENCES publisher(username)
+    constraint FK_Game_Publisher FOREIGN KEY (publisher_username) REFERENCES publisher(username) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS game_update_history (
@@ -74,12 +65,12 @@ CREATE TABLE IF NOT EXISTS game_update_history (
     detail VARCHAR(255),
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     link_to_new_file VARCHAR(255) NOT NULL,
-    is_approve BOOLEAN NOT NULL DEFAULT FALSE,
+    is_approve ENUM("Approve", "Reject", "Pending") DEFAULT "Pending",
     approve_time DATETIME,
     approve_by VARCHAR(20),
     game_id INT NOT NULL,
     constraint PK_Game_Update_History PRIMARY KEY (update_id),
-    constraint FK_Game_Update_History_Game FOREIGN KEY (game_id) REFERENCES game(game_id),
+    constraint FK_Game_Update_History_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE,
     constraint FK_Game_Update_History_Admin FOREIGN KEY (approve_by) REFERENCES admin(username)
 );
 
@@ -106,20 +97,21 @@ CREATE TABLE IF NOT EXISTS reply (
     reply_to_comment_id INT,
     constraint PK_Reply PRIMARY KEY (thread_name, username, comment_id),
     constraint FK_Reply_Forum FOREIGN KEY (thread_name) REFERENCES forum(thread_name) ON DELETE CASCADE,
-    constraint FK_Reply_User FOREIGN KEY (username) REFERENCES User(username), -- ON DELETE CASCADE???
+    constraint FK_Reply_User FOREIGN KEY (username) REFERENCES User(username), 
     constraint FK_Reply_Comment FOREIGN KEY (comment_id) REFERENCES comment(comment_id) ON DELETE CASCADE,
     constraint FK_Reply_ReplyToComment FOREIGN KEY (reply_to_comment_id) REFERENCES comment(comment_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS report (
+    report_id INT NOT NULL AUTO_INCREMENT,
     username VARCHAR(20) NOT NULL,
     game_id INT NOT NULL,
     report_topic enum('Lag', 'Disconnect', 'Bug') NOT NULL,
     detail VARCHAR(255),
     report_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    constraint PK_Report PRIMARY KEY (username, game_id),
-    constraint FK_Report_User FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE,
-    constraint FK_Report_Game FOREIGN KEY (game_id) REFERENCES game(game_id) -- ???ON DELETE CASCADE
+    constraint PK_Report PRIMARY KEY (report_id),
+    constraint FK_Report_User FOREIGN KEY (username) REFERENCES User(username),
+    constraint FK_Report_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS play (
@@ -134,7 +126,7 @@ CREATE TABLE IF NOT EXISTS play (
 CREATE TABLE IF NOT EXISTS tag (
     tag_name enum('Fantasy', 'RPG', 'FPS', 'MOBA', 'RTS') NOT NULL,
     game_id INT NOT NULL,
-    constraint PK_Tag PRIMARY KEY (tag_name),
+    constraint PK_Tag PRIMARY KEY (tag_name, game_id),
     constraint FK_Tag_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
 );
 
@@ -144,82 +136,833 @@ CREATE TABLE IF NOT EXISTS create_relation (
     game_id INT NOT NULL,
     constraint PK_Create_Relation PRIMARY KEY (thread_name, username, game_id),
     constraint FK_Create_Relation_Forum FOREIGN KEY (thread_name) REFERENCES forum(thread_name) ON DELETE CASCADE,
-    constraint FK_Create_Relation_User FOREIGN KEY (username) REFERENCES User(username), -- ON DELETE CASCADE???
-    constraint FK_Create_Relation_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
+    constraint FK_Create_Relation_User FOREIGN KEY (username) REFERENCES User(username),
+    constraint FK_Create_Relation_Game FOREIGN KEY (game_id) REFERENCES game(game_id)
 );
 
---CREATE TABLE IF NOT EXISTS forum_participants (
---    thread_name VARCHAR(70) NOT NULL,
-  --  username VARCHAR(20) NOT NULL,
-    --first_comment_time DATETIME NOT NULL,
-    --constraint PK_Forum_Participants PRIMARY KEY (thread_name, username),
-    --constraint FK_Forum_Participants_Forum FOREIGN KEY (thread_name) REFERENCES forum(thread_name) ON DELETE CASCADE,
-    --constraint FK_Forum_Participants_User FOREIGN KEY (username) REFERENCES User(username)
---);
+-- Stored procedures for the Next.js stack APIs
+-- Compatible with MySQL 5.7
 
-------------------------------------------------------
----- TRIGGER and PROCEDURE
-------------------------------------------------------
-
--- Session & Game Tracking Triggers
 DELIMITER //
 
-CREATE TRIGGER after_session_insert
-AFTER INSERT ON session
-FOR EACH ROW
+CREATE PROCEDURE sp_get_game_owner(IN p_game_id INT) -- Work
 BEGIN
-    -- Update play table with new session start time
-    INSERT INTO play (username, game_id, last_session_start)
-    VALUES (NEW.username, NEW.game_id, NEW.start_play_time)
-    ON DUPLICATE KEY UPDATE last_session_start = NEW.start_play_time;
-    
-    -- Increment live players counter for the game
-    UPDATE game
-    SET live_players = live_players + 1
-    WHERE game_id = NEW.game_id;
+  SELECT game_id, game_name, publisher_username
+  FROM game
+  WHERE game_id = p_game_id
+  LIMIT 1;
 END//
 
-CREATE TRIGGER after_session_update
-AFTER UPDATE ON session
+
+CREATE PROCEDURE sp_delete_game(IN p_game_id INT) -- Work
+BEGIN
+  DECLARE v_exists INT DEFAULT 0;
+  SELECT COUNT(*) INTO v_exists FROM game WHERE game_id = p_game_id;
+  IF v_exists = 0 THEN
+    SELECT CONCAT('Game id ', p_game_id, ' does not exist') AS message, 0 AS ok;
+  ELSE
+    START TRANSACTION;
+      DELETE FROM create_relation WHERE game_id = p_game_id;
+      DELETE FROM report WHERE game_id = p_game_id;
+      DELETE FROM play WHERE game_id = p_game_id;
+      DELETE FROM tag WHERE game_id = p_game_id;
+      DELETE FROM game_update_history WHERE game_id = p_game_id;
+      DELETE FROM game WHERE game_id = p_game_id;
+    COMMIT;
+    SELECT CONCAT('Game ', p_game_id, ' and related records deleted') AS message, 1 AS ok;
+  END IF;
+END//
+
+CREATE PROCEDURE sp_publisher_exists(IN p_username VARCHAR(20)) -- Work
+BEGIN
+  SELECT EXISTS(SELECT 1 FROM publisher WHERE username = p_username) AS exists_flag;
+END//
+
+-- Admin approval of a game update; updates update history row and game status
+CREATE PROCEDURE sp_admin_approve_game(
+  IN p_update_id INT,
+  IN p_admin_username VARCHAR(20),
+  IN p_decision ENUM('Approve','Reject')
+)
+BEGIN
+  DECLARE v_game_id INT;
+  DECLARE v_exists INT;
+  DECLARE v_is_admin INT;
+
+  SELECT EXISTS(SELECT 1 FROM admin WHERE username = p_admin_username) INTO v_is_admin;
+  IF v_is_admin = 0 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'User is not an admin';
+  END IF;
+
+  SELECT game_id INTO v_game_id FROM game_update_history WHERE update_id = p_update_id LIMIT 1;
+  IF v_game_id IS NULL THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Update id not found';
+  END IF;
+
+  START TRANSACTION;
+    UPDATE game_update_history
+    SET is_approve = p_decision,
+        approve_time = NOW(),
+        approve_by = p_admin_username
+    WHERE update_id = p_update_id;
+
+    -- Reflect decision on the game main status only if currently Pending
+    UPDATE game
+    SET status = CASE p_decision WHEN 'Approve' THEN 'Approve' ELSE 'Reject' END
+    WHERE game_id = v_game_id AND status = 'Pending';
+
+    -- Optionally refresh aggregate player stats (if any play rows pre-exist)
+    UPDATE game g
+    SET total_players = (SELECT COUNT(*) FROM play WHERE game_id = g.game_id),
+        average_play_time = IFNULL((SELECT AVG(accumulate_play_time) FROM play WHERE game_id = g.game_id),0)
+    WHERE g.game_id = v_game_id;
+  COMMIT;
+
+  SELECT v_game_id AS game_id,
+         p_update_id AS update_id,
+         p_decision AS applied_status;
+END//
+
+
+
+CREATE PROCEDURE sp_create_game(
+  IN p_publisher_username VARCHAR(20),
+  IN p_game_name VARCHAR(70),
+  IN p_detail VARCHAR(255),
+  IN p_link_to_file VARCHAR(255),
+  IN p_release_date DATETIME,
+  IN p_status ENUM('Approve','Reject','Pending')
+)
+BEGIN
+  DECLARE v_is_publisher INT;
+
+  -- Validate required inputs
+  IF p_game_name IS NULL OR LENGTH(TRIM(p_game_name)) = 0 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Game name is required';
+  END IF;
+  IF p_detail IS NULL OR LENGTH(TRIM(p_detail)) = 0 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Game description is required';
+  END IF;
+  IF p_link_to_file IS NULL OR LENGTH(TRIM(p_link_to_file)) = 0 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Main file path is required';
+  END IF;
+
+  -- Validate publisher exists
+  SELECT EXISTS(SELECT 1 FROM publisher WHERE username = p_publisher_username) INTO v_is_publisher;
+  IF v_is_publisher = 0 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only publishers can create games';
+  END IF;
+
+  -- Ensure explicit values for all NOT NULL / tracked columns
+  INSERT INTO game (game_name, detail, link_to_file, release_date, status, total_players, average_play_time, publisher_username)
+  VALUES (p_game_name, p_detail, p_link_to_file, IFNULL(p_release_date, NOW()), IFNULL(p_status,'Pending'), 0, 0, p_publisher_username);
+  SELECT LAST_INSERT_ID() AS game_id;
+END//
+
+
+CREATE PROCEDURE sp_game_add_initial_update( -- Work
+  IN p_game_id INT,
+  IN p_link VARCHAR(255)
+)
+BEGIN
+  INSERT INTO game_update_history (patch_number, title, detail, link_to_new_file, game_id)
+  VALUES ('0', 'init', 'init', p_link, p_game_id);
+  SELECT ROW_COUNT() AS affected;
+END//
+
+CREATE PROCEDURE sp_check_username(IN p_username VARCHAR(20)) -- Work
+BEGIN
+  SELECT COUNT(*) AS count FROM `User` WHERE username = p_username;
+END//
+
+CREATE PROCEDURE sp_check_email(IN p_email VARCHAR(255)) -- Work
+BEGIN
+  SELECT COUNT(*) AS count FROM `User` WHERE email = p_email;
+END//
+
+CREATE PROCEDURE sp_validate_login_fetch(IN p_identifier VARCHAR(255)) -- Work
+BEGIN
+  SELECT username, password_encrypted, salt_random_value, email
+  FROM `User`
+  WHERE username = p_identifier OR email = p_identifier
+  LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_insert_session( -- Work
+  IN p_username VARCHAR(20),
+  IN p_device VARCHAR(50)
+)
+BEGIN
+  DELETE FROM session WHERE username = p_username;
+  INSERT INTO session (username, last_login_time, device)
+  VALUES (p_username, NOW(), p_device);
+  SELECT LAST_INSERT_ID() AS session_id;
+END//
+
+CREATE PROCEDURE sp_play_add_time( -- Work
+  IN p_username VARCHAR(20),
+  IN p_game_id INT,
+  IN p_seconds INT
+)
+BEGIN
+  INSERT INTO play (username, game_id, accumulate_play_time)
+  VALUES (p_username, p_game_id, p_seconds)
+  ON DUPLICATE KEY UPDATE accumulate_play_time = accumulate_play_time + VALUES(accumulate_play_time);
+  SELECT ROW_COUNT() AS affected;
+END//
+
+CREATE PROCEDURE sp_register_user_with_optional_publisher( -- Maybe Work
+  IN p_username VARCHAR(20),
+  IN p_email VARCHAR(255),
+  IN p_dob DATE,
+  IN p_sex ENUM('Male','Female','Other'),
+  IN p_password_encrypted VARCHAR(255),
+  IN p_salt_hex VARCHAR(255),
+  IN p_created_at DATETIME,
+  IN p_is_publisher BOOLEAN,
+  IN p_account_name VARCHAR(70),
+  IN p_bank_account_serial VARCHAR(64)
+)
+BEGIN
+  INSERT INTO `User` (username, password_encrypted, salt_random_value, email, DOB, sex, created_at)
+  VALUES (p_username, p_password_encrypted, p_salt_hex, p_email, p_dob, p_sex, p_created_at);
+
+  IF p_is_publisher THEN
+    INSERT INTO publisher (username, account_name, bank_account_serial)
+    VALUES (p_username, IFNULL(p_account_name, p_username), p_bank_account_serial);
+  END IF;
+
+  SELECT p_username AS username;
+END//
+
+-- Removed erroneous delimiter reset (kept original custom delimiter // for subsequent procedures)
+
+
+-- Publisher dashboard procedures
+CREATE PROCEDURE sp_get_publisher_info(IN p_username VARCHAR(20))
+BEGIN
+  SELECT username, account_name 
+  FROM publisher 
+  WHERE username = p_username 
+  LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_get_publisher_games(IN p_publisher_username VARCHAR(20))
+BEGIN
+  SELECT 
+    g.game_id,
+    g.game_name,
+    g.detail,
+    g.link_to_file,
+    g.release_date,
+    g.status AS game_status,
+    g.total_players,
+    g.average_play_time,
+    guh.patch_number,
+    guh.is_approve AS update_status
+  FROM game g
+  LEFT JOIN game_update_history guh ON guh.update_id = (
+    SELECT guh2.update_id
+    FROM game_update_history guh2
+    WHERE guh2.game_id = g.game_id
+    ORDER BY COALESCE(guh2.approve_time, guh2.update_time) DESC, guh2.update_id DESC
+    LIMIT 1
+  )
+  WHERE g.publisher_username = p_publisher_username
+  ORDER BY g.release_date DESC, g.game_id DESC;
+END//
+
+CREATE PROCEDURE sp_get_publisher_reports(
+  IN p_publisher_username VARCHAR(20),
+  IN p_game_id INT,
+  IN p_topic VARCHAR(20),
+  IN p_limit INT,
+  IN p_offset INT
+)
+BEGIN
+  SELECT r.report_id, r.game_id, r.username, r.report_topic, r.detail, r.report_time, g.game_name
+  FROM report r
+  INNER JOIN game g ON g.game_id = r.game_id
+  WHERE g.publisher_username = p_publisher_username
+    AND (p_game_id IS NULL OR r.game_id = p_game_id)
+    AND (p_topic IS NULL OR r.report_topic = p_topic)
+  ORDER BY r.report_time DESC
+  LIMIT p_limit OFFSET p_offset;
+END//
+
+CREATE PROCEDURE sp_count_publisher_reports(
+  IN p_publisher_username VARCHAR(20),
+  IN p_game_id INT,
+  IN p_topic VARCHAR(20)
+)
+BEGIN
+  SELECT COUNT(*) AS total
+  FROM report r
+  INNER JOIN game g ON g.game_id = r.game_id
+  WHERE g.publisher_username = p_publisher_username
+    AND (p_game_id IS NULL OR r.game_id = p_game_id)
+    AND (p_topic IS NULL OR r.report_topic = p_topic);
+END//
+
+-- Games list procedures
+CREATE PROCEDURE sp_get_games_list(
+  IN p_publisher_username VARCHAR(20),
+  IN p_limit INT,
+  IN p_offset INT
+)
+BEGIN
+  IF p_publisher_username IS NOT NULL THEN
+    SELECT game_id as id, game_name as title, detail as description,
+           publisher_username as developer, link_to_file as image_url,
+           release_date, total_players, status AS game_status
+    FROM game
+    WHERE publisher_username = p_publisher_username
+    ORDER BY release_date DESC, game_id DESC
+    LIMIT p_limit OFFSET p_offset;
+  ELSE
+    SELECT game_id as id, game_name as title, detail as description,
+           publisher_username as developer, link_to_file as image_url,
+           release_date, total_players, status AS game_status
+    FROM game
+    WHERE status = 'Approve'
+    ORDER BY release_date DESC, game_id DESC
+    LIMIT p_limit OFFSET p_offset;
+  END IF;
+END//
+
+CREATE PROCEDURE sp_count_games(IN p_publisher_username VARCHAR(20))
+BEGIN
+  IF p_publisher_username IS NOT NULL THEN
+    SELECT COUNT(*) as total FROM game WHERE publisher_username = p_publisher_username;
+  ELSE
+    SELECT COUNT(*) as total FROM game WHERE status = 'Approve';
+  END IF;
+END//
+
+CREATE PROCEDURE sp_get_game_detail(IN p_game_id INT)
+BEGIN
+  SELECT game_id AS id,
+         game_name AS title,
+         detail AS description,
+         publisher_username AS developer,
+         link_to_file AS playUrl,
+         release_date AS releaseDate,
+         status,
+         total_players,
+         average_play_time
+  FROM game
+  WHERE game_id = p_game_id
+  LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_get_latest_game_update(IN p_game_id INT)
+BEGIN
+  SELECT link_to_new_file AS link
+  FROM game_update_history
+  WHERE game_id = p_game_id AND is_approve = 'Approve'
+  ORDER BY COALESCE(approve_time, update_time) DESC
+  LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_search_games(
+  IN p_query VARCHAR(255),
+  IN p_tag_name VARCHAR(50)
+)
+BEGIN
+  IF p_tag_name IS NOT NULL THEN
+    SELECT DISTINCT g.game_id as id, g.game_name as title, g.detail as description,
+           g.publisher_username as developer, g.link_to_file as image_url,
+           g.release_date, t.tag_name as genre
+    FROM game g
+    INNER JOIN tag t ON t.game_id = g.game_id
+    WHERE (g.game_name LIKE p_query OR g.detail LIKE p_query OR g.publisher_username LIKE p_query)
+      AND g.status = 'Approve'
+      AND t.tag_name = p_tag_name
+    ORDER BY g.release_date DESC
+    LIMIT 20;
+  ELSE
+    SELECT DISTINCT g.game_id as id, g.game_name as title, g.detail as description,
+           g.publisher_username as developer, g.link_to_file as image_url,
+           g.release_date, NULL as genre
+    FROM game g
+    WHERE (g.game_name LIKE p_query OR g.detail LIKE p_query OR g.publisher_username LIKE p_query)
+      AND g.status = 'Approve'
+    ORDER BY g.release_date DESC
+    LIMIT 20;
+  END IF;
+END//
+
+CREATE PROCEDURE sp_get_trending_games(IN p_limit INT)
+BEGIN
+  SELECT game_id as id, game_name as title, detail as description,
+         publisher_username as developer, link_to_file as image_url,
+         release_date, total_players
+  FROM game
+  WHERE status = 'Approve'
+  ORDER BY total_players DESC, release_date DESC
+  LIMIT p_limit;
+END//
+
+CREATE PROCEDURE sp_get_new_games(IN p_limit INT, IN p_offset INT)
+BEGIN
+  SELECT game_id as id, game_name as title, detail as description,
+         publisher_username as developer, link_to_file as image_url,
+         release_date, total_players
+  FROM game
+  WHERE status = 'Approve'
+  ORDER BY release_date DESC, game_id DESC
+  LIMIT p_limit OFFSET p_offset;
+END//
+
+CREATE PROCEDURE sp_count_new_games()
+BEGIN
+  SELECT COUNT(*) as total FROM game WHERE status = 'Approve';
+END//
+
+CREATE PROCEDURE sp_get_all_games(IN p_limit INT, IN p_offset INT)
+BEGIN
+  SELECT game_id as id, game_name as title, detail as description,
+         publisher_username as developer, link_to_file as image_url,
+         release_date, total_players
+  FROM game
+  WHERE status = 'Approve'
+  ORDER BY game_id ASC
+  LIMIT p_limit OFFSET p_offset;
+END//
+
+-- Game report procedures
+CREATE PROCEDURE sp_check_game_exists(IN p_game_id INT)
+BEGIN
+  SELECT 1 FROM game WHERE game_id = p_game_id LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_create_game_report(
+  IN p_game_id INT,
+  IN p_username VARCHAR(20),
+  IN p_topic ENUM('Lag', 'Disconnect', 'Bug'),
+  IN p_detail VARCHAR(255)
+)
+BEGIN
+  INSERT INTO report (username, game_id, report_topic, detail, report_time)
+  VALUES (p_username, p_game_id, p_topic, p_detail, NOW());
+  SELECT LAST_INSERT_ID() AS report_id;
+END//
+
+-- Game category procedures
+CREATE PROCEDURE sp_get_games_by_tag(
+  IN p_tag_name VARCHAR(50),
+  IN p_limit INT,
+  IN p_offset INT
+)
+BEGIN
+  SELECT DISTINCT g.game_id as id, g.game_name as title, g.detail as description,
+         g.publisher_username as developer, g.link_to_file as image_url,
+         g.release_date, t.tag_name as category
+  FROM game g
+  INNER JOIN tag t ON t.game_id = g.game_id
+  WHERE t.tag_name = p_tag_name AND g.status = 'Approve'
+  ORDER BY g.release_date DESC, g.game_id DESC
+  LIMIT p_limit OFFSET p_offset;
+END//
+
+CREATE PROCEDURE sp_count_games_by_tag(IN p_tag_name VARCHAR(50))
+BEGIN
+  SELECT COUNT(DISTINCT g.game_id) as total
+  FROM game g
+  INNER JOIN tag t ON t.game_id = g.game_id
+  WHERE t.tag_name = p_tag_name AND g.status = 'Approve';
+END//
+
+CREATE PROCEDURE sp_get_game_tags(IN p_game_id INT)
+BEGIN
+  SELECT tag_name
+  FROM tag
+  WHERE game_id = p_game_id
+  ORDER BY tag_name ASC;
+END//
+
+CREATE PROCEDURE sp_get_game_versions(IN p_game_id INT)
+BEGIN
+  SELECT 
+    patch_number AS version,
+    approve_time AS approved_date,
+    update_time AS created_date,
+    detail AS description,
+    link_to_new_file AS link_to_file_path
+  FROM game_update_history
+  WHERE game_id = p_game_id AND is_approve = 'Approve'
+  ORDER BY approve_time DESC, update_time DESC;
+END//
+
+-- User profile procedures
+CREATE PROCEDURE sp_get_user_profile(IN p_username VARCHAR(20))
+BEGIN
+  SELECT username, email, DOB AS dateOfBirth, sex, created_at AS createdAt
+  FROM User
+  WHERE username = p_username
+  LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_get_user_playtime(IN p_username VARCHAR(20))
+BEGIN
+  SELECT
+    p.game_id AS gameId,
+    g.game_name AS gameName,
+    COALESCE(p.accumulate_play_time, 0) AS playSeconds
+  FROM play p
+  LEFT JOIN game g ON g.game_id = p.game_id
+  WHERE p.username = p_username
+  ORDER BY playSeconds DESC, p.game_id ASC
+  LIMIT 5;
+END//
+
+CREATE PROCEDURE sp_get_user_total_playtime(IN p_username VARCHAR(20))
+BEGIN
+  SELECT COALESCE(SUM(accumulate_play_time), 0) AS totalSeconds
+  FROM play
+  WHERE username = p_username;
+END//
+
+CREATE PROCEDURE sp_check_email_exists(
+  IN p_email VARCHAR(255),
+  IN p_exclude_username VARCHAR(20)
+)
+BEGIN
+  SELECT COUNT(*) AS count 
+  FROM User 
+  WHERE email = p_email AND username != p_exclude_username;
+END//
+
+CREATE PROCEDURE sp_update_user_profile(
+  IN p_username VARCHAR(20),
+  IN p_email VARCHAR(255),
+  IN p_dob DATE,
+  IN p_sex ENUM('Male', 'Female', 'Other')
+)
+BEGIN
+  UPDATE User
+  SET email = p_email, DOB = p_dob, sex = p_sex
+  WHERE username = p_username;
+  SELECT ROW_COUNT() AS affected;
+END//
+
+-- User search procedure
+CREATE PROCEDURE sp_search_users(IN p_query VARCHAR(255))
+BEGIN
+  SELECT username, email
+  FROM User
+  WHERE username LIKE p_query OR email LIKE p_query
+  ORDER BY username ASC
+  LIMIT 20;
+END//
+
+-- Publisher game edit procedures
+CREATE PROCEDURE sp_update_game_link(
+  IN p_game_id INT,
+  IN p_link_to_file VARCHAR(255)
+)
+BEGIN
+  UPDATE game SET link_to_file = p_link_to_file WHERE game_id = p_game_id;
+  SELECT ROW_COUNT() AS affected;
+END//
+
+CREATE PROCEDURE sp_update_game_details(
+  IN p_game_id INT,
+  IN p_game_name VARCHAR(70),
+  IN p_detail VARCHAR(255)
+)
+BEGIN
+  UPDATE game 
+  SET game_name = p_game_name, detail = p_detail 
+  WHERE game_id = p_game_id;
+  
+  INSERT INTO game_update_history (patch_number, title, detail, link_to_new_file, game_id)
+  VALUES ('edit', 'Game details updated', p_detail, '', p_game_id);
+  
+  SELECT ROW_COUNT() AS affected;
+END//
+
+CREATE PROCEDURE sp_publisher_submit_game_update(
+  IN p_game_id INT,
+  IN p_game_name VARCHAR(70),
+  IN p_patch_number VARCHAR(255),
+  IN p_update_title VARCHAR(255),
+  IN p_update_detail VARCHAR(255),
+  IN p_link_to_file VARCHAR(255)
+)
+BEGIN
+  UPDATE game
+  SET game_name = p_game_name,
+      link_to_file = p_link_to_file
+  WHERE game_id = p_game_id;
+
+  INSERT INTO game_update_history (patch_number, title, detail, link_to_new_file, game_id)
+  VALUES (
+    p_patch_number,
+    IFNULL(p_update_title, p_patch_number),
+    IFNULL(p_update_detail, 'Update details pending'),
+    p_link_to_file,
+    p_game_id
+  );
+
+  SELECT ROW_COUNT() AS affected;
+END//
+
+-- Forum procedures
+CREATE PROCEDURE sp_get_forum_threads(IN p_limit INT, IN p_offset INT)
+BEGIN
+  SELECT thread_name, detail, created_at, comment_count, unique_users
+  FROM forum
+  ORDER BY created_at DESC
+  LIMIT p_limit OFFSET p_offset;
+END//
+
+CREATE PROCEDURE sp_get_forum_threads_cursor(
+  IN p_limit INT,
+  IN p_cursor_created DATETIME,
+  IN p_cursor_thread VARCHAR(70),
+  IN p_search VARCHAR(255)
+)
+BEGIN
+  DECLARE v_limit INT;
+  SET v_limit = LEAST(GREATEST(p_limit, 1), 101);
+  SELECT f.thread_name, f.detail, f.created_at,
+         cr.username AS creator_username,
+         g.game_id, g.game_name,
+         COUNT(r.comment_id) AS reply_count
+  FROM forum f
+  LEFT JOIN create_relation cr ON cr.thread_name = f.thread_name
+  LEFT JOIN game g ON g.game_id = cr.game_id
+  LEFT JOIN reply r ON r.thread_name = f.thread_name
+  WHERE (p_search IS NULL OR p_search = '' OR
+        f.thread_name LIKE p_search OR
+        f.detail LIKE p_search OR
+        g.game_name LIKE p_search OR
+        cr.username LIKE p_search)
+    AND (p_cursor_created IS NULL OR
+         (f.created_at < p_cursor_created OR
+          (f.created_at = p_cursor_created AND (p_cursor_thread IS NULL OR f.thread_name < p_cursor_thread))))
+  GROUP BY f.thread_name, f.detail, f.created_at, cr.username, g.game_id, g.game_name
+  ORDER BY f.created_at DESC, f.thread_name DESC
+  LIMIT v_limit;
+END//
+
+CREATE PROCEDURE sp_search_forum_threads(
+  IN p_query VARCHAR(255),
+  IN p_game_id INT,
+  IN p_limit INT
+)
+BEGIN
+  DECLARE v_limit INT;
+  SET v_limit = LEAST(GREATEST(p_limit, 1), 50);
+
+  SELECT f.thread_name, f.detail, f.created_at, f.comment_count, f.unique_users,
+         cr.username AS creator_username,
+         g.game_id, g.game_name,
+         COUNT(r.comment_id) AS reply_count
+  FROM forum f
+  LEFT JOIN create_relation cr ON cr.thread_name = f.thread_name
+  LEFT JOIN game g ON g.game_id = cr.game_id
+  LEFT JOIN reply r ON r.thread_name = f.thread_name
+  WHERE (p_query IS NULL OR p_query = '' OR
+        f.thread_name LIKE p_query OR
+        f.detail LIKE p_query OR
+        g.game_name LIKE p_query OR
+        cr.username LIKE p_query)
+    AND (p_game_id IS NULL OR g.game_id = p_game_id)
+  GROUP BY f.thread_name, f.detail, f.created_at, f.comment_count, f.unique_users,
+           cr.username, g.game_id, g.game_name
+  ORDER BY f.created_at DESC
+  LIMIT v_limit;
+END//
+
+CREATE PROCEDURE sp_get_thread_details(IN p_thread_name VARCHAR(70))
+BEGIN
+  SELECT f.thread_name, f.detail, f.created_at, f.comment_count, f.unique_users,
+         cr.username AS creator_username,
+         g.game_id, g.game_name
+  FROM forum f
+  LEFT JOIN create_relation cr ON cr.thread_name = f.thread_name
+  LEFT JOIN game g ON g.game_id = cr.game_id
+  WHERE f.thread_name = p_thread_name
+  LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_check_thread_exists(IN p_thread_name VARCHAR(70))
+BEGIN
+  SELECT 1 FROM forum WHERE thread_name = p_thread_name LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_get_thread_replies(IN p_thread_name VARCHAR(70))
+BEGIN
+  SELECT r.username, r.comment_id, r.reply_to_comment_id, c.comment_text, c.created_at
+  FROM reply r
+  INNER JOIN comment c ON c.comment_id = r.comment_id
+  WHERE r.thread_name = p_thread_name
+  ORDER BY c.created_at ASC;
+END//
+
+CREATE PROCEDURE sp_check_reply_to_comment(
+  IN p_thread_name VARCHAR(70),
+  IN p_comment_id INT
+)
+BEGIN
+  SELECT r.comment_id
+  FROM reply r
+  WHERE r.thread_name = p_thread_name AND r.comment_id = p_comment_id
+  LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_create_comment(IN p_comment_text VARCHAR(255))
+BEGIN
+  INSERT INTO comment (comment_text, created_at)
+  VALUES (p_comment_text, NOW());
+  SELECT LAST_INSERT_ID() AS comment_id;
+END//
+
+CREATE PROCEDURE sp_create_reply(
+  IN p_thread_name VARCHAR(70),
+  IN p_username VARCHAR(20),
+  IN p_comment_id INT,
+  IN p_reply_to_comment_id INT
+)
+BEGIN
+  INSERT INTO reply (thread_name, username, comment_id, reply_to_comment_id)
+  VALUES (p_thread_name, p_username, p_comment_id, p_reply_to_comment_id);
+  SELECT ROW_COUNT() AS affected;
+END//
+
+CREATE PROCEDURE sp_check_game_for_thread(IN p_game_id INT)
+BEGIN
+  SELECT game_id FROM game WHERE game_id = p_game_id AND status = 'Approve' LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_create_forum_thread(
+  IN p_thread_name VARCHAR(70),
+  IN p_detail VARCHAR(255),
+  IN p_username VARCHAR(20),
+  IN p_game_id INT
+)
+BEGIN
+  INSERT INTO forum (thread_name, detail, created_at, comment_count, unique_users)
+  VALUES (p_thread_name, p_detail, NOW(), 0, 0);
+  
+  INSERT INTO create_relation (thread_name, username, game_id)
+  VALUES (p_thread_name, p_username, p_game_id);
+  
+  SELECT p_thread_name AS thread_name;
+END//
+
+CREATE PROCEDURE sp_get_user_created_threads(IN p_username VARCHAR(20))
+BEGIN
+  SELECT f.thread_name, f.detail, f.created_at, f.comment_count, f.unique_users
+  FROM forum f
+  INNER JOIN create_relation cr ON cr.thread_name = f.thread_name
+  WHERE cr.username = p_username
+  ORDER BY f.created_at DESC
+  LIMIT 20;
+END//
+
+CREATE PROCEDURE sp_get_user_commented_threads(IN p_username VARCHAR(20))
+BEGIN
+  SELECT DISTINCT f.thread_name, f.detail, f.created_at, f.comment_count, f.unique_users
+  FROM forum f
+  INNER JOIN reply r ON r.thread_name = f.thread_name
+  WHERE r.username = p_username
+  ORDER BY f.created_at DESC
+  LIMIT 20;
+END//
+
+DELIMITER ;
+
+
+
+-- Triggers to maintain aggregate fields on `game`
+DELIMITER //
+
+CREATE TRIGGER trg_play_after_insert -- Work
+AFTER INSERT ON play
 FOR EACH ROW
 BEGIN
-    -- Calculate playtime for the old game session
+    UPDATE game
+    SET total_players = (SELECT COUNT(*) FROM play WHERE game_id = NEW.game_id),
+        average_play_time = IFNULL((SELECT AVG(accumulate_play_time) FROM play WHERE game_id = NEW.game_id), 0)
+    WHERE game_id = NEW.game_id;
+END;//
+
+CREATE TRIGGER trg_play_after_update
+AFTER UPDATE ON play
+FOR EACH ROW
+BEGIN
     IF OLD.game_id != NEW.game_id THEN
-        UPDATE play
-        SET total_playtime = total_playtime + 
-            TIMESTAMPDIFF(MINUTE, OLD.start_play_time, NOW())
-        WHERE username = OLD.username AND game_id = OLD.game_id;
-        
-        -- Decrement live players counter for old game
+        -- Update aggregates for old game
         UPDATE game
-        SET live_players = GREATEST(0, live_players - 1)
+        SET total_players = (SELECT COUNT(*) FROM play WHERE game_id = OLD.game_id),
+            average_play_time = IFNULL((SELECT AVG(accumulate_play_time) FROM play WHERE game_id = OLD.game_id), 0)
         WHERE game_id = OLD.game_id;
-        
-        -- Increment live players counter for new game
+
+        -- Update aggregates for new game
         UPDATE game
-        SET live_players = live_players + 1
+        SET total_players = (SELECT COUNT(*) FROM play WHERE game_id = NEW.game_id),
+            average_play_time = IFNULL((SELECT AVG(accumulate_play_time) FROM play WHERE game_id = NEW.game_id), 0)
+        WHERE game_id = NEW.game_id;
+    ELSE
+        -- Same game: just recalc
+        UPDATE game
+        SET total_players = (SELECT COUNT(*) FROM play WHERE game_id = NEW.game_id),
+            average_play_time = IFNULL((SELECT AVG(accumulate_play_time) FROM play WHERE game_id = NEW.game_id), 0)
         WHERE game_id = NEW.game_id;
     END IF;
-END//
+END;//
 
-CREATE TRIGGER after_session_delete
-AFTER DELETE ON session
+CREATE TRIGGER trg_play_after_delete -- Work
+AFTER DELETE ON play
 FOR EACH ROW
 BEGIN
-    -- Finalize playtime calculation
-    UPDATE play
-    SET total_playtime = total_playtime + 
-        TIMESTAMPDIFF(MINUTE, last_session_start, NOW())
-    WHERE username = OLD.username AND game_id = OLD.game_id;
-    
-    -- Decrement live players counter
     UPDATE game
-    SET live_players = GREATEST(0, live_players - 1)
+    SET total_players = (SELECT COUNT(*) FROM play WHERE game_id = OLD.game_id),
+        average_play_time = IFNULL((SELECT AVG(accumulate_play_time) FROM play WHERE game_id = OLD.game_id), 0)
     WHERE game_id = OLD.game_id;
-END//
+END;//
 
--- Forum Thread Counters Triggers
-CREATE TRIGGER after_reply_insert
+DELIMITER ;
+
+-- Stored procedure to safely delete a game and its dependent records.
+-- Simpler, MySQL 5.7 friendly version that avoids handler blocks.
+-- Usage: CALL sp_delete_game(123);
+DELIMITER //
+
+-- CREATE PROCEDURE sp_delete_game(IN p_game_id INT)
+-- BEGIN
+--     DECLARE v_exists INT DEFAULT 0;
+
+--     SELECT COUNT(*) INTO v_exists FROM game WHERE game_id = p_game_id;
+
+--     IF v_exists = 0 THEN
+--         -- Game does not exist; nothing to do
+--         SELECT CONCAT('Game id ', p_game_id, ' does not exist') AS message;
+--     ELSE
+--         START TRANSACTION;
+--             -- Delete rows that reference game but do not have ON DELETE CASCADE
+--             DELETE FROM create_relation WHERE game_id = p_game_id;
+--             DELETE FROM report WHERE game_id = p_game_id;
+--             DELETE FROM play WHERE game_id = p_game_id;
+--             DELETE FROM tag WHERE game_id = p_game_id;
+
+--             -- Delete the game row; cascading FKs (if any) will be handled by the DB
+--             DELETE FROM game WHERE game_id = p_game_id;
+--         COMMIT;
+
+--         SELECT CONCAT('Game ', p_game_id, ' and related records deleted') AS message;
+--     END IF;
+-- END;//
+
+-- Additional triggers from main.sql adapted for test_table_data.sql schema
+-- Note: Session triggers are omitted because session table in test schema doesn't have game_id or time fields
+
+-- Forum Thread Counters Trigger
+-- Simplified version without forum_participants table (not present in test schema)
+CREATE TRIGGER after_reply_insert -- Work
 AFTER INSERT ON reply
 FOR EACH ROW
 BEGIN
@@ -228,336 +971,204 @@ BEGIN
     SET comment_count = comment_count + 1
     WHERE thread_name = NEW.thread_name;
     
-    -- Check if this is user's first comment in the thread
-    IF NOT EXISTS (
-        SELECT 1 FROM forum_participants
-        WHERE thread_name = NEW.thread_name AND username = NEW.username
-    ) THEN
-        -- Insert into forum_participants
-        INSERT INTO forum_participants (thread_name, username, first_comment_time)
-        VALUES (NEW.thread_name, NEW.username, NOW());
-        
-        -- Increment unique users count
-        UPDATE forum
-        SET unique_users = unique_users + 1
-        WHERE thread_name = NEW.thread_name;
-    END IF;
-END//
-
--- Comment to Reply Relation Trigger
-CREATE TRIGGER after_comment_insert
-AFTER INSERT ON comment
-FOR EACH ROW
-BEGIN
-    -- Insert into reply table
-    -- NEW.reply_to_id will be NULL for initial comments
-    -- NEW.reply_to_id will have the parent comment_id for replies
-    INSERT INTO reply (thread_name, username, comment_id, reply_to_comment_id)
-    VALUES (NEW.thread_name, NEW.username, NEW.comment_id, NEW.reply_to_id);
-END//
-
--- Stored Procedures
-
-CREATE PROCEDURE register_user(
-    IN p_username VARCHAR(20),
-    IN p_password VARCHAR(255),
-    IN p_email VARCHAR(255),
-    IN p_dob DATE,
-    IN p_sex ENUM('Male', 'Female', 'Other'),
-    IN p_role VARCHAR(20),
-    IN p_additional_info VARCHAR(255)
-)
-BEGIN
-    DECLARE v_salt VARBINARY(255);
-    DECLARE v_pepper VARCHAR(255);
-    DECLARE v_hashed_password VARCHAR(255);
-    
-    -- Generate random salt
-    SET v_salt = RANDOM_BYTES(32);
-    -- In real implementation, pepper would be stored in environment variables
-    SET v_pepper = 'your_secure_pepper_value';
-    
-    -- Hash password with salt and pepper
-    SET v_hashed_password = SHA2(CONCAT(p_password, v_salt, v_pepper), 256);
-    
-    -- Start transaction
-    START TRANSACTION;
-    
-    -- Insert into User table
-    INSERT INTO User (username, password_encrypted, salt_random_value, email, DOB, sex)
-    VALUES (p_username, v_hashed_password, v_salt, p_email, p_dob, p_sex);
-    
-    -- Based on role, insert into appropriate table
-    CASE p_role
-        WHEN 'Developer' THEN
-            INSERT INTO developer (username, role, contact)
-            VALUES (p_username, p_additional_info, '');
-        WHEN 'Publisher' THEN
-            INSERT INTO publisher (username, account_name)
-            VALUES (p_username, p_additional_info);
-        WHEN 'Admin' THEN
-            INSERT INTO admin (username)
-            VALUES (p_username);
-    END CASE;
-    
-    COMMIT;
-END//
-
-CREATE PROCEDURE validate_login(
-    IN p_username VARCHAR(20),
-    IN p_password VARCHAR(255),
-    OUT p_is_valid BOOLEAN
-)
-BEGIN
-    DECLARE v_stored_hash VARCHAR(255);
-    DECLARE v_salt VARBINARY(255);
-    DECLARE v_pepper VARCHAR(255);
-    DECLARE v_calculated_hash VARCHAR(255);
-    
-    -- Get stored hash and salt
-    SELECT password_encrypted, salt_random_value
-    INTO v_stored_hash, v_salt
-    FROM User
-    WHERE username = p_username;
-    
-    -- Set pepper (in real implementation, would be from environment variables)
-    SET v_pepper = 'your_secure_pepper_value';
-    
-    -- Calculate hash with provided password
-    SET v_calculated_hash = SHA2(CONCAT(p_password, v_salt, v_pepper), 256);
-    
-    -- Compare hashes
-    SET p_is_valid = (v_stored_hash = v_calculated_hash);
-END//
-
-CREATE PROCEDURE validate_password(
-    IN p_password VARCHAR(255),
-    OUT p_is_valid BOOLEAN,
-    OUT p_error_message VARCHAR(255)
-)
-BEGIN
-    SET p_is_valid = TRUE;
-    SET p_error_message = NULL;
-    
-    -- Check length
-    IF LENGTH(p_password) < 8 THEN
-        SET p_is_valid = FALSE;
-        SET p_error_message = 'Password must be at least 8 characters long';
-        RETURN;
-    END IF;
-    
-    -- Check for uppercase
-    IF p_password NOT REGEXP '[A-Z]' THEN
-        SET p_is_valid = FALSE;
-        SET p_error_message = 'Password must contain at least one uppercase letter';
-        RETURN;
-    END IF;
-    
-    -- Check for lowercase
-    IF p_password NOT REGEXP '[a-z]' THEN
-        SET p_is_valid = FALSE;
-        SET p_error_message = 'Password must contain at least one lowercase letter';
-        RETURN;
-    END IF;
-    
-    -- Check for digit
-    IF p_password NOT REGEXP '[0-9]' THEN
-        SET p_is_valid = FALSE;
-        SET p_error_message = 'Password must contain at least one digit';
-        RETURN;
-    END IF;
-    
-    -- Check for special character
-    IF p_password NOT REGEXP '[^A-Za-z0-9]' THEN
-        SET p_is_valid = FALSE;
-        SET p_error_message = 'Password must contain at least one special character';
-        RETURN;
-    END IF;
-END//
-
-CREATE PROCEDURE create_game(
-    IN p_publisher_username VARCHAR(20),
-    IN p_game_name VARCHAR(70),
-    IN p_detail VARCHAR(255),
-    IN p_link_to_file VARCHAR(255)
-)
-BEGIN
-    DECLARE v_game_id INT;
-    
-    -- Validate publisher
-    IF NOT EXISTS (SELECT 1 FROM publisher WHERE username = p_publisher_username) THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'User is not a publisher';
-    END IF;
-    
-    -- Start transaction
-    START TRANSACTION;
-    
-    -- Create game
-    INSERT INTO game (game_name, detail, link_to_file, publisher_username)
-    VALUES (p_game_name, p_detail, p_link_to_file, p_publisher_username);
-    
-    SET v_game_id = LAST_INSERT_ID();
-    
-    -- Create initial version in update history
-    INSERT INTO game_update_history (patch_number, title, detail, link_to_new_file)
-    VALUES ('1.0.0', 'Initial Release', 'First release of the game', p_link_to_file);
-    
-    -- Link update to game and publisher
-    INSERT INTO update_version_relation (game_id, update_id, username)
-    VALUES (v_game_id, LAST_INSERT_ID(), p_publisher_username);
-    
-    COMMIT;
-END//
-
-CREATE PROCEDURE create_forum_thread(
-    IN p_username VARCHAR(20),
-    IN p_thread_name VARCHAR(70),
-    IN p_detail VARCHAR(255),
-    IN p_game_id INT
-)
-BEGIN
-    DECLARE v_game_exists BOOLEAN;
-    
-    -- Check if game exists if game_id is provided
-    IF p_game_id IS NOT NULL THEN
-        SELECT EXISTS(SELECT 1 FROM game WHERE game_id = p_game_id) INTO v_game_exists;
-        IF NOT v_game_exists THEN
-            SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Specified game does not exist';
-        END IF;
-    END IF;
-    
-    -- Start transaction
-    START TRANSACTION;
-    
-    -- Create forum thread with initial counters set to 0
-    INSERT INTO forum (thread_name, detail, comment_count, unique_users)
-    VALUES (p_thread_name, p_detail, 0, 0); -- unique_users = 1???
-    
-    -- Create relation with game (if exists) and user
-    INSERT INTO create_relation (thread_name, username, game_id)
-    VALUES (p_thread_name, p_username, p_game_id);
-    
-    -- Initialize forum_participants with creator (but no comment yet)
-    INSERT INTO forum_participants (thread_name, username, first_comment_time)
-    VALUES (p_thread_name, p_username, NOW());
-    
-    -- Note: We don't set any initial comment count since creation doesn't count as a comment
-    
-    COMMIT;
-END//
+    -- Count unique users for this thread directly
+    UPDATE forum
+    SET unique_users = (
+        SELECT COUNT(DISTINCT username)
+        FROM reply
+        WHERE thread_name = NEW.thread_name
+    )
+    WHERE thread_name = NEW.thread_name;
+END;//
 
 DELIMITER ;
 
--------------------------------------------------------------
----- USER ROLE
--------------------------------------------------------------
+-- Insert users (at least 8 users to link roles and publishers)
+INSERT INTO User (username, password_encrypted, salt_random_value, email, DOB, sex, created_at) VALUES
+('john_doe', SHA2('Password!1',256), UNHEX('01'), 'john@example.com', '1990-05-15', 'Male', '2024-01-15 14:30:00'),
+('jane_smith', SHA2('Secure#2',256), UNHEX('02'), 'jane@example.com', '1992-08-23', 'Female', '2024-02-20 09:45:00'),
+('alex_dev', SHA2('DevPass3$',256), UNHEX('03'), 'alex@example.com', '1988-12-01', 'Other', '2024-03-10 11:20:00'),
+('sarah_pub', SHA2('PubPass4%',256), UNHEX('04'), 'sarah@example.com', '1995-03-10', 'Female', '2024-03-25 16:15:00'),
+('admin_user', SHA2('Admin*5',256), UNHEX('05'), 'admin@example.com', '1985-07-20', 'Male', '2024-01-01 08:00:00'),
+('pub_one', SHA2('PubOne6&',256), UNHEX('06'), 'pub1@example.com', '1991-04-12', 'Other', '2024-04-01 12:00:00'),
+('pub_two', SHA2('PubTwo7(',256), UNHEX('07'), 'pub2@example.com', '1989-09-09', 'Male', '2024-04-03 09:00:00'),
+('pub_three', SHA2('PubThree8)',256), UNHEX('08'), 'pub3@example.com', '1993-11-11', 'Female', '2024-04-05 10:30:00');
 
--- Create 'user' role (regular player)
-CREATE USER 'user'@'localhost' IDENTIFIED BY 'password';
+-- Publishers (must reference existing users)
+INSERT INTO publisher (username, account_name, bank_account_serial) VALUES
+('sarah_pub', 'Amazing Games Studio', 'ACCT-SG-0001'),
+('jane_smith', 'Creative Gaming Labs', 'ACCT-CG-0002'),
+('pub_one', 'IndiePub One', 'ACCT-IP-0003'),
+('pub_two', 'IndiePub Two', 'ACCT-IP-0004'),
+('pub_three', 'IndiePub Three', 'ACCT-IP-0005');
 
--- Create 'admin' role (system administrator)
-CREATE USER 'admin'@'localhost' IDENTIFIED BY 'password';
+-- Admins
+INSERT INTO admin (username) VALUES
+('admin_user');
 
--- Create 'developer' role (game developer)
-CREATE USER 'developer'@'localhost' IDENTIFIED BY 'password';
+-- Developers
+INSERT INTO developer (username, role, contact) VALUES
+('alex_dev', 'Programmer', '+1-555-0123'),
+('john_doe', 'Designer', '+1-555-0124'),
+('pub_one', 'Tester', '+1-555-0125'),
+('pub_two', 'Programmer', '+1-555-0126'),
+('pub_three', 'Designer', '+1-555-0127');
 
--- =====================================================
--- USER ROLE PERMISSIONS
--- =====================================================
--- USER can:
--- INSERT: All tables EXCEPT developer, admin, tag
--- SELECT: All tables EXCEPT developer, admin, report
--- UPDATE: All tables EXCEPT developer, admin, report, tag, update_version_relation
--- DELETE: Only session, forum, comment, reply, create_relation
+-- Insert games (use the provided names, cycle publishers)
+INSERT INTO game (game_name, detail, link_to_file, release_date, status, total_players, average_play_time, publisher_username) VALUES
+('Adventure Game', 'Open-world exploration', 'index.html', '2024-06-01 10:00:00', 'Approve', 12, 120.5, 'sarah_pub'),
+('Altos Odyssey', 'Endless runner with beautiful visuals', 'index.html', '2024-06-10 11:00:00', 'Approve', 8, 45.0, 'jane_smith'),
+('Bad Ice-Cream', 'Local co-op puzzle brawler', 'index.html', '2024-07-01 12:00:00', 'Approve', 5, 30.0, 'pub_one'),
+('Boxing Game', 'Arcade boxing action', 'index.html', '2024-07-10 09:30:00', 'Approve', 3, 25.0, 'pub_two'),
+('Candy Game', 'Casual match-3 candy fun', 'index.html', '2024-07-20 14:00:00', 'Approve', 20, 60.0, 'sarah_pub'),
+('Castle Game', 'Tower defense in medieval setting', 'index.html', '2024-08-01 10:15:00', 'Pending', 0, 0.0, 'pub_three'),
+('City Game', 'City building simulator', 'index.html', '2024-08-15 15:00:00', 'Approve', 6, 200.0, 'jane_smith'),
+('Dungeon Game', 'Roguelike dungeon crawler', 'index.html', '2024-09-01 18:00:00', 'Approve', 9, 85.0, 'pub_one'),
+('Farm Game', 'Relaxing farming sim', 'index.html', '2024-09-15 10:00:00', 'Approve', 4, 150.0, 'pub_two'),
+('Forest Game', 'Survival in a haunted forest', 'index.html', '2024-10-01 12:00:00', 'Reject', 0, 0.0, 'sarah_pub'),
+('Fruit Ninja', 'Slice-and-dice fruit arcade', 'index.html', '2024-06-05 09:00:00', 'Approve', 30, 10.0, 'jane_smith'),
+('Hungry Shark', 'Underwater predator arcade', 'index.html', '2024-06-12 11:15:00', 'Approve', 18, 55.0, 'pub_one'),
+('Jungle Game', 'Platformer through jungle temples', 'index.html', '2024-08-22 13:40:00', 'Approve', 7, 70.0, 'pub_two'),
+('Mario Game', 'Classic platformer homage', 'index.html', '2024-07-03 16:00:00', 'Approve', 25, 95.0, 'sarah_pub'),
+('Pirate Game', 'Open-sea adventure', 'index.html', '2024-07-25 17:10:00', 'Approve', 11, 140.0, 'pub_three'),
+('Plants VS Zombies', 'Tower defense with plants', 'index.html', '2024-06-20 08:20:00', 'Approve', 40, 120.0, 'jane_smith'),
+('Racing Game', 'Arcade racing championship', 'index.html', '2024-09-10 15:00:00', 'Approve', 22, 35.0, 'pub_two'),
+('Space Shooter', '2D space shooter with upgrades', 'index.html', '2024-08-30 20:00:00', 'Approve', 13, 50.0, 'pub_one'),
+('Survival Game', 'Hardcore survival sim', 'index.html', '2024-10-10 21:00:00', 'Pending', 0, 0.0, 'sarah_pub'),
+('Underwater Game', 'Explore the deep sea', 'index.html', '2024-09-20 14:30:00', 'Approve', 2, 300.0, 'pub_three'),
+('Winter Game', 'Snowball fights and sledding', 'index.html', '2024-12-01 09:00:00', 'Pending', 0, 0.0, 'jane_smith');
 
--- INSERT privileges for user
-GRANT INSERT ON Y25_DB.User TO 'user'@'localhost';
-GRANT INSERT ON Y25_DB.session TO 'user'@'localhost';
-GRANT INSERT ON Y25_DB.publisher TO 'user'@'localhost';
-GRANT INSERT ON Y25_DB.game TO 'user'@'localhost';
-GRANT INSERT ON Y25_DB.game_update_history TO 'user'@'localhost';
-GRANT INSERT ON Y25_DB.forum TO 'user'@'localhost';
-GRANT INSERT ON Y25_DB.comment TO 'user'@'localhost';
-GRANT INSERT ON Y25_DB.reply TO 'user'@'localhost';
-GRANT INSERT ON Y25_DB.play TO 'user'@'localhost';
-GRANT INSERT ON Y25_DB.create_relation TO 'user'@'localhost';
-GRANT INSERT ON Y25_DB.update_version_relation TO 'user'@'localhost';
-GRANT INSERT ON Y25_DB.forum_participants TO 'user'@'localhost';
+-- Game update history (linking to some game ids)
+INSERT INTO game_update_history (patch_number, title, detail, update_time, link_to_new_file, is_approve, approve_time, approve_by, game_id) VALUES
+('1.0.1', 'Bug Fix', 'Fixed minor issues', '2024-06-15 09:30:00', 'index.html', 'Approve', '2024-06-16 10:00:00', 'admin_user', 1),
+('1.1.0', 'Content Update', 'Added new levels', '2024-07-05 12:00:00', 'index.html', 'Approve', '2024-07-06 13:00:00', 'admin_user', 2),
+('1.0.1', 'Balance Patch', 'Tuned weapons', '2024-08-05 08:00:00', 'index.html', 'Reject', NULL, NULL, 8),
+('2.0.0', 'Major Update', 'New game mode', '2024-09-15 10:00:00', 'index.html', 'Approve', '2024-09-16 11:00:00', 'admin_user', 17),
+('1.0.2', 'Hotfix', 'Crash fix', '2024-06-20 14:00:00', 'index.html', 'Approve', '2024-06-21 09:00:00', 'admin_user', 11);
 
--- SELECT privileges for user (all EXCEPT developer, admin, report)
-GRANT SELECT ON Y25_DB.User TO 'user'@'localhost';
-GRANT SELECT ON Y25_DB.session TO 'user'@'localhost';
-GRANT SELECT ON Y25_DB.publisher TO 'user'@'localhost';
-GRANT SELECT ON Y25_DB.game TO 'user'@'localhost';
-GRANT SELECT ON Y25_DB.game_update_history TO 'user'@'localhost';
-GRANT SELECT ON Y25_DB.forum TO 'user'@'localhost';
-GRANT SELECT ON Y25_DB.comment TO 'user'@'localhost';
-GRANT SELECT ON Y25_DB.reply TO 'user'@'localhost';
-GRANT SELECT ON Y25_DB.play TO 'user'@'localhost';
-GRANT SELECT ON Y25_DB.tag TO 'user'@'localhost';
-GRANT SELECT ON Y25_DB.create_relation TO 'user'@'localhost';
-GRANT SELECT ON Y25_DB.update_version_relation TO 'user'@'localhost';
-GRANT SELECT ON Y25_DB.forum_participants TO 'user'@'localhost';
+-- Forum threads
+INSERT INTO forum (thread_name, detail, created_at, comment_count, unique_users) VALUES
+('Welcome to Adventure', 'Discuss Adventure Game here', '2024-06-02 08:15:00', 0, 0),
+('Altos Tips', 'Share Altos Odyssey tips', '2024-06-11 10:30:00', 0, 0),
+('Dungeon Strategies', 'Strategies for Dungeon Game', '2024-09-02 13:45:00', 0, 0),
+('Racing League', 'Competitive racing discussion', '2024-09-12 16:00:00', 0, 0),
+('Indie Devs', 'Talk about indie development', '2024-05-20 12:00:00', 0, 0);
 
--- UPDATE privileges for user (all EXCEPT developer, admin, report, tag, update_version_relation)
-GRANT UPDATE ON Y25_DB.User TO 'user'@'localhost';
-GRANT UPDATE ON Y25_DB.session TO 'user'@'localhost';
-GRANT UPDATE ON Y25_DB.publisher TO 'user'@'localhost';
-GRANT UPDATE ON Y25_DB.game TO 'user'@'localhost';
-GRANT UPDATE ON Y25_DB.game_update_history TO 'user'@'localhost';
-GRANT UPDATE ON Y25_DB.forum TO 'user'@'localhost';
-GRANT UPDATE ON Y25_DB.comment TO 'user'@'localhost';
-GRANT UPDATE ON Y25_DB.reply TO 'user'@'localhost';
-GRANT UPDATE ON Y25_DB.play TO 'user'@'localhost';
-GRANT UPDATE ON Y25_DB.create_relation TO 'user'@'localhost';
-GRANT UPDATE ON Y25_DB.forum_participants TO 'user'@'localhost';
+-- Comments (simple table in this test file)
+INSERT INTO comment (comment_text, created_at) VALUES
+('Great game, loved the exploration!', '2024-06-03 16:20:00'),
+('Nice update, performance improved', '2024-07-06 11:45:00'),
+('Found a bug in level 3', '2024-08-06 14:30:00'),
+('How to beat the boss?', '2024-09-13 09:15:00'),
+('Any plans for co-op?', '2024-05-21 17:50:00');
 
--- DELETE privileges for user (only session, forum, comment, reply, create_relation)
-GRANT DELETE ON Y25_DB.session TO 'user'@'localhost';
-GRANT DELETE ON Y25_DB.forum TO 'user'@'localhost';
-GRANT DELETE ON Y25_DB.comment TO 'user'@'localhost';
-GRANT DELETE ON Y25_DB.reply TO 'user'@'localhost';
-GRANT DELETE ON Y25_DB.create_relation TO 'user'@'localhost';
+-- Replies linking comments to forum threads and users
+INSERT INTO reply (thread_name, username, comment_id, reply_to_comment_id) VALUES
+('Welcome to Adventure', 'john_doe', 1, NULL),
+('Altos Tips', 'jane_smith', 2, NULL),
+('Dungeon Strategies', 'alex_dev', 3, NULL),
+('Racing League', 'pub_one', 4, NULL),
+('Indie Devs', 'pub_two', 5, NULL);
 
--- =====================================================
--- ADMIN ROLE PERMISSIONS
--- =====================================================
--- ADMIN can: INSERT, SELECT, UPDATE, DELETE on ALL tables
+-- Create relations: who created which thread and linked to games
+INSERT INTO create_relation (thread_name, username, game_id) VALUES
+('Welcome to Adventure', 'sarah_pub', 1),
+('Altos Tips', 'jane_smith', 2),
+('Dungeon Strategies', 'pub_one', 8),
+('Racing League', 'pub_two', 17),
+('Indie Devs', 'pub_three', 6);
 
-GRANT INSERT, SELECT, UPDATE, DELETE ON Y25_DB.* TO 'admin'@'localhost';
+-- Play records (accumulated play time in minutes)
+INSERT INTO play (username, game_id, accumulate_play_time) VALUES
+('john_doe', 1, 240),
+('jane_smith', 2, 180),
+('alex_dev', 8, 95),
+('sarah_pub', 11, 300),
+('pub_one', 17, 60);
 
--- =====================================================
--- DEVELOPER ROLE PERMISSIONS
--- =====================================================
--- DEVELOPER can:
--- INSERT: All tables
--- UPDATE: All tables
--- DELETE: All tables
--- SELECT: All tables EXCEPT admin
+-- Tags (Multivalued)
+INSERT INTO tag (tag_name, game_id) VALUES
+('Fantasy', 1),
+('RPG', 8),
+('FPS', 17),
+('MOBA', 6),
+('RTS', 3),
+('MOBA', 3),
+('FPS', 1),
+('RTS', 5),
+('Fantasy', 10),
+('MOBA', 10),
+('FPS', 20),
+('RPG', 20);
 
-GRANT INSERT, UPDATE, DELETE ON Y25_DB.* TO 'developer'@'localhost';
+-- Reports
+INSERT INTO report (username, game_id, report_topic, detail, report_time) VALUES
+('john_doe', 1, 'Bug', 'Character gets stuck in corner', '2024-06-03 17:30:00'),
+('jane_smith', 2, 'Lag', 'Experiencing delays in multiplayer', '2024-07-17 09:15:00'),
+('alex_dev', 8, 'Disconnect', 'Random disconnections during runs', '2024-09-02 11:45:00'),
+('sarah_pub', 11, 'Bug', 'Score not counted', '2024-06-06 10:00:00'),
+('pub_one', 17, 'Lag', 'Server lag spikes', '2024-09-11 12:20:00');
 
--- SELECT privileges for developer (all EXCEPT admin)
-GRANT SELECT ON Y25_DB.User TO 'developer'@'localhost';
-GRANT SELECT ON Y25_DB.session TO 'developer'@'localhost';
-GRANT SELECT ON Y25_DB.developer TO 'developer'@'localhost';
-GRANT SELECT ON Y25_DB.publisher TO 'developer'@'localhost';
-GRANT SELECT ON Y25_DB.game TO 'developer'@'localhost';
-GRANT SELECT ON Y25_DB.game_update_history TO 'developer'@'localhost';
-GRANT SELECT ON Y25_DB.forum TO 'developer'@'localhost';
-GRANT SELECT ON Y25_DB.comment TO 'developer'@'localhost';
-GRANT SELECT ON Y25_DB.reply TO 'developer'@'localhost';
-GRANT SELECT ON Y25_DB.report TO 'developer'@'localhost';
-GRANT SELECT ON Y25_DB.play TO 'developer'@'localhost';
-GRANT SELECT ON Y25_DB.tag TO 'developer'@'localhost';
-GRANT SELECT ON Y25_DB.create_relation TO 'developer'@'localhost';
-GRANT SELECT ON Y25_DB.update_version_relation TO 'developer'@'localhost';
-GRANT SELECT ON Y25_DB.forum_participants TO 'developer'@'localhost';
+-- Sessions (last_login_time used in this test file)
+INSERT INTO session (username, last_login_time, device) VALUES
+('john_doe', '2024-09-01 13:45:00', 'Windows PC'),
+('jane_smith', '2024-09-02 15:30:00', 'MacBook Pro'),
+('alex_dev', '2024-09-03 10:15:00', 'Linux Workstation'),
+('sarah_pub', '2024-09-04 19:20:00', 'Android Tablet'),
+('pub_one', '2024-09-05 14:10:00', 'iPhone');
 
--- =====================================================
--- APPLY CHANGES
--- =====================================================
 
+-- Unified application user creation script (merged)
+-- Provides two options:
+--  (A) Legacy broad user ("user") with extra table privileges (for transitional debugging)
+--  (B) Principle-of-least-privilege EXECUTE-only user ("y25_app") for production
+-- Choose ONE to activate by commenting out the other section.
+
+USE Y25_DB;
+
+-- =============================================================
+-- Cleanup: drop any existing users (idempotent)
+-- =============================================================
+DROP USER IF EXISTS 'user'@'localhost';
+
+-- =============================================================
+-- (B) Secure exec-only user (recommended for production)
+-- =============================================================
+-- IMPORTANT: Change password before deploying to production.
+CREATE USER 'user'@'localhost' IDENTIFIED BY 'ToonFilmFirstWinnerPokPokPok1234';
+GRANT EXECUTE ON Y25_DB.* TO 'user'@'localhost';
+
+-- Optional test calls (uncomment to verify after loading procedures):
+-- CALL sp_check_username('sample');
+-- CALL sp_get_games_list(NULL, 5, 0);
+
+-- =============================================================
+-- (A) Legacy user with extra direct table access (only enable temporarily)
+-- =============================================================
+-- Uncomment this block ONLY if you need direct table visibility for debugging.
+-- CREATE USER 'user'@'localhost' IDENTIFIED BY 'legacy_debug_password_change_me';
+-- GRANT EXECUTE ON Y25_DB.* TO 'user'@'localhost';
+-- GRANT SELECT ON Y25_DB.session TO 'user'@'localhost';
+-- GRANT INSERT, UPDATE ON Y25_DB.session TO 'user'@'localhost';
+
+-- =============================================================
+-- Flush and verification
+-- =============================================================
 FLUSH PRIVILEGES;
+
+-- Verify active production user
+SELECT User, Host FROM mysql.user WHERE User IN ('user','user');
+SHOW GRANTS FOR 'user'@'localhost';
+-- SHOW GRANTS FOR 'user'@'localhost'; -- Uncomment if legacy user created
+
+-- =============================================================
+-- Quick manual tests (run as user):
+-- mysql -u user -p
+-- USE Y25_DB;
+-- SELECT * FROM User LIMIT 1;            -- Expected: permission denied
+-- CALL sp_check_username('test');        -- Expected: returns count
+-- CALL sp_get_trending_games(5);         -- Expected: returns rows
+
+-- Rollback instructions:
+-- DROP USER 'user'@'localhost';
+-- Re-create with new password if compromised.
