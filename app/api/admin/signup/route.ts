@@ -7,6 +7,9 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import crypto from 'crypto';
 
+// Pepper value - must match the one used in login and y25-design
+const PEPPER = process.env.PEPPER_KEY;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -51,18 +54,24 @@ export async function POST(request: Request) {
         );
       }
 
-      // Generate salt and hash password
-      const saltRandomValue = crypto.randomBytes(16);
+      // Generate salt and hash password using same method as login
+      const saltRandomValue = crypto.randomBytes(32);
+      const saltHex = saltRandomValue.toString('hex');
+      
+      // Use SHA256 hash with salt and pepper (same as login verification)
       const passwordEncrypted = crypto
-        .pbkdf2Sync(password, saltRandomValue, 100000, 64, 'sha512')
-        .toString('hex');
+        .createHash('sha256')
+        .update(password + saltHex + PEPPER)
+        .digest('hex');
 
       // Begin transaction-like operation
-      // 1. Create user
+      // 1. Create user (store salt as hex string, not binary)
       const [userResult] = await connection.query(
         'INSERT INTO User (username, password_encrypted, salt_random_value, email, DOB, sex) VALUES (?, ?, ?, ?, ?, ?)',
-        [username, passwordEncrypted, saltRandomValue, email, dob, sex]
+        [username, passwordEncrypted, saltHex, email, dob, sex]
       );
+
+      console.log(`[Admin Signup] New ${role} created: ${username}, salt_hex: ${saltHex}`);
 
       // 2. Create developer or admin record
       if (role === 'developer') {
