@@ -137,11 +137,13 @@ function formatCurrency(value: number | null | undefined): string {
   })}`;
 }
 
-function formatPlaytime(minutes: number | null | undefined): string {
-  if (minutes === null || minutes === undefined || Number.isNaN(minutes)) {
+function formatPlaytime(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined || Number.isNaN(seconds)) {
     return "—";
   }
 
+  const minutes = Math.floor(seconds / 60);
+  
   if (minutes < 60) {
     return `${minutes}m`;
   }
@@ -274,9 +276,21 @@ const mergeGameLists = (current: Game[], incoming: Game[]): Game[] => {
   incoming.forEach((game) => {
     const existing = currentMap.get(game.id);
     if (existing) {
+      // Prefer any non-Pending game status from existing when incoming lacks or is Pending
+      const resolvedGameStatus =
+        (game.gameStatus && game.gameStatus !== 'Pending')
+          ? game.gameStatus
+          : existing.gameStatus;
+
+      const resolvedUpdateStatus = game.updateStatus ?? existing.updateStatus;
+      const resolvedPatchNumber = game.patchNumber ?? existing.patchNumber;
+
       merged.push({
         ...existing,
         ...game,
+        gameStatus: resolvedGameStatus,
+        updateStatus: resolvedUpdateStatus,
+        patchNumber: resolvedPatchNumber,
         metrics: {
           total_players: game.metrics.total_players ?? existing.metrics.total_players ?? null,
           average_playtime: game.metrics.average_playtime ?? existing.metrics.average_playtime ?? null,

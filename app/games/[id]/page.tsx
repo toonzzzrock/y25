@@ -462,10 +462,11 @@ export default function GameDetailPage() {
   }, [game?.totalPlayers]);
   
   const avgPlayTimeDisplay = useMemo(() => {
-    const time = game?.averagePlayTime ?? 0;
-    if (time <= 0) return "No Data";
-    const hours = Math.floor(time / 60);
-    const minutes = Math.floor(time % 60);
+    const seconds = game?.averagePlayTime ?? 0;
+    if (seconds <= 0) return "No Data";
+    const totalMinutes = Math.floor(seconds / 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
     if (hours > 0) {
       return `${hours}h ${minutes}m`;
     } else {

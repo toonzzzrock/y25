@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       const [games] = await connection.query(
         `SELECT game_id as id, game_name as title, detail as description,
                 publisher_username as developer, link_to_file as image_url,
-                release_date, total_players
+                release_date, total_players, status AS game_status
          FROM game
          ${whereSql}
          ORDER BY release_date DESC, game_id DESC

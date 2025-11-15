@@ -91,20 +91,16 @@ export async function GET(request: NextRequest) {
          g.status AS game_status,
          g.total_players,
          g.average_play_time,
-         latest.patch_number,
-         latest.is_approve AS update_status
+         guh.patch_number,
+         guh.is_approve AS update_status
        FROM game g
-       LEFT JOIN (
-         SELECT game_id,
-                patch_number,
-                is_approve,
-                ROW_NUMBER() OVER (
-                  PARTITION BY game_id
-                  ORDER BY COALESCE(approve_time, update_time) DESC, update_id DESC
-                ) AS row_rank
-         FROM game_update_history
-       ) AS latest
-         ON latest.game_id = g.game_id AND latest.row_rank = 1
+       LEFT JOIN game_update_history guh ON guh.update_id = (
+         SELECT guh2.update_id
+         FROM game_update_history guh2
+         WHERE guh2.game_id = g.game_id
+         ORDER BY COALESCE(guh2.approve_time, guh2.update_time) DESC, guh2.update_id DESC
+         LIMIT 1
+       )
        WHERE g.publisher_username = ?
        ORDER BY g.release_date DESC, g.game_id DESC`,
       [session.username]

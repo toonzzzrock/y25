@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
         `SELECT
             p.game_id AS gameId,
             g.game_name AS gameName,
-            COALESCE(TIME_TO_SEC(p.accumulate_play_time), 0) AS playSeconds
+            COALESCE(p.accumulate_play_time, 0) AS playSeconds
          FROM play p
          LEFT JOIN game g ON g.game_id = p.game_id
          WHERE p.username = ?
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       );
 
       const [totalPlayRows] = await connection.query(
-        `SELECT COALESCE(SUM(TIME_TO_SEC(accumulate_play_time)), 0) AS totalSeconds
+        `SELECT COALESCE(SUM(accumulate_play_time), 0) AS totalSeconds
          FROM play
          WHERE username = ?`,
         [record.username]

@@ -73,6 +73,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!description || !description.toString().trim()) {
+      return NextResponse.json(
+        { error: 'Game description is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!linkToFilePath || !linkToFilePath.toString().trim()) {
+      return NextResponse.json(
+        { error: 'Main file path is required' },
+        { status: 400 }
+      );
+    }
+
     if (!gameProfile) {
       return NextResponse.json(
         { error: 'Game profile image is required' },
@@ -100,8 +114,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Create game via procedure
-    const createRows: any[] = await callProcedure<any[]>('sp_create_game', [session.username, gameName, description || null]);
-    const gameId = Array.isArray(createRows) && createRows[0] && createRows[0].game_id ? createRows[0].game_id : (createRows[0]?.insertId || createRows?.insertId);
+    const now = new Date();
+    const releaseDate = now.toISOString().slice(0,19).replace('T',' '); // initial release timestamp or could defer
+    const status = 'Pending';
+    // Temporary link placeholder; will be updated after files are written
+    const tempLink = '/data/game/pending';
+    const createRows: any[] = await callProcedure<any[]>('sp_create_game', [
+      session.username,
+      gameName,
+      description || null,
+      tempLink,
+      releaseDate,
+      status
+    ]);
+    // sp_create_game returns a single row with game_id
+    const gameId = Array.isArray(createRows) && createRows[0] && createRows[0].game_id
+      ? createRows[0].game_id
+      : null;
+    if (!gameId) {
+      return NextResponse.json({ error: 'Failed to obtain new game id' }, { status: 500 });
+    }
 
     // Create game directory structure
     const gameDir = path.join(process.cwd(), 'public', 'data', 'game', String(gameId));
@@ -140,11 +172,14 @@ export async function POST(request: NextRequest) {
       await writeFile(filePath, fileBuffer);
     }
 
+    const sanitizedPath = String(linkToFilePath).trim();
+    const finalLink = '/data/game/' + gameId + '/game_version/0/' + (sanitizedPath || 'index.html');
+
+    // Update game link_to_file now that files exist
+    await pool.query('UPDATE game SET link_to_file = ? WHERE game_id = ?', [finalLink, gameId]);
+
     // Insert initial game update history record via procedure
-    await callProcedure('sp_game_add_initial_update', [
-      gameId,
-      '/data/game/' + gameId + '/game_version/0/' + (linkToFilePath || 'index.html'),
-    ]);
+    await callProcedure('sp_game_add_initial_update', [gameId, finalLink]);
 
     return NextResponse.json(
       {

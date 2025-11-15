@@ -67,6 +67,16 @@ export default function UploadModal({ isOpen, onClose, onSuccess, showNotificati
       return;
     }
 
+    if (!description.trim()) {
+      showNotification('Please enter a game description', 'error');
+      return;
+    }
+
+    if (!linkToFilePath.trim()) {
+      showNotification('Please enter the main file path (e.g., index.html)', 'error');
+      return;
+    }
+
     if (!gameProfile) {
       showNotification('Please select a game profile image', 'error');
       return;
@@ -209,7 +219,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, showNotificati
               marginBottom: '0.5rem',
               fontWeight: 600,
             }}>
-              Game Description
+              Game Description *
             </label>
             <textarea
               value={description}
@@ -238,7 +248,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, showNotificati
               marginBottom: '0.5rem',
               fontWeight: 600,
             }}>
-              Main File Path
+              Main File Path *
             </label>
             <input
               type="text"
