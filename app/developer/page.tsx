@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./developer.module.css";
+import { DeveloperLogoutButton } from "./components/DeveloperLogoutButton";
 
 interface SystemStats {
   uptime: number;
@@ -26,9 +28,27 @@ interface ConJob {
 }
 
 export default function DeveloperDashboardPage() {
+  const router = useRouter();
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [jobs, setJobs] = useState<ConJob[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Check authentication on mount
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const response = await fetch("/api/developer/session");
+        const data = await response.json();
+        if (!data.authenticated) {
+          router.push("/developer/login");
+        }
+      } catch (error) {
+        console.log("Session check failed:", error);
+        router.push("/developer/login");
+      }
+    };
+    checkSession();
+  }, [router]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -74,8 +94,9 @@ export default function DeveloperDashboardPage() {
         <div style={{ display: "flex", alignItems: "center" }}>
           <span className={styles["logo-y25"]}>Y25</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           <span className={styles["dev-label"]}>DEVELOPER</span>
+          <DeveloperLogoutButton />
         </div>
       </header>
 
