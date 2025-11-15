@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import type { PoolConnection } from 'mysql2/promise';
-import { pool } from '@/lib/db';
+import { pool, callProcedure } from '@/lib/db';
 
 type SessionUser = {
   username: string;
@@ -63,12 +63,8 @@ export async function DELETE(request: NextRequest) {
 
     connection = await pool.getConnection();
 
-    // First, verify that the game belongs to this publisher
-    const [gameRows] = await connection.query(
-      'SELECT game_id, game_name, publisher_username FROM game WHERE game_id = ? LIMIT 1',
-      [gameId]
-    );
-
+    // First, verify that the game belongs to this publisher (via stored procedure)
+    const gameRows: any[] = await callProcedure<any[]>('sp_get_game_owner', [gameId]);
     if (!Array.isArray(gameRows) || gameRows.length === 0) {
       return NextResponse.json(
         { error: 'Game not found' },
@@ -86,44 +82,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete related records that don't have ON DELETE CASCADE
-    // Note: We delete in order to avoid foreign key constraint errors
-    
-    // 1. Delete game update history
-    await connection.query(
-      'DELETE FROM game_update_history WHERE game_id = ?',
-      [gameId]
-    );
-
-    // 2. Delete reports
-    await connection.query(
-      'DELETE FROM report WHERE game_id = ?',
-      [gameId]
-    );
-
-    // 3. Delete create_relation records (forum thread connections)
-    await connection.query(
-      'DELETE FROM create_relation WHERE game_id = ?',
-      [gameId]
-    );
-
-    // 4. Delete play records (user play statistics)
-    await connection.query(
-      'DELETE FROM play WHERE game_id = ?',
-      [gameId]
-    );
-
-    // 5. Delete tag records (game categorization)
-    await connection.query(
-      'DELETE FROM tag WHERE game_id = ?',
-      [gameId]
-    );
-
-    // 6. Now delete the game
-    await connection.query(
-      'DELETE FROM game WHERE game_id = ?',
-      [gameId]
-    );
+    // Delegate cascade-safe deletion to stored procedure
+    await callProcedure('sp_delete_game', [gameId]);
 
     return NextResponse.json(
       {

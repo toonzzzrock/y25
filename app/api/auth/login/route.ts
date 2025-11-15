@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { pool, callProcedure } from '@/lib/db';
 import { verifyPassword } from '@/lib/auth';
 import { randomBytes, createHash } from 'crypto';
 
@@ -66,11 +66,8 @@ export async function POST(request: NextRequest) {
 
     const connection = await pool.getConnection();
     try {
-      // Get user from database - check by username OR email
-      const [users] = await connection.query(
-        `SELECT username, password_encrypted, salt_random_value, email FROM User WHERE username = ? OR email = ?`,
-        [username, username]
-      );
+      // Get user from database via stored procedure - check by username OR email
+      const users: any[] = await callProcedure<any[]>('sp_validate_login_fetch', [username]);
 
       if ((users as any[]).length === 0) {
         console.warn('[api/auth/login] Identifier not found.', {
@@ -128,22 +125,13 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const [publisherRows] = await connection.query(
-        'SELECT account_name FROM publisher WHERE username = ? LIMIT 1',
-        [user.username]
-      );
-
-      const isPublisher = Array.isArray(publisherRows) && publisherRows.length > 0;
+      const pubRows: any[] = await callProcedure<any[]>('sp_publisher_exists', [user.username]);
+      const isPublisher = Array.isArray(pubRows) && pubRows[0] && (pubRows[0].exists_flag === 1 || pubRows[0].exists_flag === true);
       const role: 'publisher' | 'user' = isPublisher ? 'publisher' : 'user';
       const deviceFingerprint = buildDeviceFingerprint(request);
 
       try {
-        await connection.query('DELETE FROM session WHERE username = ?', [user.username]);
-        await connection.query(
-          `INSERT INTO session (username, last_login_time, device)
-           VALUES (?, NOW(), ?)` as string,
-          [user.username, deviceFingerprint]
-        );
+        await callProcedure('sp_insert_session', [user.username, deviceFingerprint]);
       } catch (error) {
         console.error('Failed to upsert session record:', error);
         throw new Error('Unable to record session information');

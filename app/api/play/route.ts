@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { PoolConnection } from 'mysql2/promise';
-import { pool } from '@/lib/db';
+import { pool, callProcedure } from '@/lib/db';
 
 interface SessionUser {
   username: string;
@@ -85,12 +85,7 @@ export async function POST(request: NextRequest) {
   try {
     connection = await pool.getConnection();
 
-    await connection.execute(
-      `INSERT INTO play (username, game_id, accumulate_play_time)
-       VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE accumulate_play_time = accumulate_play_time + VALUES(accumulate_play_time)` as string,
-      [session.username, payload.gameId, seconds]
-    );
+    await callProcedure('sp_play_add_time', [session.username, payload.gameId, seconds]);
 
     return NextResponse.json({ ok: true, trackedSeconds: seconds }, { status: 200 });
   } catch (error) {

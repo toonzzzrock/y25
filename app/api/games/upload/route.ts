@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { pool, callProcedure } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
@@ -89,27 +89,19 @@ export async function POST(request: NextRequest) {
 
     connection = await pool.getConnection();
 
-    // Check if user is a publisher
-    const [publisherRows] = await connection.query(
-      'SELECT username FROM publisher WHERE username = ? LIMIT 1',
-      [session.username]
-    );
-
-    if (!Array.isArray(publisherRows) || publisherRows.length === 0) {
+    // Check if user is a publisher (via proc)
+    const pubExists: any[] = await callProcedure<any[]>('sp_publisher_exists', [session.username]);
+    const existsFlag = Array.isArray(pubExists) && pubExists[0] && (pubExists[0].exists_flag === 1 || pubExists[0].exists_flag === true);
+    if (!existsFlag) {
       return NextResponse.json(
         { error: 'Only publishers can upload games' },
         { status: 403 }
       );
     }
 
-    // Insert game into database
-    const [result] = await connection.query(
-      `INSERT INTO game (game_name, detail, total_players, average_play_time, publisher_username)
-       VALUES (?, ?, 0, 0, ?)`,
-      [gameName, description || null, session.username]
-    ) as any;
-
-    const gameId = result.insertId;
+    // Create game via procedure
+    const createRows: any[] = await callProcedure<any[]>('sp_create_game', [session.username, gameName, description || null]);
+    const gameId = Array.isArray(createRows) && createRows[0] && createRows[0].game_id ? createRows[0].game_id : (createRows[0]?.insertId || createRows?.insertId);
 
     // Create game directory structure
     const gameDir = path.join(process.cwd(), 'public', 'data', 'game', String(gameId));
@@ -148,12 +140,11 @@ export async function POST(request: NextRequest) {
       await writeFile(filePath, fileBuffer);
     }
 
-    // Insert initial game update history record
-    await connection.query(
-      `INSERT INTO game_update_history (patch_number, title, detail, link_to_new_file, game_id)
-       VALUES ('0', 'init', 'init', ?, ?)`,
-      ['/data/game/' + gameId + '/game_version/0/' + (linkToFilePath || 'index.html'), gameId]
-    );
+    // Insert initial game update history record via procedure
+    await callProcedure('sp_game_add_initial_update', [
+      gameId,
+      '/data/game/' + gameId + '/game_version/0/' + (linkToFilePath || 'index.html'),
+    ]);
 
     return NextResponse.json(
       {

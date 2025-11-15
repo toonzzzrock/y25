@@ -1,4 +1,4 @@
-import { pool } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 
 export async function GET(request: Request) {
   try {
@@ -12,13 +12,10 @@ export async function GET(request: Request) {
       );
     }
 
-    // Check if email exists in database
-    const [rows] = await pool.query(
-      'SELECT * FROM `User` WHERE email = ?',
-      [email]
-    );
-
-    const available = (rows as any[]).length === 0;
+    // Check if email exists in database via procedure
+    const rows: any[] = await callProcedure<any[]>('sp_check_email', [email]);
+    const count = Array.isArray(rows) && rows[0]?.count != null ? Number(rows[0].count) : 0;
+    const available = count === 0;
 
     return Response.json({ available });
   } catch (error) {

@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { pool, callProcedure } from '@/lib/db';
 import { generateSalt, hashPassword, validatePasswordStrength, validateEmail } from '@/lib/auth';
 import type { RowDataPacket } from 'mysql2';
 
@@ -83,10 +83,7 @@ export async function POST(request: NextRequest) {
     // Check for username and email availability
     const connection = await pool.getConnection();
     try {
-      const [usernameRows] = await connection.query<RowDataPacket[]>(
-        'SELECT COUNT(*) as count FROM `User` WHERE username = ?',
-        [username]
-      );
+      const usernameRows = await callProcedure<RowDataPacket[]>('sp_check_username', [username]);
       const usernameCount = (usernameRows[0]?.count as number | undefined) ?? 0;
       if (usernameCount > 0) {
         return NextResponse.json(
@@ -95,10 +92,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const [emailRows] = await connection.query<RowDataPacket[]>(
-        'SELECT COUNT(*) as count FROM `User` WHERE email = ?',
-        [email]
-      );
+      const emailRows = await callProcedure<RowDataPacket[]>('sp_check_email', [email]);
       const emailCount = (emailRows[0]?.count as number | undefined) ?? 0;
       if (emailCount > 0) {
         return NextResponse.json(
@@ -114,22 +108,19 @@ export async function POST(request: NextRequest) {
       // Get current timestamp in MySQL format
       const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
-      // Insert user into database
-      // Store salt as hex string for consistency
-      await connection.query(
-        `INSERT INTO User (username, password_encrypted, salt_random_value, email, DOB, sex, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [username, hashedPassword, salt.toString('hex'), email, dateOfBirth, normalizedSex, now]
-      );
-
-      // If user role is Publisher, add to publisher table
-      if (normalizedUserType === 'publisher') {
-        await connection.query(
-          `INSERT INTO publisher (username, account_name, bank_account_serial)
-           VALUES (?, ?, ?)`,
-          [username, trimmedBankAccountName || username, trimmedBankAccountSerial]
-        );
-      }
+      // Insert user (and optionally publisher) via stored procedure
+      await callProcedure('sp_register_user_with_optional_publisher', [
+        username,
+        email,
+        dateOfBirth,
+        normalizedSex,
+        hashedPassword,
+        salt.toString('hex'),
+        now,
+        normalizedUserType === 'publisher',
+        trimmedBankAccountName || username,
+        trimmedBankAccountSerial,
+      ]);
 
       return NextResponse.json(
         {
