@@ -1,48 +1,56 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-export function DeveloperLogoutButton() {
+export default function DeveloperLogoutButton() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogout = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch("/api/developer/logout", {
         method: "POST",
       });
 
       if (response.ok) {
+        console.log("[Logout] Successfully logged out");
         router.push("/developer/login");
+      } else {
+        console.error("[Logout] Failed to logout");
       }
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("[Logout] Error:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <button
       onClick={handleLogout}
+      disabled={isLoading}
       style={{
-        background: "linear-gradient(135deg, #ff7a2b 0%, #ff6a00 100%)",
-        color: "white",
+        padding: "8px 16px",
+        backgroundColor: "#d73a2c",
+        color: "#fff",
         border: "none",
-        borderRadius: "6px",
-        padding: "10px 20px",
+        borderRadius: "4px",
+        cursor: isLoading ? "not-allowed" : "pointer",
         fontSize: "14px",
-        fontWeight: 700,
-        cursor: "pointer",
-        transition: "all 0.3s ease",
+        fontWeight: "500",
+        transition: "background-color 0.2s",
+        opacity: isLoading ? 0.7 : 1,
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-2px)";
-        e.currentTarget.style.boxShadow = "0 8px 20px rgba(255, 122, 43, 0.3)";
+        if (!isLoading) e.currentTarget.style.backgroundColor = "#b92a1f";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "none";
+        e.currentTarget.style.backgroundColor = "#d73a2c";
       }}
     >
-      LOGOUT
+      {isLoading ? "Logging out..." : "Logout"}
     </button>
   );
 }

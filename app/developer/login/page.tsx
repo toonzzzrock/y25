@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./login.module.css";
 
@@ -8,11 +8,11 @@ export default function DeveloperLoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Check if already logged in
   useEffect(() => {
+    // Check if already logged in
     const checkSession = async () => {
       try {
         const response = await fetch("/api/developer/session");
@@ -20,17 +20,20 @@ export default function DeveloperLoginPage() {
         if (data.authenticated) {
           router.push("/developer");
         }
-      } catch (err) {
-        console.log("Session check failed:", err);
+      } catch (error) {
+        // Session check failed, user is not logged in
+        console.log("Session check failed:", error);
       }
     };
     checkSession();
   }, [router]);
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    setIsLoading(true);
+    setLoading(true);
+
+    console.log("[DEVELOPER LOGIN PAGE] Submitting login for username:", username);
 
     try {
       const response = await fetch("/api/developer/login", {
@@ -39,78 +42,75 @@ export default function DeveloperLoginPage() {
         body: JSON.stringify({ username, password }),
       });
 
+      console.log("[DEVELOPER LOGIN PAGE] Response status:", response.status);
+
+      const data = await response.json();
+
+      console.log("[DEVELOPER LOGIN PAGE] Response data:", data);
+
       if (!response.ok) {
-        const data = await response.json();
+        console.log("[DEVELOPER LOGIN PAGE] Login failed with error:", data.error);
         setError(data.error || "Login failed");
-        setIsLoading(false);
         return;
       }
 
-      // Login successful, redirect to developer dashboard
+      // Login successful
+      console.log("[DEVELOPER LOGIN PAGE] Login successful, redirecting to developer");
       router.push("/developer");
     } catch (err) {
-      console.error("Login error:", err);
-      setError("An error occurred during login");
-      setIsLoading(false);
+      console.error("[DEVELOPER LOGIN PAGE] Error:", err);
+      setError("An error occurred. Please try again.");
+    } finally {
+      setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className={styles["login-container"]}>
-      <div className={styles["login-box"]}>
-        <div className={styles["header"]}>
-          <h1 className={styles["logo"]}>Y25</h1>
-          <p className={styles["subtitle"]}>DEVELOPER ACCESS</p>
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <div className={styles.headerLeft}>
+          <span className={styles.logo}>Y25</span>
+          <span className={styles.siteTitle}>/ DEVELOPER</span>
         </div>
+      </header>
 
-        <form onSubmit={handleSubmit} className={styles["form"]}>
-          <div className={styles["form-group"]}>
-            <label htmlFor="username" className={styles["label"]}>
-              Username
-            </label>
-            <input
-              id="username"
-              type="text"
-              placeholder="Enter your username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className={styles["input"]}
-              disabled={isLoading}
-              required
-            />
-          </div>
+      <main className={styles.main}>
+        <div className={styles.container}>
+          <h1 className={styles.title}>DEVELOPER LOGIN</h1>
 
-          <div className={styles["form-group"]}>
-            <label htmlFor="password" className={styles["label"]}>
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={styles["input"]}
-              disabled={isLoading}
-              required
-            />
-          </div>
+          <form onSubmit={handleSubmit} className={styles.form}>
+            <div className={styles.formGroup}>
+              <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className={styles.input}
+                disabled={loading}
+                required
+              />
+            </div>
 
-          {error && <div className={styles["error-message"]}>{error}</div>}
+            <div className={styles.formGroup}>
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={styles.input}
+                disabled={loading}
+                required
+              />
+            </div>
 
-          <button
-            type="submit"
-            className={styles["login-button"]}
-            disabled={isLoading}
-          >
-            {isLoading ? "Logging in..." : "LOGIN"}
-          </button>
-        </form>
+            {error && <p className={styles.error}>{error}</p>}
 
-        <div className={styles["footer"]}>
-          <p>Developer Console</p>
+            <button type="submit" className={styles.button} disabled={loading}>
+              {loading ? "Logging in..." : "Login"}
+            </button>
+          </form>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

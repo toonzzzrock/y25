@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./developer.module.css";
-import { DeveloperLogoutButton } from "./components/DeveloperLogoutButton";
+import DeveloperLogoutButton from "./components/DeveloperLogoutButton";
 
 interface SystemStats {
   uptime: number;
@@ -95,7 +95,9 @@ export default function DeveloperDashboardPage() {
           <span className={styles["logo-y25"]}>Y25</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           <span className={styles["dev-label"]}>DEVELOPER</span>
+          <DeveloperLogoutButton />
           <DeveloperLogoutButton />
         </div>
       </header>
