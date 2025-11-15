@@ -538,13 +538,14 @@ export default function GameDetailPage() {
       showNotification("Report submitted successfully", "success");
       setReportTopic("");
       setReportDetail("");
+      closeReport();
     } catch (error: any) {
       console.error("Report submit error:", error);
       showNotification(error?.message || "Failed to submit report", "error");
     } finally {
       setIsSubmittingReport(false);
     }
-  }, [game, reportDetail, reportTopic, showNotification]);
+  }, [closeReport, game, reportDetail, reportTopic, showNotification]);
 
   const handleFullscreen = useCallback(async () => {
   const renderReportModal = () => {
