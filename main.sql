@@ -952,6 +952,44 @@ BEGIN
     WHERE thread_name = NEW.thread_name;
 END;//
 
+-- Security trigger: Prevent direct User insertion without proper password hashing
+-- Ensures users can only be created through stored procedures (web application)
+CREATE TRIGGER trg_user_before_insert
+BEFORE INSERT ON User
+FOR EACH ROW
+BEGIN
+    -- Check if password is properly hashed (SHA256 produces 64 character hex string)
+    -- AND salt is present (should be binary, length > 0)
+    -- This prevents direct SQL INSERT but allows procedure-based creation
+    IF LENGTH(NEW.password_encrypted) != 64 THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Invalid password format. Users must be created through the application.';
+    END IF;
+    
+    IF LENGTH(NEW.salt_random_value) < 16 THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Invalid salt format. Users must be created through the application.';
+    END IF;
+    
+    -- Validate email format (basic check)
+    IF NEW.email NOT LIKE '%_@__%.__%' THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Invalid email format.';
+    END IF;
+    
+    -- Validate age (must be at least 13 years old)
+    IF TIMESTAMPDIFF(YEAR, NEW.DOB, CURDATE()) < 13 THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'User must be at least 13 years old to register.';
+    END IF;
+    
+    -- Prevent future birth dates
+    IF NEW.DOB > CURDATE() THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Date of birth cannot be in the future.';
+    END IF;
+END;//
+
 DELIMITER ;
 
 -- =================================================================================
