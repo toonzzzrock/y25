@@ -958,18 +958,6 @@ CREATE TRIGGER trg_user_before_insert
 BEFORE INSERT ON User
 FOR EACH ROW
 BEGIN
-    -- Check if password is properly hashed (SHA256 produces 64 character hex string)
-    -- AND salt is present (should be binary, length > 0)
-    -- This prevents direct SQL INSERT but allows procedure-based creation
-    IF LENGTH(NEW.password_encrypted) != 64 THEN
-        SIGNAL SQLSTATE '45000' 
-        SET MESSAGE_TEXT = 'Invalid password format. Users must be created through the application.';
-    END IF;
-    
-    IF LENGTH(NEW.salt_random_value) < 16 THEN
-        SIGNAL SQLSTATE '45000' 
-        SET MESSAGE_TEXT = 'Invalid salt format. Users must be created through the application.';
-    END IF;
     
     -- Validate email format (basic check)
     IF NEW.email NOT LIKE '%_@__%.__%' THEN
@@ -1153,53 +1141,6 @@ INSERT INTO session (username, last_login_time, device) VALUES
 -- Choose ONE to activate by commenting out the other section.
 
 USE Y25_DB;
-
--- =============================================================
--- Cleanup: drop any existing users (idempotent)
--- =============================================================
-DROP USER IF EXISTS 'user'@'localhost';
-
--- =============================================================
--- (B) Secure exec-only user (recommended for production)
--- =============================================================
--- IMPORTANT: Change password before deploying to production.
-CREATE USER 'user'@'localhost' IDENTIFIED BY 'ToonFilmFirstWinnerPokPokPok1234';
-GRANT EXECUTE ON Y25_DB.* TO 'user'@'localhost';
-
--- Optional test calls (uncomment to verify after loading procedures):
--- CALL sp_check_username('sample');
--- CALL sp_get_games_list(NULL, 5, 0);
-
--- =============================================================
--- (A) Legacy user with extra direct table access (only enable temporarily)
--- =============================================================
--- Uncomment this block ONLY if you need direct table visibility for debugging.
--- CREATE USER 'user'@'localhost' IDENTIFIED BY 'legacy_debug_password_change_me';
--- GRANT EXECUTE ON Y25_DB.* TO 'user'@'localhost';
--- GRANT SELECT ON Y25_DB.session TO 'user'@'localhost';
--- GRANT INSERT, UPDATE ON Y25_DB.session TO 'user'@'localhost';
-
--- =============================================================
--- Flush and verification
--- =============================================================
-FLUSH PRIVILEGES;
-
--- Verify active production user
-SELECT User, Host FROM mysql.user WHERE User IN ('user','user');
-SHOW GRANTS FOR 'user'@'localhost';
--- SHOW GRANTS FOR 'user'@'localhost'; -- Uncomment if legacy user created
-
--- =============================================================
--- Quick manual tests (run as user):
--- mysql -u user -p
--- USE Y25_DB;
--- SELECT * FROM User LIMIT 1;            -- Expected: permission denied
--- CALL sp_check_username('test');        -- Expected: returns count
--- CALL sp_get_trending_games(5);         -- Expected: returns rows
-
--- Rollback instructions:
--- DROP USER 'user'@'localhost';
--- Re-create with new password if compromised.
 
 DELIMITER //
 -- Admin-specific procedures
