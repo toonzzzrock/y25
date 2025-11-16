@@ -957,9 +957,9 @@ DELIMITER ;
 -- =================================================================================
 -- FIX USER INSERTS!!
 INSERT INTO User (username, password_encrypted, salt_random_value, email, DOB, sex, created_at) VALUES
-('NormalAdmin', '08b3e8113def867697b3c4d0f4081319ccd15080a9e97d956d8bd13db8cbf8d5', 'b3efdea6f573ec8094fc511ce0e9e56f705c6d7720e63e2306aa6a70daaac5dd', 'NormalAdmin@gmail.com', '2003-12-29', 'Other', '2025-11-16 06:08:24');
-('NormalDev', '288a676c8632c2d4f3ef6245feb1ba03a5cea03440fed825004c8b1f4627bd27', '02ce7818f6b0086b2278b339665046d9b06a2181594588c8eb1e2cc3614d8f75', 'NormalDev@gmail.com', '2009-06-09', 'Other', '2025-11-16 13:10:51');
-('NormalPub', 'e2e32f032bd3191011ce4b49241c34e49ef18a54a9984e97618000863c6e4826', '1af87067c65f13cba5ce464348b4a48777fc225272e0292d4e2b3c5ddffe8fb0', 'NormalPub@gmail.com', '2000-06-01', 'Other', '2025-11-16 06:06:39');
+('NormalAdmin', '08b3e8113def867697b3c4d0f4081319ccd15080a9e97d956d8bd13db8cbf8d5', 'b3efdea6f573ec8094fc511ce0e9e56f705c6d7720e63e2306aa6a70daaac5dd', 'NormalAdmin@gmail.com', '2003-12-29', 'Other', '2025-11-16 06:08:24'),
+('NormalDev', '288a676c8632c2d4f3ef6245feb1ba03a5cea03440fed825004c8b1f4627bd27', '02ce7818f6b0086b2278b339665046d9b06a2181594588c8eb1e2cc3614d8f75', 'NormalDev@gmail.com', '2009-06-09', 'Other', '2025-11-16 13:10:51'),
+('NormalPub', 'e2e32f032bd3191011ce4b49241c34e49ef18a54a9984e97618000863c6e4826', '1af87067c65f13cba5ce464348b4a48777fc225272e0292d4e2b3c5ddffe8fb0', 'NormalPub@gmail.com', '2000-06-01', 'Other', '2025-11-16 06:06:39'),
 ('NormalUser', '5fe84cfe3a2f86da0a1c43c16596022071dfdf247ced665cd28e232123837ee4', 'c71d8297ca0d29c0b585a0628ee1040e280426b2a103bd9c9167f0b64d4ed5b8', 'NormalUser@gmail.com', '2003-02-03', 'Male', '2025-11-16 06:05:40');
 
 INSERT INTO admin (username) VALUES
