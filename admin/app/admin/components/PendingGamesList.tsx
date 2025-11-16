@@ -86,7 +86,22 @@ export function PendingGamesList({ games }: PendingGamesListProps) {
             <div key={game.id} className={styles.pendingCard}>
               <span className={styles.pendingGameId}>ID: {game.id}</span>
               <h4 className={styles.pendingTitle}>{game.name}</h4>
-              <div className={styles.pendingThumb} />
+              <div className={styles.pendingThumb}>
+                <img
+                  src={`/api/games/${game.id}/profile`}
+                  alt={game.name}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: '4px'
+                  }}
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.src = '/images/placeholder.svg';
+                  }}
+                />
+              </div>
               <span className={styles.pendingPublisher}>{submittedBy}</span>
               <span className={styles.pendingDate}>
                 Submitted {game.formattedDate}
