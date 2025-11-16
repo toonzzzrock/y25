@@ -23,12 +23,14 @@ type UserSummary = {
   username: string;
   email: string;
   createdAt: string;
+  device?: string | null;
 };
 
 type PublisherSummary = {
   username: string;
   accountName: string | null;
   publishedGames: number;
+  device?: string | null;
 };
 
 type GameSummary = {
@@ -192,6 +194,7 @@ async function getRecentUsers(): Promise<UserSummary[]> {
       username: String(row.username ?? ""),
       email: String(row.email ?? ""),
       createdAt: row.createdAt ? String(row.createdAt) : "",
+      device: row.device ? String(row.device) : null,
     }));
   } catch (error) {
     console.error("Failed to load users", error);
@@ -209,6 +212,7 @@ async function getPublishers(): Promise<PublisherSummary[]> {
       username: String(row.username ?? ""),
       accountName: row.accountName ? String(row.accountName) : null,
       publishedGames: Number(row.publishedGames ?? 0),
+      device: row.device ? String(row.device) : null,
     }));
   } catch (error) {
     console.error("Failed to load publishers", error);
@@ -363,7 +367,7 @@ export default async function AdminDashboardPage() {
               items={data.users.map((user) => ({
                 id: user.username,
                 primary: user.username,
-                secondary: user.email,
+                secondary: `${user.email}${user.device ? ` · ${user.device}` : ''}`,
                 tertiary: `Joined ${formatDate(user.createdAt)}`,
                 avatarUrl: `/api/users/${encodeURIComponent(user.username)}/avatar`,
               }))}
@@ -377,7 +381,7 @@ export default async function AdminDashboardPage() {
               items={data.publishers.map((publisher) => ({
                 id: publisher.username,
                 primary: publisher.username,
-                secondary: publisher.accountName ?? "No account name",
+                secondary: `${publisher.accountName ?? "No account name"}${publisher.device ? ` · ${publisher.device}` : ''}`,
                 tertiary: `${publisher.publishedGames} published game${
                   publisher.publishedGames === 1 ? "" : "s"
                 }`,
