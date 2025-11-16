@@ -1381,10 +1381,20 @@ END//
 
 CREATE PROCEDURE sp_admin_get_recent_users()
 BEGIN
-  SELECT u.username, u.email, u.created_at AS createdAt
+  SELECT u.username, u.email, u.created_at AS createdAt,
+         SUBSTRING_INDEX(s.device, '#', 1) as device
   FROM `User` u
   LEFT JOIN `publisher` p ON p.username = u.username
   LEFT JOIN `admin` a ON a.username = u.username
+  LEFT JOIN (
+    SELECT s1.username, s1.device
+    FROM `session` s1
+    INNER JOIN (
+      SELECT username, MAX(last_login_time) as max_login
+      FROM `session`
+      GROUP BY username
+    ) s2 ON s1.username = s2.username AND s1.last_login_time = s2.max_login
+  ) s ON s.username = u.username
   WHERE p.username IS NULL AND a.username IS NULL
   ORDER BY u.created_at DESC;
 END//
@@ -1392,11 +1402,21 @@ END//
 CREATE PROCEDURE sp_admin_get_publishers()
 BEGIN
   SELECT p.username, p.account_name AS accountName,
-         COUNT(g.game_id) AS publishedGames
+         COUNT(g.game_id) AS publishedGames,
+         SUBSTRING_INDEX(s.device, '#', 1) as device
   FROM `publisher` p
   LEFT JOIN `game` g ON g.publisher_username = p.username
     AND g.status IN ('Approve', 'Approved', 'Published')
-  GROUP BY p.username, p.account_name
+  LEFT JOIN (
+    SELECT s1.username, s1.device
+    FROM `session` s1
+    INNER JOIN (
+      SELECT username, MAX(last_login_time) as max_login
+      FROM `session`
+      GROUP BY username
+    ) s2 ON s1.username = s2.username AND s1.last_login_time = s2.max_login
+  ) s ON s.username = p.username
+  GROUP BY p.username, p.account_name, s.device
   ORDER BY publishedGames DESC, p.username ASC;
 END//
 
