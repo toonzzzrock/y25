@@ -1418,8 +1418,8 @@ DROP USER IF EXISTS 'admin'@'localhost';
 -- Create database users
 -- =============================================================
 CREATE USER 'user'@'localhost' IDENTIFIED BY 'ToonFilmFirstWinnerPokPokPok1234';
-CREATE USER 'developer'@'localhost' IDENTIFIED BY 'ToonFilmFirstWinnerPokPokPok1234';
-CREATE USER 'admin'@'localhost' IDENTIFIED BY 'ToonFilmFirstWinnerPokPokPok1234';
+CREATE USER 'developer'@'localhost' IDENTIFIED BY 'FirstWinnerToonFilmPokPokPok1234';
+CREATE USER 'admin'@'localhost' IDENTIFIED BY 'PokPokPokToonFilmFirstWinner1234';
 
 -- =============================================================
 -- PUBLIC PROCEDURES - Accessible by all users (user, developer, admin)
