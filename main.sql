@@ -873,6 +873,7 @@ BEGIN
   LIMIT 20;
 END//
 
+
 DELIMITER ;
 
 
@@ -1172,3 +1173,244 @@ SHOW GRANTS FOR 'user'@'localhost';
 -- Rollback instructions:
 -- DROP USER 'user'@'localhost';
 -- Re-create with new password if compromised.
+
+DELIMITER //
+-- Admin-specific procedures
+CREATE PROCEDURE sp_admin_validate_login(IN p_username VARCHAR(20))
+BEGIN
+  SELECT u.username, u.password_encrypted, u.salt_random_value
+  FROM User u
+  WHERE u.username = p_username
+  LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_admin_check_privileges(IN p_username VARCHAR(20))
+BEGIN
+  SELECT username FROM admin WHERE username = p_username LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_admin_check_user_exists(
+  IN p_username VARCHAR(20),
+  IN p_email VARCHAR(255)
+)
+BEGIN
+  SELECT username FROM User WHERE username = p_username OR email = p_email LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_admin_create_user(
+  IN p_username VARCHAR(20),
+  IN p_password_encrypted VARCHAR(255),
+  IN p_salt_hex VARCHAR(255),
+  IN p_email VARCHAR(255),
+  IN p_dob DATE,
+  IN p_sex ENUM('Male','Female','Other')
+)
+BEGIN
+  INSERT INTO User (username, password_encrypted, salt_random_value, email, DOB, sex)
+  VALUES (p_username, p_password_encrypted, p_salt_hex, p_email, p_dob, p_sex);
+  SELECT LAST_INSERT_ID() AS user_id, p_username AS username;
+END//
+
+CREATE PROCEDURE sp_admin_create_developer(
+  IN p_username VARCHAR(20),
+  IN p_contact VARCHAR(255)
+)
+BEGIN
+  INSERT INTO developer (username, role, contact)
+  VALUES (p_username, 'Programmer', p_contact);
+  SELECT ROW_COUNT() AS affected;
+END//
+
+CREATE PROCEDURE sp_admin_create_admin(IN p_username VARCHAR(20))
+BEGIN
+  INSERT INTO admin (username) VALUES (p_username);
+  SELECT ROW_COUNT() AS affected;
+END//
+
+CREATE PROCEDURE sp_admin_ban_user(IN p_username VARCHAR(20))
+BEGIN
+  DECLARE v_exists INT DEFAULT 0;
+  SELECT COUNT(*) INTO v_exists FROM User WHERE username = p_username;
+  
+  IF v_exists = 0 THEN
+    SELECT 0 AS affected, 'User not found' AS message;
+  ELSE
+    START TRANSACTION;
+      DELETE FROM reply WHERE username = p_username;
+      DELETE FROM report WHERE username = p_username;
+      DELETE FROM create_relation WHERE username = p_username;
+      DELETE FROM User WHERE username = p_username;
+    COMMIT;
+    SELECT 1 AS affected, 'User banned successfully' AS message;
+  END IF;
+END//
+
+CREATE PROCEDURE sp_admin_ban_publisher(IN p_username VARCHAR(20))
+BEGIN
+  DECLARE v_exists INT DEFAULT 0;
+  SELECT COUNT(*) INTO v_exists FROM publisher WHERE username = p_username;
+  
+  IF v_exists = 0 THEN
+    SELECT 0 AS affected, 'Publisher not found' AS message;
+  ELSE
+    START TRANSACTION;
+      DELETE FROM create_relation WHERE username = p_username;
+      DELETE FROM reply WHERE username = p_username;
+      DELETE FROM report WHERE username = p_username;
+      DELETE FROM publisher WHERE username = p_username;
+      DELETE FROM User WHERE username = p_username;
+    COMMIT;
+    SELECT 1 AS affected, 'Publisher banned successfully' AS message;
+  END IF;
+END//
+
+CREATE PROCEDURE sp_admin_ban_game(IN p_game_id INT)
+BEGIN
+  DECLARE v_exists INT DEFAULT 0;
+  SELECT COUNT(*) INTO v_exists FROM game WHERE game_id = p_game_id;
+  
+  IF v_exists = 0 THEN
+    SELECT 0 AS affected, 'Game not found' AS message;
+  ELSE
+    START TRANSACTION;
+      DELETE FROM tag WHERE game_id = p_game_id;
+      DELETE FROM play WHERE game_id = p_game_id;
+      DELETE FROM game_update_history WHERE game_id = p_game_id;
+      DELETE FROM report WHERE game_id = p_game_id;
+      DELETE FROM create_relation WHERE game_id = p_game_id;
+      DELETE FROM game WHERE game_id = p_game_id;
+    COMMIT;
+    SELECT 1 AS affected, 'Game banned successfully' AS message;
+  END IF;
+END//
+
+CREATE PROCEDURE sp_admin_update_game_status(
+  IN p_game_id INT,
+  IN p_status ENUM('Approve','Reject','Pending'),
+  IN p_admin_username VARCHAR(20)
+)
+BEGIN
+  DECLARE v_exists INT DEFAULT 0;
+  SELECT COUNT(*) INTO v_exists FROM game WHERE game_id = p_game_id;
+  
+  IF v_exists = 0 THEN
+    SELECT 0 AS affected, 'Game not found' AS message;
+  ELSE
+    START TRANSACTION;
+      UPDATE game SET status = p_status WHERE game_id = p_game_id;
+      
+      INSERT INTO game_update_history (patch_number, title, detail, link_to_new_file, is_approve, approve_time, approve_by, game_id)
+      VALUES (
+        'admin-review',
+        CONCAT('Game ', IF(p_status = 'Approve', 'Approved', 'Rejected')),
+        CONCAT('Admin review: ', IF(p_status = 'Approve', 'Approved', 'Rejected')),
+        '',
+        p_status,
+        NOW(),
+        p_admin_username,
+        p_game_id
+      );
+    COMMIT;
+    SELECT 1 AS affected, 'Game status updated' AS message;
+  END IF;
+END//
+
+-- Dashboard analytics procedures
+CREATE PROCEDURE sp_admin_get_daily_users()
+BEGIN
+  SELECT COUNT(DISTINCT username) AS count
+  FROM `session`
+  WHERE last_login_time >= DATE_SUB(NOW(), INTERVAL 1 DAY);
+END//
+
+CREATE PROCEDURE sp_admin_get_total_sessions()
+BEGIN
+  SELECT COUNT(DISTINCT username) AS count FROM `session`;
+END//
+
+CREATE PROCEDURE sp_admin_get_average_playtime()
+BEGIN
+  SELECT COALESCE(AVG(average_play_time), 0) AS averagePlayTime
+  FROM `game`
+  WHERE status IN ('Approve', 'Approved', 'Published');
+END//
+
+CREATE PROCEDURE sp_admin_get_popular_games()
+BEGIN
+  SELECT game_id AS id, game_name AS name, total_players AS totalPlayers
+  FROM `game`
+  WHERE status IN ('Approve', 'Approved', 'Published')
+  ORDER BY total_players DESC, game_name ASC
+  LIMIT 3;
+END//
+
+CREATE PROCEDURE sp_admin_get_signups_by_month(IN p_year INT)
+BEGIN
+  SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS signups
+  FROM `User`
+  WHERE YEAR(created_at) = p_year
+  GROUP BY month
+  ORDER BY month ASC;
+END//
+
+CREATE PROCEDURE sp_admin_get_players_by_month(IN p_year INT)
+BEGIN
+  SELECT DATE_FORMAT(last_login_time, '%Y-%m') AS month,
+         COUNT(DISTINCT username) AS totalPlayers
+  FROM `session`
+  WHERE last_login_time IS NOT NULL
+    AND YEAR(last_login_time) = p_year
+  GROUP BY month
+  ORDER BY month ASC;
+END//
+
+CREATE PROCEDURE sp_admin_get_recent_users()
+BEGIN
+  SELECT u.username, u.email, u.created_at AS createdAt
+  FROM `User` u
+  LEFT JOIN `publisher` p ON p.username = u.username
+  WHERE p.username IS NULL
+  ORDER BY u.created_at DESC;
+END//
+
+CREATE PROCEDURE sp_admin_get_publishers()
+BEGIN
+  SELECT p.username, p.account_name AS accountName,
+         COUNT(g.game_id) AS publishedGames
+  FROM `publisher` p
+  LEFT JOIN `game` g ON g.publisher_username = p.username
+    AND g.status IN ('Approve', 'Approved', 'Published')
+  GROUP BY p.username, p.account_name
+  ORDER BY publishedGames DESC, p.username ASC;
+END//
+
+CREATE PROCEDURE sp_admin_get_games()
+BEGIN
+  SELECT game_id AS id, game_name AS name, status,
+         COALESCE(total_players, 0) AS totalPlayers
+  FROM `game`
+  ORDER BY release_date DESC
+  LIMIT 16;
+END//
+
+CREATE PROCEDURE sp_admin_get_pending_games()
+BEGIN
+  SELECT game_id AS id, game_name AS name, 
+         publisher_username AS publisher,
+         status, release_date AS releaseDate
+  FROM `game`
+  WHERE status = 'Pending'
+  ORDER BY release_date ASC
+  LIMIT 4;
+END//
+
+DELIMITER ;
+
+DROP USER IF EXISTS 'admin'@'localhost';
+CREATE USER 'admin'@'localhost' IDENTIFIED BY 'ToonFilmFirstWinnerPokPokPok1234';
+GRANT EXECUTE ON Y25_DB.* TO 'admin'@'localhost';
+
+FLUSH PRIVILEGES;
+
+-- Verify admin user
+SHOW GRANTS FOR 'admin'@'localhost';
