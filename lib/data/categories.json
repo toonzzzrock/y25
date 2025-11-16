@@ -3,32 +3,104 @@
     {
       "id": "fantasy",
       "name": "Fantasy",
-  "icon": "⚔️",
-  "tag": "Fantasy"
+      "icon": "⚔️",
+      "tag": "Fantasy"
     },
     {
       "id": "rpg",
       "name": "RPG",
-  "icon": "🎮",
-  "tag": "RPG"
+      "icon": "🎮",
+      "tag": "RPG"
     },
     {
       "id": "fps",
       "name": "FPS",
-  "icon": "🔫",
-  "tag": "FPS"
+      "icon": "🔫",
+      "tag": "FPS"
     },
     {
       "id": "moba",
       "name": "MOBA",
-  "icon": "👥",
-  "tag": "MOBA"
+      "icon": "👥",
+      "tag": "MOBA"
     },
     {
       "id": "rts",
       "name": "RTS",
-  "icon": "🗺️",
-  "tag": "RTS"
+      "icon": "🗺️",
+      "tag": "RTS"
+    },
+    {
+      "id": "arcade",
+      "name": "Arcade",
+      "icon": "🕹️",
+      "tag": "Arcade"
+    },
+    {
+      "id": "platformer",
+      "name": "Platformer",
+      "icon": "🪜",
+      "tag": "Platformer"
+    },
+    {
+      "id": "puzzle",
+      "name": "Puzzle",
+      "icon": "🧩",
+      "tag": "Puzzle"
+    },
+    {
+      "id": "racing",
+      "name": "Racing",
+      "icon": "🏎️",
+      "tag": "Racing"
+    },
+    {
+      "id": "simulation",
+      "name": "Simulation",
+      "icon": "🌍",
+      "tag": "Simulation"
+    },
+    {
+      "id": "survival",
+      "name": "Survival",
+      "icon": "🏕️",
+      "tag": "Survival"
+    },
+    {
+      "id": "action",
+      "name": "Action",
+      "icon": "💥",
+      "tag": "Action"
+    },
+    {
+      "id": "adventure",
+      "name": "Adventure",
+      "icon": "🗺️",
+      "tag": "Adventure"
+    },
+    {
+      "id": "casual",
+      "name": "Casual",
+      "icon": "🎲",
+      "tag": "Casual"
+    },
+    {
+      "id": "horror",
+      "name": "Horror",
+      "icon": "👻",
+      "tag": "Horror"
+    },
+    {
+      "id": "sports",
+      "name": "Sports",
+      "icon": "⚽",
+      "tag": "Sports"
+    },
+    {
+      "id": "strategy",
+      "name": "Strategy",
+      "icon": "♟️",
+      "tag": "Strategy"
     }
   ]
 }
