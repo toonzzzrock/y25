@@ -2,12 +2,19 @@ import mysql from "mysql2/promise";
 import type { RowDataPacket } from "mysql2/promise";
 
 const {
-  MYSQL_HOST = "localhost",
-  MYSQL_USER = "root",
-  MYSQL_PASSWORD = "",
-  MYSQL_DATABASE = "Y25_DB",
-  MYSQL_CONNECTION_LIMIT = "10",
+  MYSQL_HOST,
+  MYSQL_USER,
+  MYSQL_PASSWORD,
+  MYSQL_DATABASE,
+  MYSQL_CONNECTION_LIMIT,
 } = process.env;
+
+// Validate that required environment variables are set
+if (!MYSQL_HOST || !MYSQL_USER || !MYSQL_DATABASE) {
+  throw new Error(
+    "Missing required environment variables: MYSQL_HOST, MYSQL_USER, and MYSQL_DATABASE must be set in .env files"
+  );
+}
 
 type GlobalWithMysqlPool = typeof globalThis & {
   mysqlPool?: mysql.Pool;
@@ -20,10 +27,12 @@ export const pool =
   mysql.createPool({
     host: MYSQL_HOST,
     user: MYSQL_USER,
-    password: MYSQL_PASSWORD,
+    password: MYSQL_PASSWORD || "",
     database: MYSQL_DATABASE,
     waitForConnections: true,
-    connectionLimit: Number.parseInt(MYSQL_CONNECTION_LIMIT, 10) || 10,
+    connectionLimit: MYSQL_CONNECTION_LIMIT
+      ? Number.parseInt(MYSQL_CONNECTION_LIMIT, 10)
+      : 10,
     namedPlaceholders: true,
   });
 

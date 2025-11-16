@@ -3,8 +3,12 @@ import type { RowDataPacket } from "mysql2";
 import { callProcedure } from "@/lib/db";
 import crypto from "crypto";
 
-// Pepper value - must match the one used in y25-design
-const PEPPER = process.env.PEPPER_KEY || 'default-pepper-change-in-production';
+// Pepper value - must be set in environment variables
+const PEPPER = process.env.PEPPER_KEY;
+
+if (!PEPPER) {
+  throw new Error("PEPPER_KEY environment variable is not set");
+}
 
 interface UserAuth extends RowDataPacket {
   username: string;
