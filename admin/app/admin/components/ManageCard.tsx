@@ -106,10 +106,6 @@ export function ManageCard({
                   src={item.avatarUrl}
                   alt={item.primary}
                   className={styles.manageAvatar}
-                  onError={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    img.style.display = "none";
-                  }}
                 />
               )}
               <div className={styles.manageInfo}>

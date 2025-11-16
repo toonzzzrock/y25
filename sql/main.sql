@@ -1420,14 +1420,21 @@ BEGIN
   ORDER BY publishedGames DESC, p.username ASC;
 END//
 
+
+-- Drop and recreate sp_admin_get_games to show only approved games
+DROP PROCEDURE IF EXISTS sp_admin_get_games//
+
 CREATE PROCEDURE sp_admin_get_games()
 BEGIN
   SELECT game_id AS id, game_name AS name, status,
          COALESCE(total_players, 0) AS totalPlayers
   FROM `game`
+  WHERE status = 'Approve'
   ORDER BY release_date DESC
   LIMIT 16;
 END//
+
+DROP PROCEDURE IF EXISTS sp_admin_get_pending_games//
 
 CREATE PROCEDURE sp_admin_get_pending_games()
 BEGIN
@@ -1436,9 +1443,9 @@ BEGIN
          status, release_date AS releaseDate
   FROM `game`
   WHERE status = 'Pending'
-  ORDER BY release_date ASC
-  LIMIT 4;
+  ORDER BY release_date ASC;
 END//
+
 
 -- Developer-specific procedures
 CREATE PROCEDURE sp_developer_validate_login(IN p_username VARCHAR(20))

@@ -13,6 +13,10 @@ import { SignupForm } from "./components/SignupForm";
 import { formatDate } from "./utils/formatters";
 import { AdminLogoutButton } from "./components/AdminLogoutButton";
 
+// Force dynamic rendering to always fetch fresh data
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 type PopularGame = {
   id: number;
   name: string;

@@ -5,13 +5,41 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
+import { readFile, stat } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import { generateFallbackAvatar } from '@/lib/fallback-avatar';
 import { PUBLIC_ROOT } from '@/lib/public-root';
 
 const SUPPORTED_EXTENSIONS = ['svg', 'png', 'jpg', 'jpeg', 'gif', 'webp'];
+
+const contentTypeMap: { [key: string]: string } = {
+  svg: 'image/svg+xml',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+};
+
+async function findUserAvatar(username: string): Promise<{ path: string; extension: string } | null> {
+  const userDir = path.join(PUBLIC_ROOT, 'data', 'user', username);
+  
+  for (const ext of SUPPORTED_EXTENSIONS) {
+    // First try user_profile.* (current format)
+    let testPath = path.join(userDir, `user_profile.${ext}`);
+    if (existsSync(testPath)) {
+      return { path: testPath, extension: ext };
+    }
+    // Fallback to avatar.* for backward compatibility
+    testPath = path.join(userDir, `avatar.${ext}`);
+    if (existsSync(testPath)) {
+      return { path: testPath, extension: ext };
+    }
+  }
+  
+  return null;
+}
 
 export async function GET(
   request: NextRequest,
@@ -27,30 +55,9 @@ export async function GET(
       );
     }
 
-  const userDir = path.join(PUBLIC_ROOT, 'data', 'user', username);
-    
-    // Try to find the avatar image with any supported extension
-    let avatarPath: string | null = null;
-    let extension: string | null = null;
+    const avatar = await findUserAvatar(username);
 
-    for (const ext of SUPPORTED_EXTENSIONS) {
-      // First try user_profile.* (current format)
-      let testPath = path.join(userDir, `user_profile.${ext}`);
-      if (existsSync(testPath)) {
-        avatarPath = testPath;
-        extension = ext;
-        break;
-      }
-      // Fallback to avatar.* for backward compatibility
-      testPath = path.join(userDir, `avatar.${ext}`);
-      if (existsSync(testPath)) {
-        avatarPath = testPath;
-        extension = ext;
-        break;
-      }
-    }
-
-    if (!avatarPath || !extension) {
+    if (!avatar) {
       // Return fallback SVG avatar with initials
       const fallbackSvg = generateFallbackAvatar(username);
       
@@ -62,29 +69,22 @@ export async function GET(
         status: 200,
         headers: {
           'Content-Type': 'image/svg+xml',
-          'Cache-Control': 'public, max-age=3600',
+          'Cache-Control': 'public, max-age=300, must-revalidate',
         },
       });
     }
 
     // Read and serve the found image
-    const imageBuffer = await readFile(avatarPath);
-    
-    // Set appropriate content type
-    const contentTypeMap: { [key: string]: string } = {
-      svg: 'image/svg+xml',
-      png: 'image/png',
-      jpg: 'image/jpeg',
-      jpeg: 'image/jpeg',
-      gif: 'image/gif',
-      webp: 'image/webp',
-    };
+    const imageBuffer = await readFile(avatar.path);
+    const fileStats = await stat(avatar.path);
 
     return new NextResponse(imageBuffer, {
       status: 200,
       headers: {
-        'Content-Type': contentTypeMap[extension] || 'application/octet-stream',
-        'Cache-Control': 'public, max-age=3600',
+        'Content-Type': contentTypeMap[avatar.extension] || 'application/octet-stream',
+        'Cache-Control': 'public, max-age=300, must-revalidate',
+        'Last-Modified': fileStats.mtime.toUTCString(),
+        'ETag': `"${fileStats.mtime.getTime()}-${fileStats.size}"`,
       },
     });
   } catch (error) {
@@ -93,5 +93,46 @@ export async function GET(
       { error: 'Failed to load avatar image' },
       { status: 500 }
     );
+  }
+}
+
+export async function HEAD(
+  request: NextRequest,
+  { params }: { params: Promise<{ username: string }> }
+) {
+  try {
+    const { username } = await params;
+    
+    if (!username) {
+      return new NextResponse(null, { status: 400 });
+    }
+
+    const avatar = await findUserAvatar(username);
+
+    if (!avatar) {
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          'Content-Type': 'image/svg+xml',
+          'Cache-Control': 'public, max-age=300, must-revalidate',
+        },
+      });
+    }
+
+    const fileStats = await stat(avatar.path);
+
+    return new NextResponse(null, {
+      status: 200,
+      headers: {
+        'Content-Type': contentTypeMap[avatar.extension] || 'application/octet-stream',
+        'Content-Length': fileStats.size.toString(),
+        'Cache-Control': 'public, max-age=300, must-revalidate',
+        'Last-Modified': fileStats.mtime.toUTCString(),
+        'ETag': `"${fileStats.mtime.getTime()}-${fileStats.size}"`,
+      },
+    });
+  } catch (error) {
+    console.error('User avatar HEAD error:', error);
+    return new NextResponse(null, { status: 500 });
   }
 }
