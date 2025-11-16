@@ -640,6 +640,24 @@ CREATE PROCEDURE sp_update_user_profile(
   IN p_sex ENUM('Male', 'Female', 'Other')
 )
 BEGIN
+  -- Validate email format (basic check)
+  IF p_email NOT LIKE '%_@__%.__%' THEN
+    SIGNAL SQLSTATE '45000' 
+    SET MESSAGE_TEXT = 'Invalid email format.';
+  END IF;
+  
+  -- Validate age (must be at least 13 years old)
+  IF TIMESTAMPDIFF(YEAR, p_dob, CURDATE()) < 13 THEN
+    SIGNAL SQLSTATE '45000' 
+    SET MESSAGE_TEXT = 'User must be at least 13 years old.';
+  END IF;
+  
+  -- Prevent future birth dates
+  IF p_dob > CURDATE() THEN
+    SIGNAL SQLSTATE '45000' 
+    SET MESSAGE_TEXT = 'Date of birth cannot be in the future.';
+  END IF;
+  
   UPDATE User
   SET email = p_email, DOB = p_dob, sex = p_sex
   WHERE username = p_username;
@@ -978,6 +996,23 @@ BEGIN
     END IF;
 END;//
 
+-- Security trigger: Prevent deletion of admin users
+-- Ensures admins cannot be deleted from User table
+CREATE TRIGGER trg_user_before_delete
+BEFORE DELETE ON User
+FOR EACH ROW
+BEGIN
+    DECLARE v_is_admin INT DEFAULT 0;
+    
+    -- Check if the user being deleted is an admin
+    SELECT COUNT(*) INTO v_is_admin FROM admin WHERE username = OLD.username;
+    
+    IF v_is_admin > 0 THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Cannot delete admin users. Admin accounts are protected.';
+    END IF;
+END;//
+
 DELIMITER ;
 
 -- =================================================================================
@@ -1181,27 +1216,27 @@ END//
 
 CREATE PROCEDURE sp_admin_create_developer(
   IN p_username VARCHAR(20),
-  IN p_contact VARCHAR(255)
+  IN p_contact VARCHAR(255),
+  IN p_role ENUM('Tester', 'Designer', 'Programmer')
 )
 BEGIN
   INSERT INTO developer (username, role, contact)
-  VALUES (p_username, 'Programmer', p_contact);
-  SELECT ROW_COUNT() AS affected;
-END//
-
-CREATE PROCEDURE sp_admin_create_admin(IN p_username VARCHAR(20))
-BEGIN
-  INSERT INTO admin (username) VALUES (p_username);
+  VALUES (p_username, IFNULL(p_role, 'Programmer'), p_contact);
   SELECT ROW_COUNT() AS affected;
 END//
 
 CREATE PROCEDURE sp_admin_ban_user(IN p_username VARCHAR(20))
 BEGIN
   DECLARE v_exists INT DEFAULT 0;
+  DECLARE v_is_admin INT DEFAULT 0;
+  
   SELECT COUNT(*) INTO v_exists FROM User WHERE username = p_username;
+  SELECT COUNT(*) INTO v_is_admin FROM admin WHERE username = p_username;
   
   IF v_exists = 0 THEN
     SELECT 0 AS affected, 'User not found' AS message;
+  ELSEIF v_is_admin > 0 THEN
+    SELECT 0 AS affected, 'Cannot ban admin users' AS message;
   ELSE
     START TRANSACTION;
       DELETE FROM reply WHERE username = p_username;
@@ -1337,7 +1372,8 @@ BEGIN
   SELECT u.username, u.email, u.created_at AS createdAt
   FROM `User` u
   LEFT JOIN `publisher` p ON p.username = u.username
-  WHERE p.username IS NULL
+  LEFT JOIN `admin` a ON a.username = u.username
+  WHERE p.username IS NULL AND a.username IS NULL
   ORDER BY u.created_at DESC;
 END//
 
@@ -1631,7 +1667,6 @@ GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_check_privileges TO 'admin'@'localhos
 GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_check_user_exists TO 'admin'@'localhost';
 GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_create_user TO 'admin'@'localhost';
 GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_create_developer TO 'admin'@'localhost';
-GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_create_admin TO 'admin'@'localhost';
 GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_ban_user TO 'admin'@'localhost';
 GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_ban_publisher TO 'admin'@'localhost';
 GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_ban_game TO 'admin'@'localhost';
