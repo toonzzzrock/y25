@@ -1,0 +1,303 @@
+/* Game Fallback Page Styles */
+
+.game-fallback-page {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, rgba(255, 122, 43, 0.15) 0%, rgba(10, 8, 5, 0.95) 55%, #040201 100%);
+  color: #e6e0db;
+  display: flex;
+  flex-direction: column;
+}
+
+.fallback-main {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.fallback-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.fallback-header h1 {
+  font-size: 2.5rem;
+  color: #ff7a2b;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.fallback-header p {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  color: rgba(230, 224, 219, 0.8);
+}
+
+/* Dino Game Styles */
+
+.dino-game-container {
+  background: rgba(12, 8, 6, 0.85);
+  border-radius: 16px;
+  border: 2px solid rgba(255, 122, 43, 0.3);
+  padding: 2rem;
+  margin: 2rem auto;
+  max-width: 800px;
+  position: relative;
+}
+
+.game-canvas {
+  height: 200px;
+  position: relative;
+  background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 60%, #DEB887 60%, #DEB887 100%);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #333;
+}
+
+.dino {
+  position: absolute;
+  left: 50px;
+  bottom: 40px;
+  font-size: 2rem;
+  z-index: 10;
+  transition: transform 0.1s ease;
+  user-select: none;
+}
+
+.obstacle {
+  position: absolute;
+  font-size: 1.5rem;
+  z-index: 5;
+  user-select: none;
+}
+
+.obstacle.cactus {
+  bottom: 40px;
+}
+
+.obstacle.bird {
+  bottom: 80px;
+  animation: birdFly 0.5s infinite alternate;
+}
+
+@keyframes birdFly {
+  0% { transform: translateY(0px); }
+  100% { transform: translateY(-5px); }
+}
+
+.ground {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: repeating-linear-gradient(
+    90deg,
+    #8B4513 0px,
+    #8B4513 20px,
+    #A0522D 20px,
+    #A0522D 40px
+  );
+  border-top: 2px solid #654321;
+}
+
+.game-ui {
+  margin-top: 1rem;
+}
+
+.score {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #ff7a2b;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.start-screen,
+.game-over-screen {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.9);
+  padding: 2rem;
+  border-radius: 12px;
+  text-align: center;
+  border: 2px solid #ff7a2b;
+  z-index: 20;
+}
+
+.start-screen h2,
+.game-over-screen h2 {
+  color: #ff7a2b;
+  margin-bottom: 1rem;
+  font-size: 1.8rem;
+}
+
+.start-screen p,
+.game-over-screen p {
+  margin-bottom: 1rem;
+  color: #e6e0db;
+}
+
+.start-button,
+.restart-button {
+  background: linear-gradient(135deg, #ff7a2b, #e55a0b);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.start-button:hover,
+.restart-button:hover {
+  background: linear-gradient(135deg, #e55a0b, #cc4a00);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 122, 43, 0.4);
+}
+
+/* Action Buttons */
+
+.fallback-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin: 2rem 0;
+}
+
+.back-button,
+.home-button {
+  background: rgba(255, 122, 43, 0.1);
+  color: #ff7a2b;
+  border: 2px solid rgba(255, 122, 43, 0.3);
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.back-button:hover,
+.home-button:hover {
+  background: rgba(255, 122, 43, 0.2);
+  border-color: rgba(255, 122, 43, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 122, 43, 0.2);
+}
+
+/* Info Section */
+
+.fallback-info {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 122, 43, 0.2);
+  margin-top: 2rem;
+}
+
+.fallback-info h3 {
+  color: #ff7a2b;
+  margin-bottom: 1rem;
+  font-size: 1.3rem;
+}
+
+.fallback-info ul {
+  list-style-type: none;
+  padding: 0;
+  margin-bottom: 1rem;
+}
+
+.fallback-info li {
+  padding: 0.25rem 0;
+  color: rgba(230, 224, 219, 0.8);
+  position: relative;
+  padding-left: 1rem;
+}
+
+.fallback-info li::before {
+  content: "•";
+  color: #ff7a2b;
+  position: absolute;
+  left: 0;
+}
+
+.fallback-info p {
+  color: rgba(230, 224, 219, 0.7);
+  margin-bottom: 0;
+}
+
+/* Responsive Design */
+
+@media (max-width: 768px) {
+  .fallback-main {
+    padding: 1rem;
+  }
+
+  .fallback-header h1 {
+    font-size: 2rem;
+  }
+
+  .dino-game-container {
+    padding: 1rem;
+  }
+
+  .game-canvas {
+    height: 150px;
+  }
+
+  .dino {
+    font-size: 1.5rem;
+    left: 30px;
+  }
+
+  .obstacle {
+    font-size: 1.2rem;
+  }
+
+  .fallback-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .back-button,
+  .home-button {
+    width: 200px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .fallback-header h1 {
+    font-size: 1.7rem;
+  }
+
+  .fallback-header p {
+    font-size: 1rem;
+  }
+
+  .game-canvas {
+    height: 120px;
+  }
+
+  .start-screen,
+  .game-over-screen {
+    padding: 1rem;
+    width: 90%;
+    max-width: 300px;
+  }
+
+  .start-screen h2,
+  .game-over-screen h2 {
+    font-size: 1.4rem;
+  }
+}

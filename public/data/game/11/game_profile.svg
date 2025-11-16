@@ -1,0 +1,34 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <defs>
+    <linearGradient id="fruitNinjaBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFE4B5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFDAB9;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" fill="url(#fruitNinjaBg)"/>
+  
+  <!-- Fruits -->
+  <!-- Apple -->
+  <circle cx="25" cy="35" r="12" fill="#DC143C"/>
+  <ellipse cx="25" cy="23" rx="2" ry="4" fill="#228B22"/>
+  
+  <!-- Banana -->
+  <path d="M 50 20 Q 60 25 65 40" stroke="#FFD700" stroke-width="8" fill="none" stroke-linecap="round"/>
+  
+  <!-- Orange -->
+  <circle cx="75" cy="50" r="11" fill="#FF8C00"/>
+  <circle cx="73" cy="48" r="2" fill="#FFD700" opacity="0.5"/>
+  <circle cx="77" cy="49" r="2" fill="#FFD700" opacity="0.5"/>
+  
+  <!-- Watermelon -->
+  <circle cx="40" cy="70" r="13" fill="#228B22"/>
+  <circle cx="40" cy="70" r="10" fill="#FF0000"/>
+  <circle cx="37" cy="67" r="1.5" fill="#000000"/>
+  <circle cx="40" cy="70" r="1.5" fill="#000000"/>
+  <circle cx="43" cy="73" r="1.5" fill="#000000"/>
+  
+  <!-- Ninja sword slashing across -->
+  <line x1="10" y1="40" x2="60" y2="80" stroke="#696969" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="60,80 65,75 62,85" fill="#696969"/>
+</svg>
