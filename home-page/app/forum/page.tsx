@@ -28,6 +28,19 @@ type ThreadSearchOptions = {
   gameTitle?: string | null;
 };
 
+const resolveGameImage = (rawId: number | string | null | undefined) => {
+  if (rawId === null || rawId === undefined) {
+    return '/images/placeholder.svg';
+  }
+
+  const numericId = typeof rawId === 'number' ? rawId : Number(rawId);
+  if (!Number.isFinite(numericId) || numericId <= 0) {
+    return '/images/placeholder.svg';
+  }
+
+  return `/api/games/${numericId}/profile`;
+};
+
 const normalizeThreadSummary = (forum: any): ThreadSummary => {
   const rawCreatedAt = forum.created_at;
   let createdAt: string | null = null;
@@ -97,7 +110,6 @@ export default function ForumPage() {
   const [selectedThreadGame, setSelectedThreadGame] = useState<{ id: number; title: string } | null>(null);
   const [isSearchingThreadGames, setIsSearchingThreadGames] = useState(false);
   const [showThreadGameSuggestions, setShowThreadGameSuggestions] = useState(false);
-  const [userAssets, setUserAssets] = useState<Record<string, string | null>>({});
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const isFetchingMoreRef = useRef(false);
   const isMountedRef = useRef(false);
@@ -107,12 +119,12 @@ export default function ForumPage() {
     setTimeout(() => setNotification(null), 3000);
   }, []);
 
-  const getAvatarForUsername = useCallback((username?: string | null) => {
-    if (!username) {
-      return '/images/placeholder.svg';
+  const getThreadGameImage = useCallback((thread: ThreadSummary) => {
+    if (thread.game_id) {
+      return resolveGameImage(thread.game_id);
     }
-    return userAssets[username] ?? '/images/placeholder.svg';
-  }, [userAssets]);
+    return '/images/placeholder.svg';
+  }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -120,70 +132,6 @@ export default function ForumPage() {
       isMountedRef.current = false;
     };
   }, []);
-
-  useEffect(() => {
-    const usernameSet = new Set<string>();
-    const collect = (threads: ThreadSummary[]) => {
-      threads.forEach((thread) => {
-        if (thread.creator_username) {
-          usernameSet.add(thread.creator_username);
-        }
-      });
-    };
-
-    collect(allThreads);
-    collect(threadResults);
-    collect(threadSuggestions);
-    collect(userCreatedThreads);
-    collect(userCommentedThreads);
-
-    const pending = Array.from(usernameSet).filter((name) => !(name in userAssets));
-    if (pending.length === 0) {
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const results = await Promise.all(
-          pending.map(async (name) => {
-            try {
-              const response = await fetch(`/api/users/assets/${encodeURIComponent(name)}`);
-              if (!response.ok) {
-                return [name, null] as const;
-              }
-              const data = await response.json();
-              return [name, data?.avatarUrl ?? null] as const;
-            } catch (error) {
-              console.warn('Failed to load avatar for', name, error);
-              return [name, null] as const;
-            }
-          })
-        );
-
-        if (cancelled) {
-          return;
-        }
-
-        setUserAssets((previous) => {
-          const next = { ...previous };
-          results.forEach(([name, avatar]) => {
-            next[name] = avatar;
-          });
-          return next;
-        });
-      } catch (error) {
-        if (!cancelled) {
-          console.warn('Forum avatar preload failed:', error);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [allThreads, threadResults, threadSuggestions, userCreatedThreads, userCommentedThreads, userAssets]);
 
   const resetCreateThreadForm = useCallback(() => {
     setNewThreadName("");
@@ -318,7 +266,7 @@ export default function ForumPage() {
   }, []);
 
   const renderThreadSummaryCard = useCallback((thread: ThreadSummary, keyPrefix: string) => {
-  const avatarSrc = getAvatarForUsername(thread.creator_username);
+    const cardImage = getThreadGameImage(thread);
     const metaLine = renderThreadMetaRow(thread);
 
     return (
@@ -340,9 +288,9 @@ export default function ForumPage() {
         }}
       >
         <img
-          src={avatarSrc}
-          alt={thread.creator_username || 'Thread creator'}
-          style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+          src={cardImage}
+          alt={thread.game_name || 'Thread game'}
+          style={{ width: 56, height: 56, borderRadius: '12px', objectFit: 'cover', flexShrink: 0 }}
           onError={(event) => {
             (event.target as HTMLImageElement).src = '/images/placeholder.svg';
           }}
@@ -381,10 +329,10 @@ export default function ForumPage() {
         </div>
       </button>
     );
-  }, [getAvatarForUsername, renderThreadMetaRow, router]);
+  }, [getThreadGameImage, renderThreadMetaRow, router]);
 
   const renderUserThreadCard = useCallback((thread: ThreadSummary, keyPrefix: string) => {
-    const avatarSrc = getAvatarForUsername(thread.creator_username);
+    const cardImage = getThreadGameImage(thread);
     const metaLine = renderThreadMetaRow(thread);
 
     return (
@@ -403,8 +351,8 @@ export default function ForumPage() {
         }}
       >
         <img
-          src={avatarSrc}
-          alt={thread.creator_username || thread.thread_name}
+          src={cardImage}
+          alt={thread.game_name || thread.thread_name}
           onError={(event) => {
             (event.target as HTMLImageElement).src = '/images/placeholder.svg';
           }}
@@ -445,7 +393,7 @@ export default function ForumPage() {
         </div>
       </button>
     );
-  }, [getAvatarForUsername, renderThreadMetaRow, router]);
+  }, [getThreadGameImage, renderThreadMetaRow, router]);
 
   const fetchThreads = useCallback(async ({ cursor = null, append = false }: { cursor?: string | null; append?: boolean } = {}) => {
     const isAppending = Boolean(append);

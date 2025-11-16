@@ -1597,6 +1597,9 @@ GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_approve_game TO 'user'@'localhost';
 -- Grant all public procedures to developer first
 -- =============================================================
 
+GRANT SELECT ON Y25_DB.* TO 'developer'@'localhost';
+
+
 -- All public procedures for developer
 GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_username TO 'developer'@'localhost';
 GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_email TO 'developer'@'localhost';

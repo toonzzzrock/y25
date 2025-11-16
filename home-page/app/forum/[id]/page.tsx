@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useProtectedRoute } from "@/lib/use-protected-route";
+import { useAuth } from "@/lib/auth-context";
 import Header from "@/app/components/Header";
 import "./threads.css";
 type ThreadComment = {
@@ -29,6 +30,7 @@ type ThreadDetail = {
 
 export default function ThreadsPage() {
   const { isLoading } = useProtectedRoute();
+  const { user } = useAuth();
   const router = useRouter();
   const params = useParams();
 
@@ -139,20 +141,20 @@ export default function ThreadsPage() {
   }, [decodedThreadName]);
 
   useEffect(() => {
-    if (!thread) {
-      return;
-    }
-
     const usernameSet = new Set<string>();
-    if (thread.creatorUsername) {
+    if (thread?.creatorUsername) {
       usernameSet.add(thread.creatorUsername);
     }
 
-    thread.comments?.forEach((comment) => {
+    thread?.comments?.forEach((comment) => {
       if (comment.username) {
         usernameSet.add(comment.username);
       }
     });
+
+    if (user?.username) {
+      usernameSet.add(user.username);
+    }
 
     const pending = Array.from(usernameSet).filter((name) => !(name in userAssets));
     if (pending.length === 0) {
@@ -200,7 +202,7 @@ export default function ThreadsPage() {
     return () => {
       cancelled = true;
     };
-  }, [thread, userAssets]);
+  }, [thread, user?.username, userAssets]);
 
   const handleReply = useCallback(async () => {
     const trimmed = replyText.trim();
@@ -291,6 +293,12 @@ export default function ThreadsPage() {
     }
     return userAssets[thread.creatorUsername] ?? '/images/placeholder.svg';
   }, [thread?.creatorUsername, userAssets]);
+  const currentUserAvatar = useMemo(() => {
+    if (!user?.username) {
+      return '/images/placeholder.svg';
+    }
+    return userAssets[user.username] ?? '/images/placeholder.svg';
+  }, [user?.username, userAssets]);
   const commentLookup = useMemo(() => {
     const map = new Map<number, ThreadComment>();
     thread?.comments.forEach((comment) => {
@@ -538,7 +546,14 @@ export default function ThreadsPage() {
                 </div>
 
                 <footer className="thread-reply">
-                  <img className="avatar small" src="/images/placeholder.svg" alt="Your avatar" />
+                  <img
+                    className="avatar small"
+                    src={currentUserAvatar}
+                    alt="Your avatar"
+                    onError={(event) => {
+                      (event.target as HTMLImageElement).src = '/images/placeholder.svg';
+                    }}
+                  />
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {replyTarget && (
                       <div style={{
