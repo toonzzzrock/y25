@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import type { RowDataPacket } from "mysql2";
 import { callProcedure } from "@/lib/db";
 
@@ -12,6 +13,17 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Check admin authentication
+  const cookieStore = await cookies();
+  const adminSession = cookieStore.get("admin_session");
+  
+  if (!adminSession) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
   const { id: idStr } = await params;
   const id = Number.parseInt(idStr, 10);
 

@@ -3,7 +3,8 @@
  * Fetches real system metrics from Linux commands
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { promises as fs } from "fs";
@@ -458,7 +459,18 @@ function generateApiUsageHistory(): number[] {
   return Array.from({ length: 24 }, () => Math.floor(Math.random() * 500) + 50);
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Check developer authentication
+  const cookieStore = await cookies();
+  const developerSession = cookieStore.get("developer_session");
+  
+  if (!developerSession) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
   try {
     // Increment API request counter for this hour
     await incrementApiRequestCount();

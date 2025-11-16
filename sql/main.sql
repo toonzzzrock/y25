@@ -1192,6 +1192,7 @@ USE Y25_DB;
 DELIMITER //
 -- Admin-specific procedures
 CREATE PROCEDURE sp_admin_validate_login(IN p_username VARCHAR(20))
+ 
 BEGIN
   SELECT u.username, u.password_encrypted, u.salt_random_value
   FROM User u
@@ -1200,6 +1201,7 @@ BEGIN
 END//
 
 CREATE PROCEDURE sp_admin_check_privileges(IN p_username VARCHAR(20))
+ 
 BEGIN
   SELECT username FROM admin WHERE username = p_username LIMIT 1;
 END//
@@ -1208,6 +1210,7 @@ CREATE PROCEDURE sp_admin_check_user_exists(
   IN p_username VARCHAR(20),
   IN p_email VARCHAR(255)
 )
+ 
 BEGIN
   SELECT username FROM User WHERE username = p_username OR email = p_email LIMIT 1;
 END//
@@ -1220,6 +1223,7 @@ CREATE PROCEDURE sp_admin_create_user(
   IN p_dob DATE,
   IN p_sex ENUM('Male','Female','Other')
 )
+ 
 BEGIN
   INSERT INTO User (username, password_encrypted, salt_random_value, email, DOB, sex)
   VALUES (p_username, p_password_encrypted, p_salt_hex, p_email, p_dob, p_sex);
@@ -1231,6 +1235,7 @@ CREATE PROCEDURE sp_admin_create_developer(
   IN p_contact VARCHAR(255),
   IN p_role ENUM('Tester', 'Designer', 'Programmer')
 )
+ 
 BEGIN
   INSERT INTO developer (username, role, contact)
   VALUES (p_username, IFNULL(p_role, 'Programmer'), p_contact);
@@ -1238,6 +1243,7 @@ BEGIN
 END//
 
 CREATE PROCEDURE sp_admin_ban_user(IN p_username VARCHAR(20))
+ 
 BEGIN
   DECLARE v_exists INT DEFAULT 0;
   DECLARE v_is_admin INT DEFAULT 0;
@@ -1261,6 +1267,7 @@ BEGIN
 END//
 
 CREATE PROCEDURE sp_admin_ban_publisher(IN p_username VARCHAR(20))
+ 
 BEGIN
   DECLARE v_exists INT DEFAULT 0;
   SELECT COUNT(*) INTO v_exists FROM publisher WHERE username = p_username;
@@ -1280,6 +1287,7 @@ BEGIN
 END//
 
 CREATE PROCEDURE sp_admin_ban_game(IN p_game_id INT)
+ 
 BEGIN
   DECLARE v_exists INT DEFAULT 0;
   SELECT COUNT(*) INTO v_exists FROM game WHERE game_id = p_game_id;
@@ -1332,6 +1340,7 @@ END//
 
 -- Dashboard analytics procedures
 CREATE PROCEDURE sp_admin_get_daily_users()
+ 
 BEGIN
   SELECT COUNT(DISTINCT username) AS count
   FROM `session`
@@ -1339,11 +1348,13 @@ BEGIN
 END//
 
 CREATE PROCEDURE sp_admin_get_total_sessions()
+ 
 BEGIN
   SELECT COUNT(DISTINCT username) AS count FROM `session`;
 END//
 
 CREATE PROCEDURE sp_admin_get_average_playtime()
+ 
 BEGIN
   SELECT COALESCE(AVG(average_play_time), 0) AS averagePlayTime
   FROM `game`
@@ -1351,6 +1362,7 @@ BEGIN
 END//
 
 CREATE PROCEDURE sp_admin_get_popular_games()
+ 
 BEGIN
   SELECT game_id AS id, game_name AS name, total_players AS totalPlayers
   FROM `game`
@@ -1360,6 +1372,7 @@ BEGIN
 END//
 
 CREATE PROCEDURE sp_admin_get_signups_by_month(IN p_year INT)
+ 
 BEGIN
   SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS signups
   FROM `User`
@@ -1369,6 +1382,7 @@ BEGIN
 END//
 
 CREATE PROCEDURE sp_admin_get_players_by_month(IN p_year INT)
+ 
 BEGIN
   SELECT DATE_FORMAT(last_login_time, '%Y-%m') AS month,
          COUNT(DISTINCT username) AS totalPlayers
@@ -1380,6 +1394,7 @@ BEGIN
 END//
 
 CREATE PROCEDURE sp_admin_get_recent_users()
+ 
 BEGIN
   SELECT u.username, u.email, u.created_at AS createdAt,
          SUBSTRING_INDEX(s.device, '#', 1) as device
@@ -1400,6 +1415,7 @@ BEGIN
 END//
 
 CREATE PROCEDURE sp_admin_get_publishers()
+ 
 BEGIN
   SELECT p.username, p.account_name AS accountName,
          COUNT(g.game_id) AS publishedGames,
@@ -1425,6 +1441,7 @@ END//
 DROP PROCEDURE IF EXISTS sp_admin_get_games//
 
 CREATE PROCEDURE sp_admin_get_games()
+ 
 BEGIN
   SELECT game_id AS id, game_name AS name, status,
          COALESCE(total_players, 0) AS totalPlayers
@@ -1437,6 +1454,7 @@ END//
 DROP PROCEDURE IF EXISTS sp_admin_get_pending_games//
 
 CREATE PROCEDURE sp_admin_get_pending_games()
+ 
 BEGIN
   SELECT game_id AS id, game_name AS name, 
          publisher_username AS publisher,

@@ -3,7 +3,8 @@
  * Fetches status of background jobs
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { callProcedure } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -13,7 +14,18 @@ export interface ConJob {
   status: "success" | "error";
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Check developer authentication
+  const cookieStore = await cookies();
+  const developerSession = cookieStore.get("developer_session");
+  
+  if (!developerSession) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
   try {
     // Check recent activity in database tables to infer job status
     const uploadRows = await callProcedure<RowDataPacket>(
