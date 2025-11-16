@@ -11,10 +11,8 @@ This directory contains the complete SQL schema, stored procedures, and database
 ```
 sql/
 ├── main.sql                    # Complete database schema and procedures
-├── update_admin_procedures.sql # Admin procedure updates
-├── ADMIN_FIX_README.md        # Admin fix documentation
-├── WARP.md                    # CloudFlare WARP configuration
-└── README.md                  # General database documentation
+├── README.md                   # General database documentation
+└── PROJECT_STRUCTURE.md        # This file
 ```
 
 ---
@@ -486,27 +484,6 @@ normal_user: [configured separately]
 - Efficient indexing strategy
 - Pagination support in procedures
 - Optimized for read-heavy workloads
-
----
-
-## Maintenance Scripts
-
-### Update Admin Procedures
-
-File: `update_admin_procedures.sql`
-
-**Purpose**: Update admin procedures with bug fixes
-
-**Changes**:
-
-- Fix `sp_admin_get_games` to show only approved games
-- Remove limit from `sp_admin_get_pending_games` to show all pending
-
-**Run**:
-
-```bash
-mysql -u admin -p Y25_DB < update_admin_procedures.sql
-```
 
 ---
 
