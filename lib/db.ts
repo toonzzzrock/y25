@@ -3,13 +3,15 @@ import { env } from './env';
 
 // MySQL connection pool using mysql2/promise
 // Configured using environment variables from .env.local or .env.production
+const connectionLimit = env.MYSQL_CONNECTION_LIMIT ? +env.MYSQL_CONNECTION_LIMIT : undefined;
+
 const pool = mysql.createPool({
   host: env.MYSQL_HOST,
   user: env.MYSQL_USER,
   password: env.MYSQL_PASSWORD,
   database: env.MYSQL_DATABASE,
   waitForConnections: true,
-  connectionLimit: +(env.MYSQL_CONNECTION_LIMIT || 10),
+  connectionLimit: connectionLimit || 10,
   queueLimit: 0,
 });
 

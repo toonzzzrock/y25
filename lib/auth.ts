@@ -6,8 +6,11 @@
 import crypto from 'crypto';
 import { env } from './env';
 
-// Pepper value - should be set in environment variables
-const PEPPER = env.PEPPER_KEY || 'default-pepper-change-in-production';
+// Pepper value - must be set in environment variables
+if (!env.PEPPER_KEY) {
+  throw new Error('PEPPER_KEY environment variable is not set');
+}
+const PEPPER = env.PEPPER_KEY;
 
 /**
  * Generate a random salt
@@ -44,22 +47,6 @@ export function verifyPassword(password: string, salt: Buffer, hash: string): bo
   if (calculatedHash === hash) {
     console.log('✓ Password verified with current PEPPER');
     return true;
-  }
-  
-  // Fallback: try with default pepper for users created with old pepper
-  const fallbackPepper = 'default-pepper-change-in-production';
-  if (PEPPER !== fallbackPepper) {
-    console.log('Trying fallback PEPPER:', fallbackPepper);
-    const fallbackHash = crypto
-      .createHash('sha256')
-      .update(password + salt.toString('hex') + fallbackPepper)
-      .digest('hex');
-    console.log('Calculated hash (with fallback PEPPER):', fallbackHash);
-    
-    if (fallbackHash === hash) {
-      console.log('✓ User verified with fallback pepper - consider re-hashing password');
-      return true;
-    }
   }
   
   console.log('✗ Password verification failed');
