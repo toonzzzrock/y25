@@ -11,7 +11,6 @@ This directory contains the complete SQL schema, stored procedures, and database
 ```
 sql/
 ├── main.sql                    # Complete database schema and procedures
-├── README.md                   # General database documentation
 └── PROJECT_STRUCTURE.md        # This file
 ```
 

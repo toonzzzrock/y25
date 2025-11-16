@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catch the Button!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .game-container {
+            text-align: center;
+            color: white;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .score-board {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            background: rgba(255,255,255,0.2);
+            padding: 15px 30px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+
+        .game-area {
+            position: relative;
+            width: 600px;
+            height: 400px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            margin: 0 auto;
+            border: 3px solid rgba(255,255,255,0.3);
+        }
+
+        #movingButton {
+            position: absolute;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+            transition: transform 0.1s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        #movingButton:hover {
+            transform: scale(1.1);
+        }
+
+        #movingButton:active {
+            transform: scale(0.95);
+        }
+
+        .instructions {
+            margin-top: 20px;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .reset-btn {
+            margin-top: 20px;
+            padding: 10px 25px;
+            font-size: 1rem;
+            background: rgba(255,255,255,0.3);
+            border: 2px solid white;
+            border-radius: 25px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .reset-btn:hover {
+            background: rgba(255,255,255,0.5);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🎯 Catch the Button!</h1>
+        <div class="score-board">
+            Score: <span id="score">0</span> | Misses: <span id="misses">0</span>
+        </div>
+        <div class="game-area" id="gameArea">
+            <button id="movingButton">Click Me!</button>
+        </div>
+        <p class="instructions">Click the button before it moves! Good luck! 🍀</p>
+        <button class="reset-btn" onclick="resetGame()">Reset Game</button>
+    </div>
+
+    <script>
+        let score = 0;
+        let misses = 0;
+        const button = document.getElementById('movingButton');
+        const gameArea = document.getElementById('gameArea');
+        const scoreDisplay = document.getElementById('score');
+        const missesDisplay = document.getElementById('misses');
+
+        function moveButton() {
+            const areaRect = gameArea.getBoundingClientRect();
+            const buttonRect = button.getBoundingClientRect();
+            
+            const maxX = areaRect.width - buttonRect.width;
+            const maxY = areaRect.height - buttonRect.height;
+            
+            const randomX = Math.random() * maxX;
+            const randomY = Math.random() * maxY;
+            
+            button.style.left = randomX + 'px';
+            button.style.top = randomY + 'px';
+        }
+
+        button.addEventListener('click', function() {
+            score++;
+            scoreDisplay.textContent = score;
+            
+            // Change button text based on score
+            if (score === 5) {
+                button.textContent = 'Nice! 🎉';
+            } else if (score === 10) {
+                button.textContent = 'Amazing! 🌟';
+            } else if (score === 20) {
+                button.textContent = 'Pro! 🏆';
+            } else {
+                button.textContent = 'Click Me!';
+            }
+            
+            moveButton();
+        });
+
+        // Track misses when clicking on game area but missing button
+        gameArea.addEventListener('click', function(e) {
+            if (e.target !== button) {
+                misses++;
+                missesDisplay.textContent = misses;
+            }
+        });
+
+        function resetGame() {
+            score = 0;
+            misses = 0;
+            scoreDisplay.textContent = score;
+            missesDisplay.textContent = misses;
+            button.textContent = 'Click Me!';
+            moveButton();
+        }
+
+        // Initialize button position
+        moveButton();
+    </script>
+</body>
+</html>
