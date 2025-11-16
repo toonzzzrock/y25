@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS play (
 );
 
 CREATE TABLE IF NOT EXISTS tag (
-    tag_name enum('Fantasy', 'RPG', 'FPS', 'MOBA', 'RTS') NOT NULL,
+    tag_name enum('Fantasy', 'RPG', 'FPS', 'MOBA', 'RTS', 'Arcade', 'Platformer', 'Puzzle', 'Racing', 'Simulation', 'Survival', 'Action', 'Adventure', 'Casual', 'Horror', 'Sports', 'Strategy') NOT NULL,
     game_id INT NOT NULL,
     constraint PK_Tag PRIMARY KEY (tag_name, game_id),
     constraint FK_Tag_Game FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
@@ -1033,147 +1033,159 @@ INSERT INTO publisher (username, account_name, bank_account_serial) VALUES
 ('NormalPub', 'NormalPub Account', 'ACCT-NP-0001');
 -- ==================================================================================
 
-
--- Insert users (at least 8 users to link roles and publishers)
-INSERT INTO User (username, password_encrypted, salt_random_value, email, DOB, sex, created_at) VALUES
-('john_doe', SHA2('Password!1',256), UNHEX('01'), 'john@example.com', '1990-05-15', 'Male', '2024-01-15 14:30:00'),
-('jane_smith', SHA2('Secure#2',256), UNHEX('02'), 'jane@example.com', '1992-08-23', 'Female', '2024-02-20 09:45:00'),
-('alex_dev', SHA2('DevPass3$',256), UNHEX('03'), 'alex@example.com', '1988-12-01', 'Other', '2024-03-10 11:20:00'),
-('sarah_pub', SHA2('PubPass4%',256), UNHEX('04'), 'sarah@example.com', '1995-03-10', 'Female', '2024-03-25 16:15:00'),
-('admin_user', SHA2('Admin*5',256), UNHEX('05'), 'admin@example.com', '1985-07-20', 'Male', '2024-01-01 08:00:00'),
-('pub_one', SHA2('PubOne6&',256), UNHEX('06'), 'pub1@example.com', '1991-04-12', 'Other', '2024-04-01 12:00:00'),
-('pub_two', SHA2('PubTwo7(',256), UNHEX('07'), 'pub2@example.com', '1989-09-09', 'Male', '2024-04-03 09:00:00'),
-('pub_three', SHA2('PubThree8)',256), UNHEX('08'), 'pub3@example.com', '1993-11-11', 'Female', '2024-04-05 10:30:00');
-
--- Publishers (must reference existing users)
-INSERT INTO publisher (username, account_name, bank_account_serial) VALUES
-('sarah_pub', 'Amazing Games Studio', 'ACCT-SG-0001'),
-('jane_smith', 'Creative Gaming Labs', 'ACCT-CG-0002'),
-('pub_one', 'IndiePub One', 'ACCT-IP-0003'),
-('pub_two', 'IndiePub Two', 'ACCT-IP-0004'),
-('pub_three', 'IndiePub Three', 'ACCT-IP-0005');
-
--- Admins
-INSERT INTO admin (username) VALUES
-('admin_user');
-
--- Developers
-INSERT INTO developer (username, role, contact) VALUES
-('alex_dev', 'Programmer', '+1-555-0123'),
-('john_doe', 'Designer', '+1-555-0124'),
-('pub_one', 'Tester', '+1-555-0125'),
-('pub_two', 'Programmer', '+1-555-0126'),
-('pub_three', 'Designer', '+1-555-0127');
-
 -- Insert games (use the provided names, cycle publishers)
-INSERT INTO game (game_name, detail, link_to_file, release_date, status, total_players, average_play_time, publisher_username) VALUES
-('Adventure Game', 'Open-world exploration', 'index.html', '2024-06-01 10:00:00', 'Approve', 12, 120.5, 'sarah_pub'),
-('Altos Odyssey', 'Endless runner with beautiful visuals', 'index.html', '2024-06-10 11:00:00', 'Approve', 8, 45.0, 'jane_smith'),
-('Bad Ice-Cream', 'Local co-op puzzle brawler', 'index.html', '2024-07-01 12:00:00', 'Approve', 5, 30.0, 'pub_one'),
-('Boxing Game', 'Arcade boxing action', 'index.html', '2024-07-10 09:30:00', 'Approve', 3, 25.0, 'pub_two'),
-('Candy Game', 'Casual match-3 candy fun', 'index.html', '2024-07-20 14:00:00', 'Approve', 20, 60.0, 'sarah_pub'),
-('Castle Game', 'Tower defense in medieval setting', 'index.html', '2024-08-01 10:15:00', 'Pending', 0, 0.0, 'pub_three'),
-('City Game', 'City building simulator', 'index.html', '2024-08-15 15:00:00', 'Approve', 6, 200.0, 'jane_smith'),
-('Dungeon Game', 'Roguelike dungeon crawler', 'index.html', '2024-09-01 18:00:00', 'Approve', 9, 85.0, 'pub_one'),
-('Farm Game', 'Relaxing farming sim', 'index.html', '2024-09-15 10:00:00', 'Approve', 4, 150.0, 'pub_two'),
-('Forest Game', 'Survival in a haunted forest', 'index.html', '2024-10-01 12:00:00', 'Reject', 0, 0.0, 'sarah_pub'),
-('Fruit Ninja', 'Slice-and-dice fruit arcade', 'index.html', '2024-06-05 09:00:00', 'Approve', 30, 10.0, 'jane_smith'),
-('Hungry Shark', 'Underwater predator arcade', 'index.html', '2024-06-12 11:15:00', 'Approve', 18, 55.0, 'pub_one'),
-('Jungle Game', 'Platformer through jungle temples', 'index.html', '2024-08-22 13:40:00', 'Approve', 7, 70.0, 'pub_two'),
-('Mario Game', 'Classic platformer homage', 'index.html', '2024-07-03 16:00:00', 'Approve', 25, 95.0, 'sarah_pub'),
-('Pirate Game', 'Open-sea adventure', 'index.html', '2024-07-25 17:10:00', 'Approve', 11, 140.0, 'pub_three'),
-('Plants VS Zombies', 'Tower defense with plants', 'index.html', '2024-06-20 08:20:00', 'Approve', 40, 120.0, 'jane_smith'),
-('Racing Game', 'Arcade racing championship', 'index.html', '2024-09-10 15:00:00', 'Approve', 22, 35.0, 'pub_two'),
-('Space Shooter', '2D space shooter with upgrades', 'index.html', '2024-08-30 20:00:00', 'Approve', 13, 50.0, 'pub_one'),
-('Survival Game', 'Hardcore survival sim', 'index.html', '2024-10-10 21:00:00', 'Pending', 0, 0.0, 'sarah_pub'),
-('Underwater Game', 'Explore the deep sea', 'index.html', '2024-09-20 14:30:00', 'Approve', 2, 300.0, 'pub_three'),
-('Winter Game', 'Snowball fights and sledding', 'index.html', '2024-12-01 09:00:00', 'Pending', 0, 0.0, 'jane_smith');
+INSERT INTO game (game_name, detail, link_to_file, publisher_username) VALUES
+('Adventure Game', 'Open-world exploration', 'index.html', 'NormalPub'),
+('Altos Odyssey', 'Endless runner with beautiful visuals', 'index.html', 'NormalPub'),
+('Bad Ice-Cream', 'Local co-op puzzle brawler', 'index.html', 'NormalPub'),
+('Boxing Game', 'Arcade boxing action', 'index.html', 'NormalPub'),
+('Candy Game', 'Casual match-3 candy fun', 'index.html', 'NormalPub'),
+('Castle Game', 'Tower defense in medieval setting', 'index.html', 'NormalPub'),
+('City Game', 'City building simulator', 'index.html', 'NormalPub'),
+('Dungeon Game', 'Roguelike dungeon crawler', 'index.html', 'NormalPub'),
+('Farm Game', 'Relaxing farming sim', 'index.html', 'NormalPub'),
+('Forest Game', 'Survival in a haunted forest', 'index.html', 'NormalPub'),
+('Fruit Ninja', 'Slice-and-dice fruit arcade', 'index.html', 'NormalPub'),
+('Hungry Shark', 'Underwater predator arcade', 'index.html', 'NormalPub'),
+('Jungle Game', 'Platformer through jungle temples', 'index.html', 'NormalPub'),
+('Mario Game', 'Classic platformer homage', 'index.html', 'NormalPub'),
+('Pirate Game', 'Open-sea adventure', 'index.html', 'NormalPub'),
+('Plants VS Zombies', 'Tower defense with plants', 'index.html', 'NormalPub'),
+('Racing Game', 'Arcade racing championship', 'index.html', 'NormalPub'),
+('Space Shooter', '2D space shooter with upgrades', 'index.html', 'NormalPub'),
+('Survival Game', 'Hardcore survival sim', 'index.html', 'NormalPub'),
+('Underwater Game', 'Explore the deep sea', 'index.html', 'NormalPub'),
+('Winter Game', 'Snowball fights and sledding', 'index.html', 'NormalPub');
 
 -- Game update history (linking to some game ids)
-INSERT INTO game_update_history (patch_number, title, detail, update_time, link_to_new_file, is_approve, approve_time, approve_by, game_id) VALUES
-('1.0.1', 'Bug Fix', 'Fixed minor issues', '2024-06-15 09:30:00', 'index.html', 'Approve', '2024-06-16 10:00:00', 'admin_user', 1),
-('1.1.0', 'Content Update', 'Added new levels', '2024-07-05 12:00:00', 'index.html', 'Approve', '2024-07-06 13:00:00', 'admin_user', 2),
-('1.0.1', 'Balance Patch', 'Tuned weapons', '2024-08-05 08:00:00', 'index.html', 'Reject', NULL, NULL, 8),
-('2.0.0', 'Major Update', 'New game mode', '2024-09-15 10:00:00', 'index.html', 'Approve', '2024-09-16 11:00:00', 'admin_user', 17),
-('1.0.2', 'Hotfix', 'Crash fix', '2024-06-20 14:00:00', 'index.html', 'Approve', '2024-06-21 09:00:00', 'admin_user', 11);
-
+INSERT INTO game_update_history (patch_number, title, detail, link_to_new_file, approve_time, approve_by, game_id) VALUES
+('1.0.1', 'Bug Fix', 'Fixed minor issues', 'index.html', NULL, NULL, 1),
+('1.1.0', 'Content Update', 'Added new levels', 'index.html', NULL, NULL, 2),
+('1.0.1', 'Balance Patch', 'Tuned weapons', 'index.html', NULL, NULL, 8),
+('2.0.0', 'Major Update', 'New game mode', 'index.html', NULL, NULL, 17),
+('1.0.2', 'Hotfix', 'Crash fix', 'index.html', NULL, NULL, 11);
 -- Forum threads
-INSERT INTO forum (thread_name, detail, created_at, comment_count, unique_users) VALUES
-('Welcome to Adventure', 'Discuss Adventure Game here', '2024-06-02 08:15:00', 0, 0),
-('Altos Tips', 'Share Altos Odyssey tips', '2024-06-11 10:30:00', 0, 0),
-('Dungeon Strategies', 'Strategies for Dungeon Game', '2024-09-02 13:45:00', 0, 0),
-('Racing League', 'Competitive racing discussion', '2024-09-12 16:00:00', 0, 0),
-('Indie Devs', 'Talk about indie development', '2024-05-20 12:00:00', 0, 0);
+INSERT INTO forum (thread_name, detail) VALUES
+('Welcome to Adventure', 'Discuss Adventure Game here'),
+('Altos Tips', 'Share Altos Odyssey tips'),
+('Dungeon Strategies', 'Strategies for Dungeon Game'),
+('Racing League', 'Competitive racing discussion'),
+('Indie Devs', 'Talk about indie development');
 
 -- Comments (simple table in this test file)
-INSERT INTO comment (comment_text, created_at) VALUES
-('Great game, loved the exploration!', '2024-06-03 16:20:00'),
-('Nice update, performance improved', '2024-07-06 11:45:00'),
-('Found a bug in level 3', '2024-08-06 14:30:00'),
-('How to beat the boss?', '2024-09-13 09:15:00'),
-('Any plans for co-op?', '2024-05-21 17:50:00');
+INSERT INTO comment (comment_text) VALUES
+('Great game, loved the exploration!'),
+('Nice update, performance improved'),
+('Found a bug in level 3'),
+('How to beat the boss?'),
+('Any plans for co-op?');
 
 -- Replies linking comments to forum threads and users
 INSERT INTO reply (thread_name, username, comment_id, reply_to_comment_id) VALUES
-('Welcome to Adventure', 'john_doe', 1, NULL),
-('Altos Tips', 'jane_smith', 2, NULL),
-('Dungeon Strategies', 'alex_dev', 3, NULL),
-('Racing League', 'pub_one', 4, NULL),
-('Indie Devs', 'pub_two', 5, NULL);
+('Welcome to Adventure', 'NormalUser', 1, NULL),
+('Altos Tips', 'NormalUser', 2, NULL),
+('Dungeon Strategies', 'NormalUser', 3, NULL),
+('Racing League', 'NormalUser', 4, NULL),
+('Indie Devs', 'NormalUser', 5, NULL);
 
 -- Create relations: who created which thread and linked to games
 INSERT INTO create_relation (thread_name, username, game_id) VALUES
-('Welcome to Adventure', 'sarah_pub', 1),
-('Altos Tips', 'jane_smith', 2),
-('Dungeon Strategies', 'pub_one', 8),
-('Racing League', 'pub_two', 17),
-('Indie Devs', 'pub_three', 6);
+('Welcome to Adventure', 'NormalUser', 1),
+('Altos Tips', 'NormalUser', 2),
+('Dungeon Strategies', 'NormalUser', 8),
+('Racing League', 'NormalUser', 17),
+('Indie Devs', 'NormalUser', 6);
 
--- Play records (accumulated play time in minutes)
-INSERT INTO play (username, game_id, accumulate_play_time) VALUES
-('john_doe', 1, 240),
-('jane_smith', 2, 180),
-('alex_dev', 8, 95),
-('sarah_pub', 11, 300),
-('pub_one', 17, 60);
-
--- Tags (Multivalued)
+-- Tags (Multivalued) - Realistic categorization based on game genres
+-- Available tags: Fantasy, RPG, FPS, MOBA, RTS, Arcade, Platformer, Puzzle, Racing, Simulation, Survival, Action, Adventure, Casual, Horror, Sports, Strategy
 INSERT INTO tag (tag_name, game_id) VALUES
+-- Game 1: Adventure Game (Open-world exploration)
 ('Fantasy', 1),
+('RPG', 1),
+('Adventure', 1),
+-- Game 2: Altos Odyssey (Endless runner with beautiful visuals)
+('Arcade', 2),
+('Casual', 2),
+-- Game 3: Bad Ice-Cream (Local co-op puzzle brawler)
+('Puzzle', 3),
+('Arcade', 3),
+('Action', 3),
+-- Game 4: Boxing Game (Arcade boxing action)
+('Sports', 4),
+('Arcade', 4),
+('Action', 4),
+-- Game 5: Candy Game (Casual match-3 candy fun)
+('Casual', 5),
+('Puzzle', 5),
+-- Game 6: Castle Game (Tower defense in medieval setting)
+('Fantasy', 6),
+('Strategy', 6),
+('RTS', 6),
+-- Game 7: City Game (City building simulator)
+('Simulation', 7),
+('Strategy', 7),
+('RTS', 7),
+-- Game 8: Dungeon Game (Roguelike dungeon crawler)
+('Fantasy', 8),
 ('RPG', 8),
-('FPS', 17),
-('MOBA', 6),
-('RTS', 3),
-('MOBA', 3),
-('FPS', 1),
-('RTS', 5),
+('Adventure', 8),
+-- Game 9: Farm Game (Relaxing farming sim)
+('Simulation', 9),
+('Casual', 9),
+-- Game 10: Forest Game (Survival in a haunted forest)
+('Survival', 10),
+('Horror', 10),
 ('Fantasy', 10),
-('MOBA', 10),
-('FPS', 20),
-('RPG', 20);
+-- Game 11: Fruit Ninja (Slice-and-dice fruit arcade)
+('Arcade', 11),
+('Casual', 11),
+('Action', 11),
+-- Game 12: Hungry Shark (Underwater predator arcade)
+('Arcade', 12),
+('Action', 12),
+('Casual', 12),
+-- Game 13: Jungle Game (Platformer through jungle temples)
+('Platformer', 13),
+('Adventure', 13),
+('Fantasy', 13),
+-- Game 14: Mario Game (Classic platformer homage)
+('Platformer', 14),
+('Arcade', 14),
+('Action', 14),
+-- Game 15: Pirate Game (Open-sea adventure)
+('Adventure', 15),
+('Fantasy', 15),
+('Action', 15),
+-- Game 16: Plants VS Zombies (Tower defense with plants)
+('Strategy', 16),
+('RTS', 16),
+-- Game 17: Racing Game (Arcade racing championship)
+('Racing', 17),
+('Arcade', 17),
+('Sports', 17),
+-- Game 18: Space Shooter (2D space shooter with upgrades)
+('FPS', 18),
+('Action', 18),
+('Arcade', 18),
+-- Game 19: Survival Game (Hardcore survival sim)
+('Survival', 19),
+('Simulation', 19),
+-- Game 20: Underwater Game (Explore the deep sea)
+('Adventure', 20),
+('Simulation', 20),
+('Casual', 20),
+-- Game 21: Winter Game (Snowball fights and sledding)
+('Casual', 21),
+('Sports', 21),
+('Action', 21);
 
 -- Reports
-INSERT INTO report (username, game_id, report_topic, detail, report_time) VALUES
-('john_doe', 1, 'Bug', 'Character gets stuck in corner', '2024-06-03 17:30:00'),
-('jane_smith', 2, 'Lag', 'Experiencing delays in multiplayer', '2024-07-17 09:15:00'),
-('alex_dev', 8, 'Disconnect', 'Random disconnections during runs', '2024-09-02 11:45:00'),
-('sarah_pub', 11, 'Bug', 'Score not counted', '2024-06-06 10:00:00'),
-('pub_one', 17, 'Lag', 'Server lag spikes', '2024-09-11 12:20:00');
-
--- Sessions (last_login_time used in this test file)
-INSERT INTO session (username, last_login_time, device) VALUES
-('john_doe', '2024-09-01 13:45:00', 'Windows PC'),
-('jane_smith', '2024-09-02 15:30:00', 'MacBook Pro'),
-('alex_dev', '2024-09-03 10:15:00', 'Linux Workstation'),
-('sarah_pub', '2024-09-04 19:20:00', 'Android Tablet'),
-('pub_one', '2024-09-05 14:10:00', 'iPhone');
-
-
--- Unified application user creation script (merged)
--- Provides two options:
---  (A) Legacy broad user ("user") with extra table privileges (for transitional debugging)
---  (B) Principle-of-least-privilege EXECUTE-only user ("y25_app") for production
--- Choose ONE to activate by commenting out the other section.
+INSERT INTO report (username, game_id, report_topic, detail) VALUES
+('NormalUser', 1, 'Bug', 'Character gets stuck in corner'),
+('NormalUser', 2, 'Lag', 'Experiencing delays in multiplayer'),
+('NormalUser', 8, 'Disconnect', 'Random disconnections during runs'),
+('NormalUser', 11, 'Bug', 'Score not counted'),
+('NormalUser', 17, 'Lag', 'Server lag spikes');
 
 USE Y25_DB;
 
