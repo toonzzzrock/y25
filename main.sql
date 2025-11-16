@@ -1414,3 +1414,63 @@ FLUSH PRIVILEGES;
 
 -- Verify admin user
 SHOW GRANTS FOR 'admin'@'localhost';
+DROP USER IF EXISTS 'developer'@'localhost';
+CREATE USER 'developer'@'localhost' IDENTIFIED BY 'ToonFilmFirstWinnerPokPokPok1234';
+
+-- Create developer user if it doesn't exist
+CREATE USER IF NOT EXISTS 'developer'@'localhost' IDENTIFIED BY 'developer_password';
+GRANT USAGE ON *.* TO 'developer'@'localhost';
+GRANT SELECT, INSERT, UPDATE, DELETE ON Y25_DB.* TO 'developer'@'localhost';
+FLUSH PRIVILEGES;
+
+-- Stored Procedures for Developer Dashboard
+
+-- SP for jobs/route.ts
+DROP PROCEDURE IF EXISTS get_last_game_release_date;
+DELIMITER //
+CREATE PROCEDURE get_last_game_release_date()
+BEGIN
+    SELECT MAX(release_date) as last_time FROM game WHERE release_date IS NOT NULL LIMIT 1;
+END //
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS get_last_user_creation_date;
+DELIMITER //
+CREATE PROCEDURE get_last_user_creation_date()
+BEGIN
+    SELECT MAX(created_at) as last_time FROM User WHERE created_at IS NOT NULL LIMIT 1;
+END //
+DELIMITER ;
+
+-- SP for login/route.ts
+DROP PROCEDURE IF EXISTS get_user_credentials;
+DELIMITER //
+CREATE PROCEDURE get_user_credentials(IN p_username VARCHAR(255))
+BEGIN
+    SELECT u.username, u.password_encrypted, u.salt_random_value
+    FROM `User` u
+    WHERE u.username = p_username;
+END //
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS is_developer;
+DELIMITER //
+CREATE PROCEDURE is_developer(IN p_username VARCHAR(255))
+BEGIN
+    SELECT username FROM `developer` WHERE username = p_username;
+END //
+DELIMITER ;
+
+-- SP for stats/route.ts
+DROP PROCEDURE IF EXISTS get_database_size;
+DELIMITER //
+CREATE PROCEDURE get_database_size(IN p_schema_name VARCHAR(255))
+BEGIN
+    SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb 
+    FROM information_schema.tables 
+    WHERE table_schema = p_schema_name;
+END //
+DELIMITER ;
+
+-- Grant permissions to developer
+GRANT EXECUTE ON  Y25_DB.* TO 'developer'@'localhost';
