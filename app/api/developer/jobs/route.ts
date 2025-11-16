@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+import { callProcedure } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
 export interface ConJob {
@@ -16,12 +16,12 @@ export interface ConJob {
 export async function GET() {
   try {
     // Check recent activity in database tables to infer job status
-    const [uploadRows] = await pool.query<RowDataPacket[]>(
-      `SELECT MAX(release_date) as last_time FROM game WHERE release_date IS NOT NULL LIMIT 1`
+    const uploadRows = await callProcedure<RowDataPacket>(
+      'sp_developer_get_last_game_upload'
     );
 
-    const [userRows] = await pool.query<RowDataPacket[]>(
-      `SELECT MAX(created_at) as last_time FROM User WHERE created_at IS NOT NULL LIMIT 1`
+    const userRows = await callProcedure<RowDataPacket>(
+      'sp_developer_get_last_user_created'
     );
 
     const uploadLastTime = uploadRows[0]?.last_time as Date | null;

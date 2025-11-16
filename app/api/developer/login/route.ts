@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { RowDataPacket } from "mysql2";
-import { pool } from "@/lib/db";
+import { callProcedure } from "@/lib/db";
 import crypto from "crypto";
 
 // Pepper value - must match the one used in signup
@@ -23,10 +23,8 @@ export async function POST(request: Request) {
 
     // Get user from database
     console.log("[DEVELOPER LOGIN] Querying User table for:", username);
-    const [userRows] = await pool.query<RowDataPacket[]>(
-      `SELECT u.username, u.password_encrypted, u.salt_random_value
-       FROM \`User\` u
-       WHERE u.username = ?`,
+    const userRows = await callProcedure<RowDataPacket>(
+      'sp_developer_validate_login',
       [username]
     );
 
@@ -88,8 +86,8 @@ export async function POST(request: Request) {
 
     // Check if user is developer
     console.log("[DEVELOPER LOGIN] Checking developer status for:", username);
-    const [developerRows] = await pool.query<RowDataPacket[]>(
-      `SELECT username FROM \`developer\` WHERE username = ?`,
+    const developerRows = await callProcedure<RowDataPacket>(
+      'sp_developer_check_privileges',
       [username]
     );
 
