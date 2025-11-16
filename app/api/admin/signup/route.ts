@@ -27,7 +27,7 @@ interface ActionResult extends RowDataPacket {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { username, email, password, dob, sex, role } = body;
+    const { username, email, password, dob, sex, role, developerRole } = body;
 
     // Validate input
     if (!username || !email || !password || !dob || !sex || !role) {
@@ -45,10 +45,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate role
-    if (!['developer', 'admin'].includes(role)) {
+    // Only allow developer role creation (admins cannot create other admins)
+    if (role !== 'developer') {
       return NextResponse.json(
-        { error: 'Invalid role' },
+        { error: 'Only developer accounts can be created' },
+        { status: 400 }
+      );
+    }
+
+    // Validate developer role
+    const validDeveloperRoles = ['Tester', 'Designer', 'Programmer'];
+    if (!developerRole || !validDeveloperRoles.includes(developerRole)) {
+      return NextResponse.json(
+        { error: 'Invalid developer role. Must be Tester, Designer, or Programmer' },
         { status: 400 }
       );
     }
@@ -83,26 +92,19 @@ export async function POST(request: Request) {
         [username, passwordEncrypted, saltHex, email, dob, sex]
       );
 
-      console.log(`[Admin Signup] New ${role} created: ${username}, salt_hex: ${saltHex}`);
+      console.log(`[Admin Signup] New developer created: ${username}, salt_hex: ${saltHex}`);
 
-      // Create developer or admin record
-      if (role === 'developer') {
-        await callProcedure<ActionResult>(
-          'sp_admin_create_developer',
-          [username, email]
-        );
-      } else if (role === 'admin') {
-        await callProcedure<ActionResult>(
-          'sp_admin_create_admin',
-          [username]
-        );
-      }
+      // Create developer record with specified role
+      await callProcedure<ActionResult>(
+        'sp_admin_create_developer',
+        [username, email, developerRole]
+      );
 
-      console.log(`[Admin Signup] New ${role} created: ${username}`);
+      console.log(`[Admin Signup] New developer (${developerRole}) created: ${username}`);
 
       return NextResponse.json({
         success: true,
-        message: `New ${role} account created successfully`,
+        message: `New developer account created successfully`,
         username,
       });
     } catch (error) {

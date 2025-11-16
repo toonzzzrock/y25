@@ -16,6 +16,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
     dob: '',
     sex: 'Male',
     role: 'developer',
+    developerRole: 'Programmer',
   });
 
   const [loading, setLoading] = useState(false);
@@ -63,6 +64,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
           dob: formData.dob,
           sex: formData.sex,
           role: formData.role,
+          developerRole: formData.developerRole,
         }),
       });
 
@@ -78,6 +80,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
           dob: '',
           sex: 'Male',
           role: 'developer',
+          developerRole: 'Programmer',
         });
         onSuccess?.();
       } else {
@@ -216,10 +219,10 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
       </div>
 
       <div>
-        <label style={{ fontSize: '12px', color: '#999', display: 'block', marginBottom: '4px' }}>Role</label>
+        <label style={{ fontSize: '12px', color: '#999', display: 'block', marginBottom: '4px' }}>Developer Role</label>
         <select
-          name="role"
-          value={formData.role}
+          name="developerRole"
+          value={formData.developerRole}
           onChange={handleChange}
           style={{
             width: '100%',
@@ -231,8 +234,9 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
             boxSizing: 'border-box',
           }}
         >
-          <option value="developer">Developer</option>
-          <option value="admin">Admin</option>
+          <option value="Programmer">Programmer</option>
+          <option value="Designer">Designer</option>
+          <option value="Tester">Tester</option>
         </select>
       </div>
 
