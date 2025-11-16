@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import type { ResultSetHeader, RowDataPacket } from "mysql2";
-import { pool } from "@/lib/db";
+import type { RowDataPacket } from "mysql2";
+import { callProcedure } from "@/lib/db";
+
+interface BanResult extends RowDataPacket {
+  affected: number;
+  message: string;
+}
 
 export async function POST(
   request: Request,
@@ -17,55 +22,14 @@ export async function POST(
   }
 
   try {
-    // Delete related records in reverse order of dependencies
-    // create_relation table references publisher.username but has no ON DELETE CASCADE
-    await pool.query(
-      "DELETE FROM `create_relation` WHERE username = ?",
-      [username]
-    );
+    const result = await callProcedure<BanResult>('sp_admin_ban_publisher', [username]);
 
-    // Delete games published by this publisher
-    // (game.publisher_username has ON DELETE CASCADE, but we delete explicitly for clarity)
-    const [games] = await pool.query<RowDataPacket[]>(
-      "SELECT game_id FROM `game` WHERE publisher_username = ?",
-      [username]
-    );
-
-    for (const gameRow of games) {
-      const gameId = Number(gameRow.game_id ?? 0);
-      if (gameId > 0) {
-        // Delete dependent records for each game
-        await pool.query("DELETE FROM `tag` WHERE game_id = ?", [gameId]);
-        await pool.query("DELETE FROM `play` WHERE game_id = ?", [gameId]);
-        await pool.query(
-          "DELETE FROM `game_update_history` WHERE game_id = ?",
-          [gameId]
-        );
-        await pool.query("DELETE FROM `game` WHERE game_id = ?", [gameId]);
-      }
-    }
-
-    // Delete from reply table (User reference without ON DELETE CASCADE)
-    await pool.query("DELETE FROM `reply` WHERE username = ?", [username]);
-
-    // Delete from report table (User reference without ON DELETE CASCADE)
-    await pool.query("DELETE FROM `report` WHERE username = ?", [username]);
-
-    // Now delete the publisher
-    const [result] = await pool.query<ResultSetHeader>(
-      "DELETE FROM `publisher` WHERE username = ?",
-      [username]
-    );
-
-    if (result.affectedRows === 0) {
+    if (!result || result.length === 0 || result[0].affected === 0) {
       return NextResponse.json(
         { success: false, error: "Publisher not found" },
         { status: 404 }
       );
     }
-
-    // Also delete from User table since a publisher is also a user
-    await pool.query("DELETE FROM `User` WHERE username = ?", [username]);
 
     revalidatePath("/admin");
 

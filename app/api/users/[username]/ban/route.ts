@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import type { ResultSetHeader } from "mysql2";
-import { pool } from "@/lib/db";
+import type { RowDataPacket } from "mysql2";
+import { callProcedure } from "@/lib/db";
+
+interface BanResult extends RowDataPacket {
+  affected: number;
+  message: string;
+}
 
 export async function POST(
   request: Request,
@@ -17,26 +22,9 @@ export async function POST(
   }
 
   try {
-    // Delete related records in reverse order of dependencies
-    // reply table references User but has no ON DELETE CASCADE
-    await pool.query("DELETE FROM `reply` WHERE username = ?", [username]);
-    
-    // report table references User but has no ON DELETE CASCADE
-    await pool.query("DELETE FROM `report` WHERE username = ?", [username]);
-    
-    // create_relation table references User but has no ON DELETE CASCADE
-    await pool.query(
-      "DELETE FROM `create_relation` WHERE username = ?",
-      [username]
-    );
+    const result = await callProcedure<BanResult>('sp_admin_ban_user', [username]);
 
-    // Now delete the user itself
-    const [result] = await pool.query<ResultSetHeader>(
-      "DELETE FROM `User` WHERE username = ?",
-      [username]
-    );
-
-    if (result.affectedRows === 0) {
+    if (!result || result.length === 0 || result[0].affected === 0) {
       return NextResponse.json(
         { success: false, error: "User not found" },
         { status: 404 }

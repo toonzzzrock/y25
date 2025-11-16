@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import type { ResultSetHeader } from "mysql2";
-import { pool } from "@/lib/db";
+import type { RowDataPacket } from "mysql2";
+import { callProcedure } from "@/lib/db";
+
+interface StatusResult extends RowDataPacket {
+  affected: number;
+  message: string;
+}
 
 const ALLOWED_STATUSES = new Set([
   "Approve",
@@ -76,29 +81,14 @@ export async function PATCH(
   }
 
   try {
-    const [result] = await pool.query<ResultSetHeader>(
-      "UPDATE `game` SET status = ? WHERE game_id = ?",
-      [status, id]
+    const result = await callProcedure<StatusResult>(
+      'sp_admin_update_game_status',
+      [id, status, adminUsername]
     );
 
-    if (result.affectedRows === 0) {
+    if (!result || result.length === 0 || result[0].affected === 0) {
       return NextResponse.json({ success: false, error: "Game not found" }, { status: 404 });
     }
-
-    // Record in game_update_history
-    await pool.query(
-      `INSERT INTO \`game_update_history\` (patch_number, title, detail, link_to_new_file, is_approve, approve_time, approve_by, game_id)
-       VALUES (?, ?, ?, ?, ?, NOW(), ?, ?)`,
-      [
-        "admin-review",
-        `Game ${status === "Approve" ? "Approved" : "Rejected"}`,
-        `Admin review: ${status === "Approve" ? "Approved" : "Rejected"}`,
-        "",
-        status === "Approve" ? "Approve" : "Reject",
-        adminUsername,
-        id,
-      ]
-    );
 
     revalidatePath("/admin");
 

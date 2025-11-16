@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import type { ResultSetHeader } from "mysql2";
-import { pool } from "@/lib/db";
+import type { RowDataPacket } from "mysql2";
+import { callProcedure } from "@/lib/db";
+
+interface BanResult extends RowDataPacket {
+  affected: number;
+  message: string;
+}
 
 export async function POST(
   request: Request,
@@ -18,20 +23,9 @@ export async function POST(
   }
 
   try {
-    // Delete dependent records first
-    await pool.query("DELETE FROM `tag` WHERE game_id = ?", [id]);
-    await pool.query("DELETE FROM `play` WHERE game_id = ?", [id]);
-    await pool.query("DELETE FROM `game_update_history` WHERE game_id = ?", [id]);
-    await pool.query("DELETE FROM `report` WHERE game_id = ?", [id]);
-    await pool.query("DELETE FROM `create_relation` WHERE game_id = ?", [id]);
+    const result = await callProcedure<BanResult>('sp_admin_ban_game', [id]);
 
-    // Delete the game itself
-    const [result] = await pool.query<ResultSetHeader>(
-      "DELETE FROM `game` WHERE game_id = ?",
-      [id]
-    );
-
-    if (result.affectedRows === 0) {
+    if (!result || result.length === 0 || result[0].affected === 0) {
       return NextResponse.json(
         { success: false, error: "Game not found" },
         { status: 404 }

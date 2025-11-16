@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { RowDataPacket } from "mysql2";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { pool } from "@/lib/db";
+import { callProcedure } from "@/lib/db";
 import styles from "./admin.module.css";
 import { ManageCard } from "./components/ManageCard";
 import { GamesGrid } from "./components/GamesGrid";
@@ -97,55 +97,37 @@ function formatAveragePlayTime(seconds: number): string {
 
 async function getSiteAnalytics(): Promise<DashboardData["analytics"]> {
   try {
-    const [dailyRows] = await pool.query<RowDataPacket[]>(
-  `SELECT COUNT(DISTINCT username) AS count
-   FROM \`session\`
-   WHERE last_login_time >= DATE_SUB(NOW(), INTERVAL 1 DAY)`
+    const dailyRows = await callProcedure<RowDataPacket & { count?: number }>(
+      'sp_admin_get_daily_users'
     );
 
-    const dailyRow = dailyRows[0] as RowDataPacket & { count?: number };
+    const dailyRow = dailyRows[0];
     let dailyUsers = Number(dailyRow?.count ?? 0);
 
     if (!dailyUsers) {
-      const [fallbackRows] = await pool.query<RowDataPacket[]>(
-  `SELECT COUNT(DISTINCT username) AS count FROM \`session\``
+      const fallbackRows = await callProcedure<RowDataPacket & { count?: number }>(
+        'sp_admin_get_total_sessions'
       );
-      const fallbackRow = fallbackRows[0] as RowDataPacket & { count?: number };
+      const fallbackRow = fallbackRows[0];
       dailyUsers = Number(fallbackRow?.count ?? 0);
     }
 
-    const [incomeRows] = await pool.query<RowDataPacket[]>(
-    `SELECT COALESCE(AVG(average_play_time), 0) AS averagePlayTime
-     FROM \`game\`
-   WHERE status IN ('Approve', 'Approved', 'Published')`
+    const incomeRows = await callProcedure<RowDataPacket & { averagePlayTime?: number }>(
+      'sp_admin_get_average_playtime'
     );
-   const incomeRow = incomeRows[0] as RowDataPacket & { averagePlayTime?: number };
+    const incomeRow = incomeRows[0];
 
-    const [popularRows] = await pool.query<RowDataPacket[]>(
-  `SELECT game_id AS id, game_name AS name, total_players AS totalPlayers
-   FROM \`game\`
-       WHERE status IN ('Approve', 'Approved', 'Published')
-       ORDER BY total_players DESC, game_name ASC
-       LIMIT 3`
+    const popularRows = await callProcedure<RowDataPacket>(
+      'sp_admin_get_popular_games'
     );
 
-    const [signupRows] = await pool.query<RowDataPacket[]>(
-      `SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS signups
-       FROM \`User\`
-       WHERE YEAR(created_at) = ?
-       GROUP BY month
-       ORDER BY month ASC`,
+    const signupRows = await callProcedure<RowDataPacket>(
+      'sp_admin_get_signups_by_month',
       [TARGET_YEAR]
     );
 
-    const [playerRows] = await pool.query<RowDataPacket[]>(
-      `SELECT DATE_FORMAT(last_login_time, '%Y-%m') AS month,
-              COUNT(DISTINCT username) AS totalPlayers
-       FROM \`session\`
-       WHERE last_login_time IS NOT NULL
-         AND YEAR(last_login_time) = ?
-       GROUP BY month
-       ORDER BY month ASC`,
+    const playerRows = await callProcedure<RowDataPacket>(
+      'sp_admin_get_players_by_month',
       [TARGET_YEAR]
     );
 
@@ -202,13 +184,8 @@ async function getSiteAnalytics(): Promise<DashboardData["analytics"]> {
 
 async function getRecentUsers(): Promise<UserSummary[]> {
   try {
-    const [rows] = await pool.query<RowDataPacket[]>(
-  `SELECT u.username, u.email, u.created_at AS createdAt
-   FROM \`User\` u
-   LEFT JOIN \`publisher\` p
-     ON p.username = u.username
-   WHERE p.username IS NULL
-   ORDER BY u.created_at DESC`
+    const rows = await callProcedure<RowDataPacket>(
+      'sp_admin_get_recent_users'
     );
 
     return rows.map((row) => ({
@@ -224,15 +201,8 @@ async function getRecentUsers(): Promise<UserSummary[]> {
 
 async function getPublishers(): Promise<PublisherSummary[]> {
   try {
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT p.username, p.account_name AS accountName,
-              COUNT(g.game_id) AS publishedGames
-       FROM \`publisher\` p
-       LEFT JOIN \`game\` g
-         ON g.publisher_username = p.username
-        AND g.status IN ('Approve', 'Approved', 'Published')
-       GROUP BY p.username, p.account_name
-       ORDER BY publishedGames DESC, p.username ASC`
+    const rows = await callProcedure<RowDataPacket>(
+      'sp_admin_get_publishers'
     );
 
     return rows.map((row) => ({
@@ -248,14 +218,8 @@ async function getPublishers(): Promise<PublisherSummary[]> {
 
 async function getGames(): Promise<GameSummary[]> {
   try {
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT game_id AS id,
-        game_name AS name,
-        status,
-        COALESCE(total_players, 0) AS totalPlayers
-       FROM \`game\`
-       ORDER BY release_date DESC
-       LIMIT 16`
+    const rows = await callProcedure<RowDataPacket>(
+      'sp_admin_get_games'
     );
 
     return rows.map((row) => ({
@@ -272,16 +236,8 @@ async function getGames(): Promise<GameSummary[]> {
 
 async function getPendingGames(): Promise<PendingGame[]> {
   try {
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT game_id AS id,
-        game_name AS name,
-        publisher_username AS publisher,
-        status,
-        release_date AS releaseDate
-       FROM \`game\`
-       WHERE status = 'Pending'
-       ORDER BY release_date ASC
-       LIMIT 4`
+    const rows = await callProcedure<RowDataPacket>(
+      'sp_admin_get_pending_games'
     );
 
     return rows.map((row) => ({

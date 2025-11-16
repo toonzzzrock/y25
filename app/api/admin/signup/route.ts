@@ -4,11 +4,25 @@
  */
 
 import { NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { callProcedure } from '@/lib/db';
 import crypto from 'crypto';
+import type { RowDataPacket } from 'mysql2';
 
 // Pepper value - must match the one used in login and y25-design
 const PEPPER = process.env.PEPPER_KEY;
+
+interface UserExists extends RowDataPacket {
+  username: string;
+}
+
+interface CreateResult extends RowDataPacket {
+  user_id: number;
+  username: string;
+}
+
+interface ActionResult extends RowDataPacket {
+  affected: number;
+}
 
 export async function POST(request: Request) {
   try {
@@ -39,15 +53,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const connection = await pool.getConnection();
     try {
       // Check if user already exists
-      const [existingUser] = await connection.query(
-        'SELECT username FROM User WHERE username = ? OR email = ?',
+      const existingUser = await callProcedure<UserExists>(
+        'sp_admin_check_user_exists',
         [username, email]
       );
 
-      if (Array.isArray(existingUser) && existingUser.length > 0) {
+      if (existingUser.length > 0) {
         return NextResponse.json(
           { error: 'Username or email already exists' },
           { status: 409 }
@@ -64,24 +77,23 @@ export async function POST(request: Request) {
         .update(password + saltHex + PEPPER)
         .digest('hex');
 
-      // Begin transaction-like operation
-      // 1. Create user (store salt as hex string, not binary)
-      const [userResult] = await connection.query(
-        'INSERT INTO User (username, password_encrypted, salt_random_value, email, DOB, sex) VALUES (?, ?, ?, ?, ?, ?)',
+      // Create user
+      const userResult = await callProcedure<CreateResult>(
+        'sp_admin_create_user',
         [username, passwordEncrypted, saltHex, email, dob, sex]
       );
 
       console.log(`[Admin Signup] New ${role} created: ${username}, salt_hex: ${saltHex}`);
 
-      // 2. Create developer or admin record
+      // Create developer or admin record
       if (role === 'developer') {
-        await connection.query(
-          'INSERT INTO developer (username, role, contact) VALUES (?, ?, ?)',
-          [username, 'Programmer', email] // Default role is Programmer
+        await callProcedure<ActionResult>(
+          'sp_admin_create_developer',
+          [username, email]
         );
       } else if (role === 'admin') {
-        await connection.query(
-          'INSERT INTO admin (username) VALUES (?)',
+        await callProcedure<ActionResult>(
+          'sp_admin_create_admin',
           [username]
         );
       }
@@ -93,14 +105,18 @@ export async function POST(request: Request) {
         message: `New ${role} account created successfully`,
         username,
       });
-    } finally {
-      connection.release();
+    } catch (error) {
+      console.error('[Admin Signup] Error:', error);
+      return NextResponse.json(
+        { error: 'Failed to create account' },
+        { status: 500 }
+      );
     }
   } catch (error) {
-    console.error('[Admin Signup] Error:', error);
+    console.error('[Admin Signup] Request error:', error);
     return NextResponse.json(
-      { error: 'Failed to create account' },
-      { status: 500 }
+      { error: 'Invalid request' },
+      { status: 400 }
     );
   }
 }

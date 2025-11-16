@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
 import type { RowDataPacket } from "mysql2";
-import { pool } from "@/lib/db";
+import { callProcedure } from "@/lib/db";
 import crypto from "crypto";
 
 // Pepper value - must match the one used in y25-design
 const PEPPER = process.env.PEPPER_KEY || 'default-pepper-change-in-production';
+
+interface UserAuth extends RowDataPacket {
+  username: string;
+  password_encrypted: string;
+  salt_random_value: Buffer;
+}
+
+interface AdminCheck extends RowDataPacket {
+  username: string;
+}
 
 export async function POST(request: Request) {
   try {
@@ -23,12 +33,7 @@ export async function POST(request: Request) {
 
     // Get user from database
     console.log("[LOGIN] Querying User table for:", username);
-    const [userRows] = await pool.query<RowDataPacket[]>(
-      `SELECT u.username, u.password_encrypted, u.salt_random_value
-       FROM \`User\` u
-       WHERE u.username = ?`,
-      [username]
-    );
+    const userRows = await callProcedure<UserAuth>('sp_admin_validate_login', [username]);
 
     console.log("[LOGIN] User rows found:", userRows.length);
 
@@ -40,10 +45,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = userRows[0] as RowDataPacket & {
-      password_encrypted: string;
-      salt_random_value: Buffer;
-    };
+    const user = userRows[0];
 
     // Verify password
     let salt = user.salt_random_value;
@@ -86,10 +88,7 @@ export async function POST(request: Request) {
 
     // Check if user is admin
     console.log("[LOGIN] Checking admin status for:", username);
-    const [adminRows] = await pool.query<RowDataPacket[]>(
-      `SELECT username FROM \`admin\` WHERE username = ?`,
-      [username]
-    );
+    const adminRows = await callProcedure<AdminCheck>('sp_admin_check_privileges', [username]);
 
     console.log("[LOGIN] Admin rows found:", adminRows.length);
 

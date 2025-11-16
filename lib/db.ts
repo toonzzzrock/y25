@@ -1,4 +1,5 @@
 import mysql from "mysql2/promise";
+import type { RowDataPacket } from "mysql2/promise";
 
 const {
   MYSQL_HOST = "localhost",
@@ -29,3 +30,21 @@ export const pool =
 if (process.env.NODE_ENV !== "production") {
   globalForMysql.mysqlPool = pool;
 }
+
+/**
+ * Call a stored procedure and return the result set
+ * @param name - The name of the stored procedure
+ * @param params - The parameters to pass to the stored procedure
+ * @returns The result set from the stored procedure
+ */
+export async function callProcedure<T extends RowDataPacket>(
+  name: string,
+  params: unknown[] = []
+): Promise<T[]> {
+  const [resultSets] = await pool.query(`CALL ${name}(${params.map(() => '?').join(', ')})`, params);
+  if (Array.isArray(resultSets) && resultSets.length > 0) {
+    return resultSets[0] as T[];
+  }
+  return [] as T[];
+}
+
