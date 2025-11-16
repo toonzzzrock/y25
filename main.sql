@@ -933,36 +933,6 @@ DELIMITER ;
 -- Usage: CALL sp_delete_game(123);
 DELIMITER //
 
--- CREATE PROCEDURE sp_delete_game(IN p_game_id INT)
--- BEGIN
---     DECLARE v_exists INT DEFAULT 0;
-
---     SELECT COUNT(*) INTO v_exists FROM game WHERE game_id = p_game_id;
-
---     IF v_exists = 0 THEN
---         -- Game does not exist; nothing to do
---         SELECT CONCAT('Game id ', p_game_id, ' does not exist') AS message;
---     ELSE
---         START TRANSACTION;
---             -- Delete rows that reference game but do not have ON DELETE CASCADE
---             DELETE FROM create_relation WHERE game_id = p_game_id;
---             DELETE FROM report WHERE game_id = p_game_id;
---             DELETE FROM play WHERE game_id = p_game_id;
---             DELETE FROM tag WHERE game_id = p_game_id;
-
---             -- Delete the game row; cascading FKs (if any) will be handled by the DB
---             DELETE FROM game WHERE game_id = p_game_id;
---         COMMIT;
-
---         SELECT CONCAT('Game ', p_game_id, ' and related records deleted') AS message;
---     END IF;
--- END;//
-
--- Additional triggers from main.sql adapted for test_table_data.sql schema
--- Note: Session triggers are omitted because session table in test schema doesn't have game_id or time fields
-
--- Forum Thread Counters Trigger
--- Simplified version without forum_participants table (not present in test schema)
 CREATE TRIGGER after_reply_insert -- Work
 AFTER INSERT ON reply
 FOR EACH ROW
@@ -983,6 +953,25 @@ BEGIN
 END;//
 
 DELIMITER ;
+
+-- =================================================================================
+-- FIX USER INSERTS!!
+INSERT INTO User (username, password_encrypted, salt_random_value, email, DOB, sex, created_at) VALUES
+('NormalAdmin', '08b3e8113def867697b3c4d0f4081319ccd15080a9e97d956d8bd13db8cbf8d5', 'b3efdea6f573ec8094fc511ce0e9e56f705c6d7720e63e2306aa6a70daaac5dd', 'NormalAdmin@gmail.com', '2003-12-29', 'Other', '2025-11-16 06:08:24');
+('NormalDev', '288a676c8632c2d4f3ef6245feb1ba03a5cea03440fed825004c8b1f4627bd27', '02ce7818f6b0086b2278b339665046d9b06a2181594588c8eb1e2cc3614d8f75', 'NormalDev@gmail.com', '2009-06-09', 'Other', '2025-11-16 13:10:51');
+('NormalPub', 'e2e32f032bd3191011ce4b49241c34e49ef18a54a9984e97618000863c6e4826', '1af87067c65f13cba5ce464348b4a48777fc225272e0292d4e2b3c5ddffe8fb0', 'NormalPub@gmail.com', '2000-06-01', 'Other', '2025-11-16 06:06:39');
+('NormalUser', '5fe84cfe3a2f86da0a1c43c16596022071dfdf247ced665cd28e232123837ee4', 'c71d8297ca0d29c0b585a0628ee1040e280426b2a103bd9c9167f0b64d4ed5b8', 'NormalUser@gmail.com', '2003-02-03', 'Male', '2025-11-16 06:05:40');
+
+INSERT INTO admin (username) VALUES
+('NormalAdmin');
+
+INSERT INTO developer (username, role, contact) VALUES
+('NormalDev', 'Programmer', '+1-555-0001');
+
+INSERT INTO publisher (username, account_name, bank_account_serial) VALUES
+('NormalPub', 'NormalPub Account', 'ACCT-NP-0001');
+-- ==================================================================================
+
 
 -- Insert users (at least 8 users to link roles and publishers)
 INSERT INTO User (username, password_encrypted, salt_random_value, email, DOB, sex, created_at) VALUES
@@ -1404,13 +1393,289 @@ BEGIN
   LIMIT 4;
 END//
 
+-- Developer-specific procedures
+CREATE PROCEDURE sp_developer_validate_login(IN p_username VARCHAR(20))
+BEGIN
+  SELECT u.username, u.password_encrypted, u.salt_random_value
+  FROM `User` u
+  WHERE u.username = p_username
+  LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_developer_check_privileges(IN p_username VARCHAR(20))
+BEGIN
+  SELECT username FROM developer WHERE username = p_username LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_developer_get_last_game_upload()
+BEGIN
+  SELECT MAX(release_date) as last_time 
+  FROM game 
+  WHERE release_date IS NOT NULL 
+  LIMIT 1;
+END//
+
+CREATE PROCEDURE sp_developer_get_last_user_created()
+BEGIN
+  SELECT MAX(created_at) as last_time 
+  FROM User 
+  WHERE created_at IS NOT NULL 
+  LIMIT 1;
+END//
+
 DELIMITER ;
 
-DROP USER IF EXISTS 'admin'@'localhost';
-CREATE USER 'admin'@'localhost' IDENTIFIED BY 'ToonFilmFirstWinnerPokPokPok1234';
-GRANT EXECUTE ON Y25_DB.* TO 'admin'@'localhost';
+-- =============================================================
+-- User permission management with granular procedure-level access
+-- Separation of concerns: user (public) vs developer (internal) vs admin (management)
+-- =============================================================
 
+-- Drop existing users if they exist (idempotent)
+DROP USER IF EXISTS 'user'@'localhost';
+DROP USER IF EXISTS 'developer'@'localhost';
+DROP USER IF EXISTS 'admin'@'localhost';
+
+-- =============================================================
+-- Create database users
+-- =============================================================
+CREATE USER 'user'@'localhost' IDENTIFIED BY 'ToonFilmFirstWinnerPokPokPok1234';
+CREATE USER 'developer'@'localhost' IDENTIFIED BY 'ToonFilmFirstWinnerPokPokPok1234';
+CREATE USER 'admin'@'localhost' IDENTIFIED BY 'ToonFilmFirstWinnerPokPokPok1234';
+
+-- =============================================================
+-- PUBLIC PROCEDURES - Accessible by all users (user, developer, admin)
+-- These are the core application procedures used by the stack app
+-- =============================================================
+
+-- Authentication & Session Management
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_username TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_email TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_validate_login_fetch TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_insert_session TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_register_user_with_optional_publisher TO 'user'@'localhost';
+
+-- Game Management (Public)
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_game_owner TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_delete_game TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_publisher_exists TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_game TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_game_add_initial_update TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_game_exists TO 'user'@'localhost';
+
+-- Game Queries & Lists
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_games_list TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_count_games TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_game_detail TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_latest_game_update TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_search_games TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_trending_games TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_new_games TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_count_new_games TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_all_games TO 'user'@'localhost';
+
+-- Game Categories & Tags
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_games_by_tag TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_count_games_by_tag TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_game_tags TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_game_versions TO 'user'@'localhost';
+
+-- Game Reports
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_game_report TO 'user'@'localhost';
+
+-- Publisher Dashboard
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_publisher_info TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_publisher_games TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_publisher_reports TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_count_publisher_reports TO 'user'@'localhost';
+
+-- Publisher Game Editing
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_update_game_link TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_update_game_details TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_publisher_submit_game_update TO 'user'@'localhost';
+
+-- User Profile & Play Time
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_profile TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_playtime TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_total_playtime TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_email_exists TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_update_user_profile TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_search_users TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_play_add_time TO 'user'@'localhost';
+
+-- Forum & Community
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_forum_threads TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_forum_threads_cursor TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_search_forum_threads TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_thread_details TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_thread_exists TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_thread_replies TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_reply_to_comment TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_comment TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_reply TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_game_for_thread TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_forum_thread TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_created_threads TO 'user'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_commented_threads TO 'user'@'localhost';
+
+-- Admin Approve Game (used in stack app)
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_approve_game TO 'user'@'localhost';
+
+-- =============================================================
+-- DEVELOPER PROCEDURES - Accessible by developer & admin only
+-- Grant all public procedures to developer first
+-- =============================================================
+
+-- All public procedures for developer
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_username TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_email TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_validate_login_fetch TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_insert_session TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_register_user_with_optional_publisher TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_game_owner TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_delete_game TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_publisher_exists TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_game TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_game_add_initial_update TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_game_exists TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_games_list TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_count_games TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_game_detail TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_latest_game_update TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_search_games TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_trending_games TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_new_games TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_count_new_games TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_all_games TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_games_by_tag TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_count_games_by_tag TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_game_tags TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_game_versions TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_game_report TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_publisher_info TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_publisher_games TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_publisher_reports TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_count_publisher_reports TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_update_game_link TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_update_game_details TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_publisher_submit_game_update TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_profile TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_playtime TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_total_playtime TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_email_exists TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_update_user_profile TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_search_users TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_play_add_time TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_forum_threads TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_forum_threads_cursor TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_search_forum_threads TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_thread_details TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_thread_exists TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_thread_replies TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_reply_to_comment TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_comment TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_reply TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_game_for_thread TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_forum_thread TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_created_threads TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_commented_threads TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_approve_game TO 'developer'@'localhost';
+
+-- Developer-specific procedures
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_developer_validate_login TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_developer_check_privileges TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_developer_get_last_game_upload TO 'developer'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_developer_get_last_user_created TO 'developer'@'localhost';
+
+-- =============================================================
+-- ADMIN PROCEDURES - Accessible by admin only
+-- Grant all public procedures to admin first
+-- =============================================================
+
+-- All public procedures for admin
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_username TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_email TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_validate_login_fetch TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_insert_session TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_register_user_with_optional_publisher TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_game_owner TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_delete_game TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_publisher_exists TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_game TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_game_add_initial_update TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_game_exists TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_games_list TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_count_games TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_game_detail TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_latest_game_update TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_search_games TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_trending_games TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_new_games TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_count_new_games TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_all_games TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_games_by_tag TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_count_games_by_tag TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_game_tags TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_game_versions TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_game_report TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_publisher_info TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_publisher_games TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_publisher_reports TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_count_publisher_reports TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_update_game_link TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_update_game_details TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_publisher_submit_game_update TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_profile TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_playtime TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_total_playtime TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_email_exists TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_update_user_profile TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_search_users TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_play_add_time TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_forum_threads TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_forum_threads_cursor TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_search_forum_threads TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_thread_details TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_thread_exists TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_thread_replies TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_reply_to_comment TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_comment TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_reply TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_check_game_for_thread TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_create_forum_thread TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_created_threads TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_get_user_commented_threads TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_approve_game TO 'admin'@'localhost';
+
+-- Admin-specific procedures
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_validate_login TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_check_privileges TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_check_user_exists TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_create_user TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_create_developer TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_create_admin TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_ban_user TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_ban_publisher TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_ban_game TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_update_game_status TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_get_daily_users TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_get_total_sessions TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_get_average_playtime TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_get_popular_games TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_get_signups_by_month TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_get_players_by_month TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_get_recent_users TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_get_publishers TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_get_games TO 'admin'@'localhost';
+GRANT EXECUTE ON PROCEDURE Y25_DB.sp_admin_get_pending_games TO 'admin'@'localhost';
+
+-- =============================================================
+-- Finalize permissions
+-- =============================================================
 FLUSH PRIVILEGES;
 
--- Verify admin user
+-- =============================================================
+-- Verification
+-- =============================================================
+SHOW GRANTS FOR 'user'@'localhost';
+SHOW GRANTS FOR 'developer'@'localhost';
 SHOW GRANTS FOR 'admin'@'localhost';
