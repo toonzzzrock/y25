@@ -488,7 +488,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Get public folder size
-  const publicPath = PUBLIC_ROOT;
+    const publicPath = PUBLIC_ROOT;
     const publicFolderBytes = await getFolderSize(publicPath);
     const publicFolderSize = formatBytes(publicFolderBytes);
 
