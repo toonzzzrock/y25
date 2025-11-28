@@ -97,12 +97,18 @@ Password for publisher users:
 
 ### Developer Page:
 
-![dev](dev.png)
+![dev](/img/dev.png)
 
 ### Home Page:
 
-![home_page](home_page.png)
+#### Main Page:
 
-![commu](commu.png)
+![home_page](/img/home_page.png)
 
-![publisher](publisher.png)
+#### Community Page:
+
+![commu](/img/commu.png)
+
+#### Publisher Page:
+
+![publisher](/img/publisher.png)
